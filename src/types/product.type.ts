@@ -80,7 +80,7 @@ export interface Product {
 export interface ProductDetail extends Product {
       specs: Spec[];
       validSpecCombinations: Record<string, { skuId: number, stock: number, price: number }>;
-      loadingSkus?: boolean;
+      loadingSkus: boolean; // 必需属性
 }
 
 /**

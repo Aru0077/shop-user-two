@@ -1,6 +1,16 @@
 // src/types/order.type.ts
 import type { OrderStatus, PaymentStatus } from '@/types/common.type';
 
+
+// 修正后
+export interface OrderItemSpec {
+      specId: number;
+      specName: string;
+      specValueId: number;
+      specValue: string;
+    }
+
+
 /**
  * 订单项
  */
@@ -10,7 +20,7 @@ export interface OrderItem {
       skuId: number;
       productName: string;
       mainImage: string;
-      skuSpecs: any;
+      skuSpecs: OrderItemSpec[];
       quantity: number;
       unitPrice: number;
       totalPrice: number;
@@ -30,6 +40,15 @@ export interface PaymentLog {
       createdAt: string;
 }
 
+// 修正后
+export interface ShippingAddress {
+      receiverName: string;
+      receiverPhone: string;
+      province: string;
+      city: string;
+      detailAddress: string;
+}
+
 /**
  * 订单基本信息
  */
@@ -39,7 +58,7 @@ export interface OrderBasic {
       userId: string;
       orderStatus: OrderStatus;
       paymentStatus: PaymentStatus;
-      shippingAddress: any;
+      shippingAddress: ShippingAddress;
       totalAmount: number;
       paymentAmount: number;
       createdAt: string;
