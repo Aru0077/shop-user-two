@@ -62,7 +62,7 @@ export const orderApi = {
        * 取消订单
        * @param id 订单ID
        */
-      cancelOrder(id: string): Promise<any> {
+      cancelOrder(id: string): Promise<null> {
             return http.post(`/orders/${id}/cancel`);
       },
 
@@ -70,7 +70,7 @@ export const orderApi = {
        * 确认收货
        * @param id 订单ID
        */
-      confirmReceipt(id: string): Promise<any> {
+      confirmReceipt(id: string): Promise<null> {
             return http.post(`/orders/${id}/confirm`);
-      }
+      },
 };

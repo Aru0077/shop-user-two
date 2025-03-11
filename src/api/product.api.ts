@@ -90,12 +90,15 @@ export const productApi = {
       searchProducts(params: SearchProductsParams): Promise<SearchProductsResponse> {
             return http.get('/products/search', { params });
       },
-      
+
       /**
        * 搜索商品（可取消版本）
        * @param params 搜索参数
        */
-      searchProductsCancelable(params: SearchProductsParams) {
+      searchProductsCancelable(params: SearchProductsParams): {
+            request: Promise<SearchProductsResponse>;
+            cancel: (reason?: string) => void
+      } {
             return http.cancelable({
                   method: 'get',
                   url: '/products/search',
