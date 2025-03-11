@@ -1,6 +1,5 @@
 // src/api/checkout.api.ts
-import http from '../utils/request';
-import type { ApiResponse } from '@/types/common.type';
+import http from '@/utils/request';
 import type { CheckoutInfo } from '@/types/checkout.type';
 
 /**
@@ -10,7 +9,7 @@ export const checkoutApi = {
       /**
        * 获取结算信息
        */
-      getCheckoutInfo(): Promise<ApiResponse<CheckoutInfo>> {
-            return http.get('/v1/shop/checkout/info');
+      getCheckoutInfo(): Promise<CheckoutInfo> {
+            return http.get('/checkout/info');
       }
 };

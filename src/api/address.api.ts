@@ -1,6 +1,5 @@
 // src/api/address.api.ts
-import http from '../utils/request';
-import type { ApiResponse } from '@/types/common.type';
+import http from '@/utils/request';
 import type { UserAddress, CreateAddressParams, UpdateAddressParams } from '@/types/address.type';
 
 /**
@@ -10,16 +9,16 @@ export const addressApi = {
       /**
        * 获取地址列表
        */
-      getAddresses(): Promise<ApiResponse<UserAddress[]>> {
-            return http.get('/v1/shop/addresses');
+      getAddresses(): Promise<UserAddress[]> {
+            return http.get('/addresses');
       },
 
       /**
        * 创建地址
        * @param params 创建地址参数
        */
-      createAddress(params: CreateAddressParams): Promise<ApiResponse<UserAddress>> {
-            return http.post('/v1/shop/addresses', params);
+      createAddress(params: CreateAddressParams): Promise<UserAddress> {
+            return http.post('/addresses', params);
       },
 
       /**
@@ -27,23 +26,23 @@ export const addressApi = {
        * @param id 地址ID
        * @param params 更新地址参数
        */
-      updateAddress(id: number, params: UpdateAddressParams): Promise<ApiResponse<UserAddress>> {
-            return http.put(`/v1/shop/addresses/${id}`, params);
+      updateAddress(id: number, params: UpdateAddressParams): Promise<UserAddress> {
+            return http.put(`/addresses/${id}`, params);
       },
 
       /**
        * 删除地址
        * @param id 地址ID
        */
-      deleteAddress(id: number): Promise<ApiResponse<null>> {
-            return http.delete(`/v1/shop/addresses/${id}`);
+      deleteAddress(id: number): Promise<null> {
+            return http.delete(`/addresses/${id}`);
       },
 
       /**
        * 设置默认地址
        * @param id 地址ID
        */
-      setDefaultAddress(id: number): Promise<ApiResponse<UserAddress>> {
-            return http.patch(`/v1/shop/addresses/${id}/default`);
+      setDefaultAddress(id: number): Promise<UserAddress> {
+            return http.patch(`/addresses/${id}/default`);
       }
 };

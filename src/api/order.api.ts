@@ -1,6 +1,6 @@
 // src/api/order.api.ts
-import http from '../utils/request';
-import type { ApiResponse, PaginatedResponse } from '@/types/common.type';
+import http from '@/utils/request';
+import type { PaginatedResponse } from '@/types/common.type';
 import type {
       OrderBasic,
       OrderDetail,
@@ -21,32 +21,32 @@ export const orderApi = {
        * @param limit 每页数量
        * @param status 订单状态
        */
-      getOrderList(page: number = 1, limit: number = 10, status?: number): Promise<ApiResponse<PaginatedResponse<OrderBasic>>> {
-            return http.get('/v1/shop/orders', { params: { page, limit, status } });
+      getOrderList(page: number = 1, limit: number = 10, status?: number): Promise<PaginatedResponse<OrderBasic>> {
+            return http.get('/orders', { params: { page, limit, status } });
       },
 
       /**
        * 获取订单详情
        * @param id 订单ID
        */
-      getOrderDetail(id: string): Promise<ApiResponse<OrderDetail>> {
-            return http.get(`/v1/shop/orders/${id}`);
+      getOrderDetail(id: string): Promise<OrderDetail> {
+            return http.get(`/orders/${id}`);
       },
 
       /**
        * 创建订单
        * @param params 创建订单参数
        */
-      createOrder(params: CreateOrderParams): Promise<ApiResponse<CreateOrderResponse>> {
-            return http.post('/v1/shop/orders', params);
+      createOrder(params: CreateOrderParams): Promise<CreateOrderResponse> {
+            return http.post('/orders', params);
       },
 
       /**
        * 快速购买
        * @param params 快速购买参数
        */
-      quickBuy(params: QuickBuyParams): Promise<ApiResponse<CreateOrderResponse>> {
-            return http.post('/v1/shop/orders/quick-buy', params);
+      quickBuy(params: QuickBuyParams): Promise<CreateOrderResponse> {
+            return http.post('/orders/quick-buy', params);
       },
 
       /**
@@ -54,23 +54,23 @@ export const orderApi = {
        * @param id 订单ID
        * @param params 支付订单参数
        */
-      payOrder(id: string, params: PayOrderParams): Promise<ApiResponse<PayOrderResponse>> {
-            return http.post(`/v1/shop/orders/${id}/pay`, params);
+      payOrder(id: string, params: PayOrderParams): Promise<PayOrderResponse> {
+            return http.post(`/orders/${id}/pay`, params);
       },
 
       /**
        * 取消订单
        * @param id 订单ID
        */
-      cancelOrder(id: string): Promise<ApiResponse<any>> {
-            return http.post(`/v1/shop/orders/${id}/cancel`);
+      cancelOrder(id: string): Promise<any> {
+            return http.post(`/orders/${id}/cancel`);
       },
 
       /**
        * 确认收货
        * @param id 订单ID
        */
-      confirmReceipt(id: string): Promise<ApiResponse<any>> {
-            return http.post(`/v1/shop/orders/${id}/confirm`);
+      confirmReceipt(id: string): Promise<any> {
+            return http.post(`/orders/${id}/confirm`);
       }
 };
