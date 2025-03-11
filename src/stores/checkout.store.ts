@@ -4,8 +4,6 @@ import { ref, computed } from 'vue';
 import { checkoutApi } from '@/api/checkout.api';
 import { cartApi } from '@/api/cart.api';
 import { useUserStore } from './user.store';
-import { useCartStore } from './cart.store';
-import { useAddressStore } from './address.store';
 import type { CheckoutInfo } from '@/types/checkout.type';
 import type { OrderAmountPreview, PreviewOrderParams } from '@/types/cart.type';
 
@@ -21,8 +19,6 @@ export const useCheckoutStore = defineStore('checkout', () => {
 
       // 使用其他store
       const userStore = useUserStore();
-      const cartStore = useCartStore();
-      const addressStore = useAddressStore();
 
       // 计算属性
       const isReadyToCheckout = computed(() => {

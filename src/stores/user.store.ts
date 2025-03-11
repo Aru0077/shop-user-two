@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { userApi } from '@/api/user.api';
 import { storage } from '@/utils/storage';
-import type { User, LoginParams, RegisterParams } from '@/types/user.type';
+import type { User, LoginParams, RegisterParams, DeleteAccountParams } from '@/types/user.type';
 
 // 缓存键
 const TOKEN_KEY = 'user_token';
@@ -21,7 +21,7 @@ export const useUserStore = defineStore('user', () => {
       // 计算属性
       const isLoggedIn = computed(() => !!token.value);
 
-      // 动作
+      // 登录
       async function login(params: LoginParams) {
             loading.value = true;
             error.value = null;
@@ -46,6 +46,7 @@ export const useUserStore = defineStore('user', () => {
             }
       }
 
+      // 注销
       async function logout() {
             try {
                   if (token.value) {
@@ -59,16 +60,15 @@ export const useUserStore = defineStore('user', () => {
             }
       }
 
+      // 清除用户状态
       function clearUserState() {
             token.value = null;
             currentUser.value = null;
             storage.remove(TOKEN_KEY);
             storage.remove(USER_INFO_KEY);
-            // 同时清除其他相关缓存
-            storage.remove('cart_data');
-            storage.remove('favorite_ids');
       }
 
+      // 注册
       async function register(params: RegisterParams) {
             loading.value = true;
             error.value = null;
@@ -84,12 +84,14 @@ export const useUserStore = defineStore('user', () => {
             }
       }
 
+      // 删除账号
       async function deleteAccount(password: string) {
             loading.value = true;
             error.value = null;
 
             try {
-                  await userApi.deleteAccount({ password });
+                  const params: DeleteAccountParams = { password };
+                  await userApi.deleteAccount(params);
                   clearUserState();
             } catch (err: any) {
                   error.value = err.message || '删除账号失败';

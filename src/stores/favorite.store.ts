@@ -7,8 +7,7 @@ import { useUserStore } from './user.store';
 import type {
       Favorite,
       AddFavoriteParams,
-      BatchRemoveFavoritesParams,
-      FavoritesResponse
+      BatchRemoveFavoritesParams
 } from '@/types/favorite.type';
 
 // 缓存键

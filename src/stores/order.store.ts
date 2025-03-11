@@ -10,7 +10,6 @@ import type {
       QuickBuyParams,
       PayOrderParams
 } from '@/types/order.type';
-import type { PaginatedResponse } from '@/types/common.type';
 
 export const useOrderStore = defineStore('order', () => {
       // 状态
