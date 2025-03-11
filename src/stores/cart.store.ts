@@ -10,6 +10,8 @@ import type { CartItem, AddToCartParams, UpdateCartItemParams } from '@/types/ca
 const CART_DATA_KEY = 'cart_data';
 // 缓存时间 (1天)
 const CART_EXPIRY = 24 * 60 * 60 * 1000;
+// 购物车数据版本，当购物车数据结构变化时更新此版本号
+const CART_DATA_VERSION = '1.0.0';
 
 export const useCartStore = defineStore('cart', () => {
       // 状态
@@ -17,6 +19,7 @@ export const useCartStore = defineStore('cart', () => {
       const loading = ref<boolean>(false);
       const error = ref<string | null>(null);
       const totalItems = ref<number>(0);
+      const lastSyncTime = ref<number>(0);
 
       // 用户store
       const userStore = useUserStore();
@@ -36,9 +39,11 @@ export const useCartStore = defineStore('cart', () => {
       // 初始化购物车 - 从本地缓存或服务器加载
       async function initCart() {
             // 先从缓存恢复
-            const cachedCart = storage.get<CartItem[]>(CART_DATA_KEY, []);
-            if (cachedCart.length > 0) {
-                  cartItems.value = cachedCart;
+            const cartStorage = storage.get<{ version: string, items: CartItem[], timestamp: number }>(CART_DATA_KEY, null);
+
+            if (cartStorage && cartStorage.version === CART_DATA_VERSION) {
+                  cartItems.value = cartStorage.items;
+                  lastSyncTime.value = cartStorage.timestamp;
                   updateTotalItems();
             }
 
@@ -62,8 +67,11 @@ export const useCartStore = defineStore('cart', () => {
                         cartItems.value = response.data;
                         updateTotalItems();
 
+                        // 更新最后同步时间
+                        lastSyncTime.value = Date.now();
+
                         // 缓存到本地
-                        storage.set(CART_DATA_KEY, cartItems.value, CART_EXPIRY);
+                        saveCartToStorage();
                   }
             } catch (err: any) {
                   error.value = err.message || '获取购物车失败';
@@ -71,6 +79,16 @@ export const useCartStore = defineStore('cart', () => {
             } finally {
                   loading.value = false;
             }
+      }
+
+      // 将购物车保存到本地存储
+      function saveCartToStorage() {
+            const cartData = {
+                  version: CART_DATA_VERSION,
+                  items: cartItems.value,
+                  timestamp: lastSyncTime.value
+            };
+            storage.set(CART_DATA_KEY, cartData, CART_EXPIRY);
       }
 
       // 更新购物车商品数量
@@ -115,7 +133,7 @@ export const useCartStore = defineStore('cart', () => {
                         }
 
                         updateTotalItems();
-                        storage.set(CART_DATA_KEY, cartItems.value, CART_EXPIRY);
+                        saveCartToStorage();
                   }
             } catch (err: any) {
                   error.value = err.message || '添加到购物车失败';
@@ -140,7 +158,7 @@ export const useCartStore = defineStore('cart', () => {
                         if (index >= 0) {
                               cartItems.value[index].quantity = params.quantity;
                               updateTotalItems();
-                              storage.set(CART_DATA_KEY, cartItems.value, CART_EXPIRY);
+                              saveCartToStorage();
                         }
                   }
             } catch (err: any) {
@@ -164,7 +182,7 @@ export const useCartStore = defineStore('cart', () => {
                         // 本地删除
                         cartItems.value = cartItems.value.filter(item => item.id !== id);
                         updateTotalItems();
-                        storage.set(CART_DATA_KEY, cartItems.value, CART_EXPIRY);
+                        saveCartToStorage();
                   }
             } catch (err: any) {
                   error.value = err.message || '删除购物车项失败';
@@ -207,7 +225,10 @@ export const useCartStore = defineStore('cart', () => {
                   await fetchCartFromServer();
 
                   // 获取本地缓存中的购物车项
-                  const localCart = storage.get<CartItem[]>(CART_DATA_KEY, []);
+                  const cartStorage = storage.get<{ version: string, items: CartItem[] }>(CART_DATA_KEY, null);
+                  if (!cartStorage) return;
+
+                  const localCart = cartStorage.items;
 
                   // 逐个添加本地购物车项到服务器
                   for (const item of localCart) {
@@ -234,12 +255,26 @@ export const useCartStore = defineStore('cart', () => {
             }
       }
 
+      // 在一定时间后刷新购物车（如15分钟）
+      async function refreshCartIfNeeded(forceRefresh = false) {
+            if (!userStore.isLoggedIn) return;
+
+            const now = Date.now();
+            // 15分钟刷新一次
+            const refreshInterval = 15 * 60 * 1000;
+
+            if (forceRefresh || (now - lastSyncTime.value > refreshInterval)) {
+                  await fetchCartFromServer();
+            }
+      }
+
       return {
             // 状态
             cartItems,
             loading,
             error,
             totalItems,
+            lastSyncTime,
 
             // 计算属性
             totalAmount,
@@ -252,6 +287,7 @@ export const useCartStore = defineStore('cart', () => {
             updateCartItem,
             removeCartItem,
             clearCart,
-            mergeLocalCartToServer
+            mergeLocalCartToServer,
+            refreshCartIfNeeded
       };
 });

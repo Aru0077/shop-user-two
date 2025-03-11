@@ -10,12 +10,15 @@ import type { UserAddress, CreateAddressParams, UpdateAddressParams } from '@/ty
 const ADDRESSES_KEY = 'user_addresses';
 // 缓存时间 (12小时)
 const ADDRESSES_EXPIRY = 12 * 60 * 60 * 1000;
+// 地址数据版本
+const ADDRESSES_VERSION = '1.0.0';
 
 export const useAddressStore = defineStore('address', () => {
       // 状态
       const addresses = ref<UserAddress[]>([]);
       const loading = ref<boolean>(false);
       const error = ref<string | null>(null);
+      const lastFetchTime = ref<number>(0);
 
       // 用户store
       const userStore = useUserStore();
@@ -26,14 +29,23 @@ export const useAddressStore = defineStore('address', () => {
       });
 
       // 获取地址列表
-      async function fetchAddresses() {
+      async function fetchAddresses(forceRefresh = false) {
             if (!userStore.isLoggedIn) return [];
 
-            // 先检查缓存
-            const cachedAddresses = storage.get<UserAddress[]>(ADDRESSES_KEY, null);
-            if (cachedAddresses) {
-                  addresses.value = cachedAddresses;
-                  return cachedAddresses;
+            // 检查是否需要强制刷新
+            if (!forceRefresh) {
+                  // 先检查缓存
+                  const addressesCache = storage.get<{
+                        version: string,
+                        addresses: UserAddress[],
+                        timestamp: number
+                  }>(ADDRESSES_KEY, null);
+
+                  if (addressesCache && addressesCache.version === ADDRESSES_VERSION) {
+                        addresses.value = addressesCache.addresses;
+                        lastFetchTime.value = addressesCache.timestamp;
+                        return addressesCache.addresses;
+                  }
             }
 
             loading.value = true;
@@ -42,9 +54,10 @@ export const useAddressStore = defineStore('address', () => {
             try {
                   const response = await addressApi.getAddresses();
                   addresses.value = response;
+                  lastFetchTime.value = Date.now();
 
                   // 缓存地址
-                  storage.set(ADDRESSES_KEY, addresses.value, ADDRESSES_EXPIRY);
+                  saveAddressesToStorage();
 
                   return response;
             } catch (err: any) {
@@ -56,6 +69,16 @@ export const useAddressStore = defineStore('address', () => {
             }
       }
 
+      // 保存地址到存储
+      function saveAddressesToStorage() {
+            const addressData = {
+                  version: ADDRESSES_VERSION,
+                  addresses: addresses.value,
+                  timestamp: lastFetchTime.value
+            };
+            storage.set(ADDRESSES_KEY, addressData, ADDRESSES_EXPIRY);
+      }
+
       // 创建地址
       async function createAddress(params: CreateAddressParams) {
             loading.value = true;
@@ -65,7 +88,7 @@ export const useAddressStore = defineStore('address', () => {
                   const response = await addressApi.createAddress(params);
 
                   // 更新地址列表
-                  await fetchAddresses();
+                  await fetchAddresses(true);
 
                   return response;
             } catch (err: any) {
@@ -85,7 +108,7 @@ export const useAddressStore = defineStore('address', () => {
                   const response = await addressApi.updateAddress(id, params);
 
                   // 更新地址列表
-                  await fetchAddresses();
+                  await fetchAddresses(true);
 
                   return response;
             } catch (err: any) {
@@ -105,7 +128,7 @@ export const useAddressStore = defineStore('address', () => {
                   await addressApi.deleteAddress(id);
 
                   // 更新地址列表
-                  await fetchAddresses();
+                  await fetchAddresses(true);
             } catch (err: any) {
                   error.value = err.message || '删除地址失败';
                   throw err;
@@ -123,7 +146,7 @@ export const useAddressStore = defineStore('address', () => {
                   await addressApi.setDefaultAddress(id);
 
                   // 更新地址列表
-                  await fetchAddresses();
+                  await fetchAddresses(true);
             } catch (err: any) {
                   error.value = err.message || '设置默认地址失败';
                   throw err;
@@ -138,11 +161,25 @@ export const useAddressStore = defineStore('address', () => {
             storage.remove(ADDRESSES_KEY);
       }
 
+      // 在一定时间后刷新地址（如6小时）
+      async function refreshAddressesIfNeeded(forceRefresh = false) {
+            if (!userStore.isLoggedIn) return;
+
+            const now = Date.now();
+            // 6小时刷新一次
+            const refreshInterval = 6 * 60 * 60 * 1000;
+
+            if (forceRefresh || (now - lastFetchTime.value > refreshInterval)) {
+                  await fetchAddresses(true);
+            }
+      }
+
       return {
             // 状态
             addresses,
             loading,
             error,
+            lastFetchTime,
 
             // 计算属性
             defaultAddress,
@@ -153,6 +190,7 @@ export const useAddressStore = defineStore('address', () => {
             updateAddress,
             deleteAddress,
             setDefaultAddress,
-            clearAddressCache
+            clearAddressCache,
+            refreshAddressesIfNeeded
       };
 });

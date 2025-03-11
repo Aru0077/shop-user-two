@@ -33,7 +33,7 @@ export const useUserStore = defineStore('user', () => {
                   token.value = response.token;
                   currentUser.value = response.user;
 
-                  // 持久化到storage
+                  // 使用storage工具持久化
                   storage.set(TOKEN_KEY, response.token, AUTH_EXPIRY);
                   storage.set(USER_INFO_KEY, response.user, AUTH_EXPIRY);
 
@@ -64,6 +64,8 @@ export const useUserStore = defineStore('user', () => {
       function clearUserState() {
             token.value = null;
             currentUser.value = null;
+
+            // 使用storage工具删除缓存
             storage.remove(TOKEN_KEY);
             storage.remove(USER_INFO_KEY);
       }
@@ -101,6 +103,25 @@ export const useUserStore = defineStore('user', () => {
             }
       }
 
+      // 检查token是否过期
+      function checkTokenExpiry() {
+            if (token.value && storage.has(TOKEN_KEY)) {
+                  return true;
+            }
+            // Token不存在或已过期，清除状态
+            if (token.value) {
+                  clearUserState();
+                  return false;
+            }
+            return false;
+      }
+
+      // 刷新用户信息
+      async function refreshUserInfo() {
+            // 这里可以添加获取最新用户信息的API调用
+            // 目前API中没有提供这个方法，所以暂不实现
+      }
+
       return {
             // 状态
             token,
@@ -116,6 +137,8 @@ export const useUserStore = defineStore('user', () => {
             logout,
             register,
             deleteAccount,
-            clearUserState
+            clearUserState,
+            checkTokenExpiry,
+            refreshUserInfo
       };
 });
