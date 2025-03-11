@@ -46,9 +46,12 @@ export interface Sku {
       price: number;
       promotion_price?: number | null;
       stock?: number;
+      lockedStock?: number; 
       skuCode?: string;
       image?: string;
       sku_specs?: SkuSpec[];
+      createdAt?: string; // 添加后端有但前端没有的字段
+      updatedAt?: string; // 添加后端有但前端没有的字段
 }
 
 /**
@@ -60,13 +63,13 @@ export interface Product {
       name: string;
       content?: string | null;
       mainImage?: string | null;
-      detailImages?: any | null;
+      detailImages?: Record<string, any> | any[] | null;
       is_promotion?: number | null;
       status: ProductStatus;
       productCode: string;
       salesCount?: number;
-      createdAt?: string;
-      updatedAt?: string;
+      createdAt: string; // 改为必需
+      updatedAt: string; // 改为必需
       category?: {
             id: number;
             name: string;

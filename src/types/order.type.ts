@@ -8,7 +8,7 @@ export interface OrderItemSpec {
       specName: string;
       specValueId: number;
       specValue: string;
-    }
+}
 
 
 /**

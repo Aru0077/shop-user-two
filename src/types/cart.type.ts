@@ -9,6 +9,7 @@ export interface CartItem {
       productId: number;
       skuId: number;
       quantity: number;
+      createdAt: string; 
       updatedAt: string;
       product?: {
             id: number;
