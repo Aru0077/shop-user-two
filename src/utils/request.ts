@@ -1,6 +1,7 @@
 // src/utils/request.ts
 import axios from 'axios';
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { storage } from '@/utils/storage';
 
 // 定义接口响应类型与后端对应
 interface ApiResponse<T = any> {
@@ -68,7 +69,8 @@ service.interceptors.request.use(
             addPendingRequest(config);
 
             // 从 localStorage 获取 token 并添加到请求头
-            const token = localStorage.getItem('token');
+            const token = storage.get('user_token', null); 
+            
             if (token && config.headers) {
                   config.headers['Authorization'] = `Bearer ${token}`;
             }
@@ -82,7 +84,7 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
       (response: AxiosResponse<ApiResponse>) => {
-            console.log('Response:', response);
+            // console.log('Response:', response);
             
             // 请求完成后，从pendingRequests中移除
             removePendingRequest(response.config);
@@ -97,14 +99,11 @@ service.interceptors.response.use(
                   }
 
                   // 修改响应数据，但保持AxiosResponse结构
-                  return {
-                        ...response,
-                        data: data // 或 data.data，取决于您想返回什么
-                  };
+                  return data.data;
             }
 
             // 保持原始响应结构
-            return response;
+            return response.data;
       },
       (error) => {
             console.log('Error:', error);

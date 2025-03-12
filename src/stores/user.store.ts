@@ -17,7 +17,7 @@ export const useUserStore = defineStore('user', () => {
       const currentUser = ref<User | null>(storage.get(USER_INFO_KEY, null));
       const loading = ref<boolean>(false);
       const error = ref<string | null>(null);
-
+      
       // 计算属性
       const isLoggedIn = computed(() => !!token.value);
 
@@ -29,6 +29,8 @@ export const useUserStore = defineStore('user', () => {
             try {
                   const response = await userApi.login(params);
 
+                  console.log("登录结果",response);
+                  
                   // 更新状态
                   token.value = response.token;
                   currentUser.value = response.user;
