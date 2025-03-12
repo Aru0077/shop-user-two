@@ -33,6 +33,10 @@ import { Home, Layers, User } from 'lucide-vue-next';
 
 <style scoped>
 .active .icon-container::before {
+    /* 添加硬件加速 */
+    transform: translateZ(0);
+    will-change: transform, opacity;
+
     content: '';
     position: absolute;
     width: 48px;

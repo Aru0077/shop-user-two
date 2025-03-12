@@ -7,10 +7,11 @@ import { useUserStore } from '@/stores/user.store';
 import MainLayout from '@/layouts/MainLayout.vue';
 import SimpleLayout from '@/layouts/SimpleLayout.vue';
 
-// 主页面组件（使用异步懒加载）
-const HomePage = () => import('@/views/home/HomePage.vue');
-const CategoryPage = () => import('@/views/category/CategoryPage.vue');
-const ProfilePage = () => import('@/views/profile/ProfilePage.vue');
+// 主页面组件
+import HomePage from '@/views/home/HomePage.vue';
+import CategoryPage from '@/views/category/CategoryPage.vue';
+import ProfilePage from '@/views/profile/ProfilePage.vue';
+
 
 // 功能页面组件
 const ProductDetailPage = () => import('@/views/product/ProductDetailPage.vue');
@@ -40,6 +41,7 @@ const routes: Array<RouteRecordRaw> = [
                         meta: {
                               title: '首页',
                               showTabBar: true,
+                              keepAlive: true,
                               navbar: {
                                     leftButton: 'menu',
                                     rightButton: 'search',

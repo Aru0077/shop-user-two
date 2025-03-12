@@ -6,12 +6,13 @@
 
         <!-- 主内容区 -->
         <main class="flex-1 overflow-auto">
-            <!-- 路由视图 -->
-            <router-view />
+            <keep-alive :include="['Home', 'Category', 'Profile']">
+                <router-view />
+            </keep-alive>
         </main>
 
         <!-- 底部TabBar，在桌面端不显示 -->
-        <TabBar v-if="showTabBar" class="md:hidden" />
+        <TabBar v-show="showTabBar" class="md:hidden" />
 
         <!-- 桌面端侧边导航，只在大屏幕显示 -->
         <SideNav v-if="isDesktop" class="hidden md:block" />
