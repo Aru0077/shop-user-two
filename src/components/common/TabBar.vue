@@ -1,70 +1,57 @@
 <template>
-    <nav class="tabbar safe-area-bottom">
-        <router-link to="/home" class="tabbar-item" active-class="active">
-            <div class="tabbar-icon">
-                <i class="icon-home"></i>
-            </div>
-            <div class="tabbar-text">首页</div>
-        </router-link>
+    <nav
+        class="fixed bottom-0 w-full h-[70px] bg-white rounded-tl-[30px] rounded-tr-[30px] shadow-[0px_-2px_7px_rgba(0,0,0,0.1)] z-50 safe-area-bottom">
+        <div class="flex h-full">
+            <router-link to="/home" class="flex-1 flex items-center justify-center relative" active-class="active">
+                <div class="icon-container relative z-10 flex items-center justify-center">
+                    <Home :size="24" class="transition-colors duration-200"
+                        :class="$route.path.includes('/home') ? 'text-white' : 'text-black'" />
+                </div>
+            </router-link>
 
-        <router-link to="/category" class="tabbar-item" active-class="active">
-            <div class="tabbar-icon">
-                <i class="icon-category"></i>
-            </div>
-            <div class="tabbar-text">分类</div>
-        </router-link>
+            <router-link to="/category" class="flex-1 flex items-center justify-center relative" active-class="active">
+                <div class="icon-container relative z-10 flex items-center justify-center">
+                    <Layers :size="24" class="transition-colors duration-200"
+                        :class="$route.path.includes('/category') ? 'text-white' : 'text-black'" />
+                </div>
+            </router-link>
 
-        <router-link to="/profile" class="tabbar-item" active-class="active">
-            <div class="tabbar-icon">
-                <i class="icon-profile"></i>
-            </div>
-            <div class="tabbar-text">我的</div>
-        </router-link>
+            <router-link to="/profile" class="flex-1 flex items-center justify-center relative" active-class="active">
+                <div class="icon-container relative z-10 flex items-center justify-center">
+                    <User :size="24" class="transition-colors duration-200"
+                        :class="$route.path.includes('/profile') ? 'text-white' : 'text-black'" />
+                </div>
+            </router-link>
+        </div>
     </nav>
 </template>
 
 <script setup lang="ts">
-// TabBar 组件
+import { Home, Layers, User } from 'lucide-vue-next';
+
 </script>
 
 <style scoped>
-.tabbar {
-    display: flex;
-    height: 50px;
-    background-color: #fff;
-    border-top: 1px solid #eee;
-    position: sticky;
-    bottom: 0;
-    z-index: 100;
+.active .icon-container::before {
+    content: '';
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    background-color: black;
+    border-radius: 50%;
+    z-index: -1;
+    animation: scale-up 0.2s ease-out forwards;
 }
 
-.tabbar-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    color: #999;
-    text-decoration: none;
-}
+@keyframes scale-up {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
 
-.tabbar-item.active {
-    color: #ff6b01;
-}
-
-.tabbar-icon {
-    height: 24px;
-    margin-bottom: 2px;
-}
-
-.tabbar-text {
-    font-size: 12px;
-}
-
-/* 临时图标样式，实际项目中会使用图标库 */
-[class^="icon-"] {
-    width: 24px;
-    height: 24px;
-    display: inline-block;
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 </style>

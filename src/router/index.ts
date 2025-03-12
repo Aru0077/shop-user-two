@@ -34,7 +34,7 @@ const routes: Array<RouteRecordRaw> = [
             component: MainLayout,
             children: [
                   {
-                        path: 'home',
+                        path: '/home',
                         name: 'Home',
                         component: HomePage,
                         meta: {
@@ -53,7 +53,7 @@ const routes: Array<RouteRecordRaw> = [
                         }
                   },
                   {
-                        path: 'category',
+                        path: '/category',
                         name: 'Category',
                         component: CategoryPage,
                         meta: {
@@ -66,7 +66,7 @@ const routes: Array<RouteRecordRaw> = [
                         }
                   },
                   {
-                        path: 'profile',
+                        path: '/profile',
                         name: 'Profile',
                         component: ProfilePage,
                         meta: {
