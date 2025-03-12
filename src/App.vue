@@ -1,15 +1,56 @@
 <template>
-    <div id="app">
-        <router-view />
+    <div id="app" class=" flex flex-col h-screen w-screen overflow-hidden">
+
+        <!-- 顶部固定 navbar -->
+        <div class=" w-screen">
+            <!-- 移动端navbar -->
+            <div v-if="isMobile" class="h-[60px]">
+                <NavBar />
+            </div>
+
+            <!-- 桌面端navbar -->
+             <div v-if="isDesktop">
+                22
+             </div>
+            
+        </div>
+
+        <!-- 内容区域 -->
+        <div class="flex-1 overflow-hidden">
+            <router-view />
+        </div>
+        
+        <!-- 底部固定TabBar -->
+        <div v-show="isMobile && showTabBar" class="h-[70px]">
+            <TabBar />
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { initializeStores } from '@/stores/index.store';
+import { useRoute } from 'vue-router';
+import { useUiStore } from '@/stores/ui.store';
+import NavBar from './components/common/NavBar.vue';
+import TabBar from './components/common/TabBar.vue';
+
+// 初始化 store
+const route = useRoute();
+const uiStore = useUiStore();
+
+// 计算属性
+const showTabBar = computed(() => route.meta.showTabBar !== false);
+const isDesktop = computed(() => uiStore.isDesktop);
+const isMobile = computed(() => uiStore.isMobile);
+
+
+
 
 // 初始化应用时初始化所有store
 onMounted(async () => {
+    uiStore.initializeScreenSize();
+    window.addEventListener('resize', uiStore.handleResize);
     await initializeStores();
 });
 </script>
@@ -25,11 +66,5 @@ onMounted(async () => {
     overflow: hidden;
 }
 
-/* 移动端适配 */
-@media (min-width: 768px) {
-    #app {
-        padding-left: 200px;
-        /* 为侧边导航留出空间 */
-    }
-}
+
 </style>

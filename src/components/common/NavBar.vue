@@ -1,105 +1,104 @@
 <template>
-    <header class="navbar safe-area-top">
-      <div class="navbar-container">
-        <!-- 左侧按钮 -->
-        <div class="navbar-left" @click="$emit('leftClick')">
-          <template v-if="leftButton === 'back'">
-            <i class="icon-back"></i>
-            <span>返回</span>
-          </template>
-          <template v-else-if="leftButton === 'home'">
-            <i class="icon-home"></i>
-          </template>
-          <template v-else-if="leftButton">
-            {{ leftButton }}
-          </template>
+    <nav class="h-[60px] flex justify-between items-center px-4 z-50 transition-colors duration-300 border-b "
+        :class="{ 'bg-white/80 backdrop-blur-sm': navbarOptions.showBackground, 'bg-transparent': !navbarOptions.showBackground }">
+
+        <!-- Left Button -->
+        <div v-if="navbarOptions.leftButton"
+            class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer"
+            @click="handleLeftButtonClick">
+            <img v-if="navbarOptions.leftButton === 'logo'"  :src="LogoIcon" alt="" class="w-6 h-6" /> 
+            <ArrowLeft v-if="navbarOptions.leftButton === 'back'" class="w-6 h-6 text-black" />
+            <Menu v-if="navbarOptions.leftButton === 'menu'" class="w-6 h-6 text-black" />
         </div>
-        
-        <!-- 标题 -->
-        <div class="navbar-title">
-          <h1>{{ title }}</h1>
+        <div v-else class="w-10"></div>
+
+        <!-- Right Button -->
+        <div v-if="navbarOptions.rightButton"
+            class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer"
+            @click="handleRightButtonClick">
+            <ShoppingCart v-if="navbarOptions.rightButton === 'cart'" class="w-6 h-6 text-black" />
+            <Search v-if="navbarOptions.rightButton === 'search'" class="w-6 h-6 text-black" />
+            <UserCircle v-if="navbarOptions.rightButton === 'user'" class="w-6 h-6 text-black" />
+            <Settings v-if="navbarOptions.rightButton === 'settings'" class="w-6 h-6 text-black" />
         </div>
-        
-        <!-- 右侧按钮 -->
-        <div class="navbar-right" @click="$emit('rightClick')" v-if="rightButton">
-          <template v-if="rightButton === 'search'">
-            <i class="icon-search"></i>
-          </template>
-          <template v-else-if="rightButton === 'cart'">
-            <i class="icon-cart"></i>
-          </template>
-          <template v-else-if="rightButton === 'more'">
-            <i class="icon-more"></i>
-          </template>
-          <template v-else>
-            {{ rightButton }}
-          </template>
-        </div>
-      </div>
-    </header>
-  </template>
-  
-  <script setup lang="ts">
-  defineProps({
-    title: {
-      type: String,
-      default: ''
-    },
-    leftButton: {
-      type: String,
-      default: ''
-    },
-    rightButton: {
-      type: String,
-      default: ''
+        <div v-else class="w-10"></div>
+    </nav>
+</template>
+
+<script setup lang="ts">
+import { computed} from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import {
+    ShoppingCart,
+    Search,
+    UserCircle,
+    Settings,
+    ArrowLeft,
+    Menu
+} from 'lucide-vue-next';
+import LogoIcon from '@/assets/logo.png';
+
+
+interface NavbarOptions {
+    leftButton?: string;
+    rightButton?: string;
+    showBackground: boolean;
+}
+
+// Get current route
+const route = useRoute();
+const router = useRouter();
+
+// Default navbar options
+const defaultNavbarOptions: NavbarOptions = {
+    leftButton: undefined,
+    rightButton: undefined,
+    showBackground: true
+};
+
+// Computed navbar options from route meta
+const navbarOptions = computed<NavbarOptions>(() => {
+    const routeNavbar = route.meta.navbar as NavbarOptions || {};
+    return {
+        ...defaultNavbarOptions,
+        ...routeNavbar
+    };
+});
+
+// Handle left button click
+const handleLeftButtonClick = () => {
+    switch (navbarOptions.value.leftButton) {
+        case 'logo':
+            // router.push('/home');
+            break;
+        case 'back':
+            router.back();
+            break;
+        case 'menu':
+            // Handle menu click, e.g., emit event or toggle sidebar
+            break;
+        default:
+            break;
     }
-  });
-  
-  defineEmits(['leftClick', 'rightClick']);
-  </script>
-  
-  <style scoped>
-  .navbar {
-    height: 44px;
-    background-color: #fff;
-    border-bottom: 1px solid #eee;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  
-  .navbar-container {
-    display: flex;
-    align-items: center;
-    height: 100%;
-    padding: 0 16px;
-  }
-  
-  .navbar-left, .navbar-right {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-  }
-  
-  .navbar-title {
-    flex: 1;
-    text-align: center;
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  
-  .navbar-title h1 {
-    font-size: 16px;
-    margin: 0;
-  }
-  
-  /* 临时图标样式，实际项目中会使用图标库 */
-  [class^="icon-"] {
-    width: 24px;
-    height: 24px;
-    display: inline-block;
-  }
-  </style>
+};
+
+// Handle right button click
+const handleRightButtonClick = () => {
+    switch (navbarOptions.value.rightButton) {
+        case 'cart':
+            router.push('/cart');
+            break;
+        case 'search':
+            // Handle search click, e.g., show search overlay
+            break;
+        case 'user':
+            router.push('/profile');
+            break;
+        case 'settings':
+            router.push('/settings');
+            break;
+        default:
+            break;
+    }
+};
+</script>

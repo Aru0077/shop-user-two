@@ -3,15 +3,10 @@ import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
 import { useUserStore } from '@/stores/user.store';
 
-// 布局组件
-import MainLayout from '@/layouts/MainLayout.vue';
-import SimpleLayout from '@/layouts/SimpleLayout.vue';
-
 // 主页面组件
 import HomePage from '@/views/home/HomePage.vue';
 import CategoryPage from '@/views/category/CategoryPage.vue';
 import ProfilePage from '@/views/profile/ProfilePage.vue';
-
 
 // 功能页面组件
 const ProductDetailPage = () => import('@/views/product/ProductDetailPage.vue');
@@ -22,159 +17,179 @@ const OrderDetailPage = () => import('@/views/order/OrderDetailPage.vue');
 const AddressPage = () => import('@/views/address/AddressPage.vue');
 const FavoritePage = () => import('@/views/favorite/FavoritePage.vue');
 const NotFoundPage = () => import('@/views/error/NotFoundPage.vue');
+const LoginPage = () => import('@/views/auth/Login.vue');
+const RegisterPage = () => import('@/views/auth/Register.vue');
 
-// 定义路由
+// 定义路由 
 const routes: Array<RouteRecordRaw> = [
       {
             path: '/',
             redirect: '/home'
       },
-      // MainLayout 路由组 - 显示TabBar的主页面
+      // 显示TabBar的主页面
       {
-            path: '/',
-            component: MainLayout,
-            children: [
-                  {
-                        path: '/home',
-                        name: 'Home',
-                        component: HomePage,
-                        meta: {
-                              title: '首页',
-                              showTabBar: true,
-                              keepAlive: true,
-                              navbar: {
-                                    leftButton: 'menu',
-                                    rightButton: 'search',
-                                    leftAction: () => {
-                                          // 打开侧边菜单
-                                    },
-                                    rightAction: (router: any) => {
-                                          router.push('/search');
-                                    }
-                              }
-                        }
-                  },
-                  {
-                        path: '/category',
-                        name: 'Category',
-                        component: CategoryPage,
-                        meta: {
-                              title: '商品分类',
-                              showTabBar: true,
-                              navbar: {
-                                    leftButton: '',
-                                    rightButton: 'search'
-                              }
-                        }
-                  },
-                  {
-                        path: '/profile',
-                        name: 'Profile',
-                        component: ProfilePage,
-                        meta: {
-                              title: '个人中心',
-                              showTabBar: true,
-                              navbar: {
-                                    leftButton: '',
-                                    rightButton: 'setting'
-                              },
-                              requiresAuth: true
-                        }
+            path: '/home',
+            name: 'Home',
+            component: HomePage,
+            meta: {
+                  title: '首页',
+                  showTabBar: true,
+                  keepAlive: true,
+                  navbar: {
+                        leftButton: 'logo',
+                        rightButton: 'cart',
+                        showBackground:true
                   }
-            ]
+            }
       },
-      // SimpleLayout 路由组 - 不显示TabBar的功能页面
       {
-            path: '/',
-            component: SimpleLayout,
-            children: [
-                  {
-                        path: 'product/:id',
-                        name: 'ProductDetail',
-                        component: ProductDetailPage,
-                        meta: {
-                              title: '商品详情',
-                              navbar: {
-                                    leftButton: 'back',
-                                    rightButton: 'more'
-                              }
-                        }
+            path: '/category',
+            name: 'Category',
+            component: CategoryPage,
+            meta: {
+                  title: '商品分类',
+                  showTabBar: true,
+                  navbar: {
+                        leftButton: 'logo',
+                        rightButton: 'cart',
+                        showBackground:true
+                  }
+            }
+      },
+      {
+            path: '/profile',
+            name: 'Profile',
+            component: ProfilePage,
+            meta: {
+                  title: '个人中心',
+                  showTabBar: true,
+                  navbar: {
+                        leftButton: 'logo',
+                        rightButton: 'cart',
+                        showBackground:true
                   },
-                  {
-                        path: 'cart',
-                        name: 'Cart',
-                        component: CartPage,
-                        meta: {
-                              title: '购物车',
-                              navbar: {
-                                    leftButton: 'back',
-                                    rightButton: 'edit'
-                              }
-                        }
+                  requiresAuth: true
+            }
+      },
+      // 不显示TabBar的功能页面
+      {
+            path: '/product/:id',
+            name: 'ProductDetail',
+            component: ProductDetailPage,
+            meta: {
+                  title: '商品详情',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back',
+                        rightButton: 'more'
+                  }
+            }
+      },
+      {
+            path: '/cart',
+            name: 'Cart',
+            component: CartPage,
+            meta: {
+                  title: '购物车',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back',
+                        rightButton: 'edit'
+                  }
+            }
+      },
+      // ... 其他路由保持不变，只需更新meta信息中的showTabBar
+      {
+            path: '/checkout',
+            name: 'Checkout',
+            component: CheckoutPage,
+            meta: {
+                  title: '结算',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back'
                   },
-                  {
-                        path: 'checkout',
-                        name: 'Checkout',
-                        component: CheckoutPage,
-                        meta: {
-                              title: '结算',
-                              navbar: {
-                                    leftButton: 'back'
-                              },
-                              requiresAuth: true
-                        }
+                  requiresAuth: true
+            }
+      },
+      {
+            path: '/order',
+            name: 'OrderList',
+            component: OrderListPage,
+            meta: {
+                  title: '我的订单',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back'
                   },
-                  {
-                        path: 'order',
-                        name: 'OrderList',
-                        component: OrderListPage,
-                        meta: {
-                              title: '我的订单',
-                              navbar: {
-                                    leftButton: 'back'
-                              },
-                              requiresAuth: true
-                        }
+                  requiresAuth: true
+            }
+      },
+      {
+            path: '/order/:id',
+            name: 'OrderDetail',
+            component: OrderDetailPage,
+            meta: {
+                  title: '订单详情',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back'
                   },
-                  {
-                        path: 'order/:id',
-                        name: 'OrderDetail',
-                        component: OrderDetailPage,
-                        meta: {
-                              title: '订单详情',
-                              navbar: {
-                                    leftButton: 'back'
-                              },
-                              requiresAuth: true
-                        }
+                  requiresAuth: true
+            }
+      },
+      {
+            path: '/address',
+            name: 'Address',
+            component: AddressPage,
+            meta: {
+                  title: '收货地址',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back',
+                        rightButton: 'add'
                   },
-                  {
-                        path: 'address',
-                        name: 'Address',
-                        component: AddressPage,
-                        meta: {
-                              title: '收货地址',
-                              navbar: {
-                                    leftButton: 'back',
-                                    rightButton: 'add'
-                              },
-                              requiresAuth: true
-                        }
+                  requiresAuth: true
+            }
+      },
+      {
+            path: '/favorite',
+            name: 'Favorite',
+            component: FavoritePage,
+            meta: {
+                  title: '我的收藏',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back',
+                        rightButton: 'edit'
                   },
-                  {
-                        path: 'favorite',
-                        name: 'Favorite',
-                        component: FavoritePage,
-                        meta: {
-                              title: '我的收藏',
-                              navbar: {
-                                    leftButton: 'back',
-                                    rightButton: 'edit'
-                              },
-                              requiresAuth: true
-                        }
+                  requiresAuth: true
+            }
+      },
+      // 账号相关
+      {
+            path: '/login',
+            name: 'Login',
+            component: LoginPage,
+            meta: {
+                  title: '登录',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back'
                   },
-            ]
+            }
+      },
+      {
+            path: '/register',
+            name: 'Register',
+            component: RegisterPage,
+            meta: {
+                  title: '注册',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back'
+                  },
+            }
       },
       // 404页面
       {
@@ -182,7 +197,8 @@ const routes: Array<RouteRecordRaw> = [
             name: 'NotFound',
             component: NotFoundPage,
             meta: {
-                  title: '页面不存在'
+                  title: '页面不存在',
+                  showTabBar: false
             }
       }
 ];

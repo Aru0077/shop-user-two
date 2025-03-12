@@ -1,3 +1,4 @@
+<!-- HomePage.vue -->
 <template>
     <div>
         home page

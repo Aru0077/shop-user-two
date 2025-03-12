@@ -1,25 +1,25 @@
 <template>
     <nav
-        class="fixed bottom-0 w-full h-[70px] bg-white rounded-tl-[30px] rounded-tr-[30px] shadow-[0px_-2px_7px_rgba(0,0,0,0.1)] z-50 safe-area-bottom">
+        class="w-full h-[70px] bg-white rounded-tl-[30px] rounded-tr-[30px] shadow-[0px_-2px_7px_rgba(0,0,0,0.1)] safe-area-bottom">
         <div class="flex h-full">
-            <div @click="navigateTo('/home')" class="flex-1 flex items-center justify-center relative" 
-                 :class="{ 'active': isActive('/home') }">
+            <div @click="navigateTo('/home')" class="flex-1 flex items-center justify-center relative"
+                :class="{ 'active': isActive('/home') }">
                 <div class="icon-container relative z-10 flex items-center justify-center">
                     <Home :size="24" class="transition-colors duration-200"
                         :class="isActive('/home') ? 'text-white' : 'text-black'" />
                 </div>
             </div>
 
-            <div @click="navigateTo('/category')" class="flex-1 flex items-center justify-center relative" 
-                 :class="{ 'active': isActive('/category') }">
+            <div @click="navigateTo('/category')" class="flex-1 flex items-center justify-center relative"
+                :class="{ 'active': isActive('/category') }">
                 <div class="icon-container relative z-10 flex items-center justify-center">
                     <Layers :size="24" class="transition-colors duration-200"
                         :class="isActive('/category') ? 'text-white' : 'text-black'" />
                 </div>
             </div>
 
-            <div @click="navigateTo('/profile')" class="flex-1 flex items-center justify-center relative" 
-                 :class="{ 'active': isActive('/profile') }">
+            <div @click="navigateTo('/profile')" class="flex-1 flex items-center justify-center relative"
+                :class="{ 'active': isActive('/profile') }">
                 <div class="icon-container relative z-10 flex items-center justify-center">
                     <User :size="24" class="transition-colors duration-200"
                         :class="isActive('/profile') ? 'text-white' : 'text-black'" />
