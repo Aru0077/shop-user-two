@@ -2,33 +2,47 @@
     <nav
         class="fixed bottom-0 w-full h-[70px] bg-white rounded-tl-[30px] rounded-tr-[30px] shadow-[0px_-2px_7px_rgba(0,0,0,0.1)] z-50 safe-area-bottom">
         <div class="flex h-full">
-            <router-link to="/home" class="flex-1 flex items-center justify-center relative" active-class="active">
+            <div @click="navigateTo('/home')" class="flex-1 flex items-center justify-center relative" 
+                 :class="{ 'active': isActive('/home') }">
                 <div class="icon-container relative z-10 flex items-center justify-center">
                     <Home :size="24" class="transition-colors duration-200"
-                        :class="$route.path.includes('/home') ? 'text-white' : 'text-black'" />
+                        :class="isActive('/home') ? 'text-white' : 'text-black'" />
                 </div>
-            </router-link>
+            </div>
 
-            <router-link to="/category" class="flex-1 flex items-center justify-center relative" active-class="active">
+            <div @click="navigateTo('/category')" class="flex-1 flex items-center justify-center relative" 
+                 :class="{ 'active': isActive('/category') }">
                 <div class="icon-container relative z-10 flex items-center justify-center">
                     <Layers :size="24" class="transition-colors duration-200"
-                        :class="$route.path.includes('/category') ? 'text-white' : 'text-black'" />
+                        :class="isActive('/category') ? 'text-white' : 'text-black'" />
                 </div>
-            </router-link>
+            </div>
 
-            <router-link to="/profile" class="flex-1 flex items-center justify-center relative" active-class="active">
+            <div @click="navigateTo('/profile')" class="flex-1 flex items-center justify-center relative" 
+                 :class="{ 'active': isActive('/profile') }">
                 <div class="icon-container relative z-10 flex items-center justify-center">
                     <User :size="24" class="transition-colors duration-200"
-                        :class="$route.path.includes('/profile') ? 'text-white' : 'text-black'" />
+                        :class="isActive('/profile') ? 'text-white' : 'text-black'" />
                 </div>
-            </router-link>
+            </div>
         </div>
     </nav>
 </template>
 
 <script setup lang="ts">
 import { Home, Layers, User } from 'lucide-vue-next';
+import { useRouter, useRoute } from 'vue-router';
 
+const router = useRouter();
+const route = useRoute();
+
+const navigateTo = (path: string) => {
+    router.push(path);
+};
+
+const isActive = (path: string) => {
+    return route.path.includes(path);
+};
 </script>
 
 <style scoped>

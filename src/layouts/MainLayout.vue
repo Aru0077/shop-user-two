@@ -6,9 +6,11 @@
 
         <!-- 主内容区 -->
         <main class="flex-1 overflow-auto">
-            <keep-alive :include="['Home', 'Category', 'Profile']">
-                <router-view />
-            </keep-alive>
+            <router-view v-slot="{ Component }">
+                <keep-alive :include="['Home', 'Category', 'Profile']">
+                    <component :is="Component" />
+                </keep-alive>
+            </router-view>
         </main>
 
         <!-- 底部TabBar，在桌面端不显示 -->
