@@ -10,6 +10,7 @@ import ProfilePage from '@/views/profile/ProfilePage.vue';
 
 // 功能页面组件
 const ProductDetailPage = () => import('@/views/product/ProductDetailPage.vue');
+const ProductListPage = () => import('@/views/product/ProductListPage.vue');
 const CartPage = () => import('@/views/cart/CartPage.vue');
 const CheckoutPage = () => import('@/views/checkout/CheckoutPage.vue');
 const OrderListPage = () => import('@/views/order/OrderListPage.vue');
@@ -78,6 +79,20 @@ const routes: Array<RouteRecordRaw> = [
             component: ProductDetailPage,
             meta: {
                   title: '商品详情',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back',
+                        rightButton: 'more',
+                        showBackground:false
+                  }
+            }
+      },
+      {
+            path: '/product-list/:type',
+            name: 'ProductList',
+            component: ProductListPage,
+            meta: {
+                  title: '商品列表',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back',
