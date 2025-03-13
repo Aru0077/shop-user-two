@@ -175,6 +175,86 @@ export const useProductStore = defineStore('product', () => {
             }
       }
 
+      // 获取商品SKU信息
+      async function fetchProductSkus(id: number) {
+            loading.value = true;
+            error.value = null;
+
+            try {
+                  const response = await productApi.getProductSkus(id);
+
+                  // 如果当前有商品详情，将SKU信息合并到当前商品中
+                  if (currentProduct.value && currentProduct.value.id === id) {
+                        currentProduct.value = {
+                              ...currentProduct.value,
+                              skus: response.skus,
+                              specs: response.specs,
+                              validSpecCombinations: response.validSpecCombinations,
+                              loadingSkus: false
+                        };
+                  }
+
+                  return response;
+            } catch (err: any) {
+                  error.value = err.message || '获取商品SKU信息失败';
+                  console.error('获取商品SKU信息失败:', err);
+                  throw err;
+            } finally {
+                  loading.value = false;
+            }
+      }
+
+      // 获取促销商品
+      async function fetchPromotionProducts(page: number = 1, limit: number = 10) {
+            loading.value = true;
+            error.value = null;
+
+            try {
+                  const response = await productApi.getPromotionProducts(page, limit);
+                  return response;
+            } catch (err: any) {
+                  error.value = err.message || '获取促销商品失败';
+                  console.error('获取促销商品失败:', err);
+                  throw err;
+            } finally {
+                  loading.value = false;
+            }
+      }
+
+      // 获取最新商品（不使用HomeData中的数据）
+      async function fetchLatestProducts(page: number = 1, limit: number = 10) {
+            loading.value = true;
+            error.value = null;
+
+            try {
+                  const response = await productApi.getLatestProducts(page, limit);
+                  return response;
+            } catch (err: any) {
+                  error.value = err.message || '获取最新商品失败';
+                  console.error('获取最新商品失败:', err);
+                  throw err;
+            } finally {
+                  loading.value = false;
+            }
+      }
+
+      // 获取热销商品（不使用HomeData中的数据）
+      async function fetchTopSellingProducts(page: number = 1, limit: number = 10) {
+            loading.value = true;
+            error.value = null;
+
+            try {
+                  const response = await productApi.getTopSellingProducts(page, limit);
+                  return response;
+            } catch (err: any) {
+                  error.value = err.message || '获取热销商品失败';
+                  console.error('获取热销商品失败:', err);
+                  throw err;
+            } finally {
+                  loading.value = false;
+            }
+      }
+
       // 添加到最近浏览商品
       function addToRecentProducts(product: ProductDetail) {
             // 删除已存在的相同商品
@@ -286,6 +366,10 @@ export const useProductStore = defineStore('product', () => {
             searchProducts,
             fetchCategoryProducts,
             clearProductCache,
-            clearAllProductCache
+            clearAllProductCache,
+            fetchProductSkus,
+            fetchPromotionProducts,
+            fetchLatestProducts,
+            fetchTopSellingProducts
       };
 });
