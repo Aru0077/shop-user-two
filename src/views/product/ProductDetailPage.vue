@@ -1,15 +1,31 @@
 <template>
-    <div>
-         prod detail page
+    <div class="flex flex-col overflow-hidden h-screen w-screen">
+        <!-- 顶部导航和内容区域 -->
+        <div class="flex-1 w-full relative"> 
+            <!-- 内容区域 - 去除顶部内边距，允许内容在 header 下滚动 -->
+            <div v-if="product" class="overflow-y-auto absolute top-0 left-0 right-0 bottom-[60px]"> 
+                <ProductDetailCard :product="product" /> 
+            </div> 
+            <!-- 顶部导航栏 - 使用透明背景并确保在内容之上 -->
+            <div class="fixed top-0 left-0 right-0 h-[60px] w-full z-20 bg-transparent box-border">
+                <ProductNavbar />
+            </div> 
+        </div>
+
+        <!-- 底部操作区 -->
+        <div class="fixed bottom-0 left-0 right-0 h-[60px] w-full z-50  box-border">
+            <ProductTabbar /> 
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import ProductNavbar from '@/components/product/ProductNavbar.vue';
+import ProductDetailCard from '@/components/product/ProductDetailCard.vue';
+import ProductTabbar from '@/components/product/ProductTabbar.vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { useProductStore } from '@/stores/index.store';
-import { getFormattedPrice, getProductPrice } from '@/utils/price.utils';
-import type { SpecValue } from '@/types/product.type';
+import { useProductStore } from '@/stores/product.store';
 
 // 获取路由和路由参数
 const route = useRoute();
@@ -19,109 +35,28 @@ const productId = computed(() => Number(route.params.id));
 const productStore = useProductStore();
 
 // 组件内部状态
-const loading = ref(false);
+const loading = ref(true);
 const error = ref<string | null>(null);
-const selectedSpecs = ref<Record<number, SpecValue>>({});
 
 // 商品详情
 const product = computed(() => productStore.currentProduct);
+console.log(product.value);
 
-// 当前选中的SKU
-const selectedSku = computed(() => {
-    if (!product.value || !product.value.skus || product.value.skus.length === 0) {
-        return null;
-    }
 
-    // 如果没有规格，直接返回第一个SKU
-    if (!product.value.specs || product.value.specs.length === 0) {
-        return product.value.skus[0];
-    }
-
-    // 创建规格ID-值ID的映射对象
-    const selectedSpecMap: Record<string, string> = {};
-    
-    // 填充已选规格值
-    for (const specId in selectedSpecs.value) {
-        if (selectedSpecs.value[specId]) {
-            selectedSpecMap[specId] = selectedSpecs.value[specId].id.toString();
-        }
-    }
-
-    // 将选中的规格转换为规格组合键
-    const specCombKey = Object.keys(selectedSpecMap)
-        .sort((a, b) => Number(a) - Number(b))
-        .map(specId => `${specId}:${selectedSpecMap[specId]}`)
-        .join('_');
-
-    // 根据规格组合查找对应的SKU
-    if (specCombKey && product.value.validSpecCombinations[specCombKey]) {
-        const skuId = product.value.validSpecCombinations[specCombKey].skuId;
-        return product.value.skus.find(sku => sku.id === skuId) || null;
-    }
-
-    return null;
-});
-
-// 商品价格
-const price = computed(() => {
-    if (selectedSku.value) {
-        return selectedSku.value.promotion_price || selectedSku.value.price;
-    }
-    return null;
-});
-
-// 格式化后的价格
-const formattedPrice = computed(() => {
-    return getFormattedPrice(product.value);
-});
-
-// 是否有促销价
-const hasPromotion = computed(() => {
-    if (selectedSku.value && selectedSku.value.promotion_price && product.value?.is_promotion === 1) {
-        return true;
-    }
-    return false;
-});
-
-// 商品图片列表
-const productImages = computed(() => {
-    const images = [];
-    
-    // 添加主图
-    if (product.value?.mainImage) {
-        images.push(product.value.mainImage);
-    }
-    
-    // 添加详情图
-    if (product.value?.detailImages && Array.isArray(product.value.detailImages)) {
-        images.push(...product.value.detailImages);
-    } else if (product.value?.detailImages && typeof product.value.detailImages === 'object') {
-        // 处理对象格式的详情图
-        for (const key in product.value.detailImages) {
-            images.push(product.value.detailImages[key]);
-        }
-    }
-    
-    return images;
-});
-
-// 获取商品详情
+// 获取商品详情和SKU
 const fetchProductData = async () => {
     if (!productId.value) return;
-    
+
     loading.value = true;
     error.value = null;
-    
+
     try {
+        // 第一步：获取商品详情
         await productStore.fetchProductDetail(productId.value);
-        
-        // 初始化规格选择（选择第一个可用的规格值）
-        if (product.value && product.value.specs) {
-            product.value.specs.forEach(spec => {
-                if (spec.values && spec.values.length > 0) {
-                    selectedSpecs.value[spec.id] = spec.values[0];
-                }
-            });
+
+        // 第二步：获取商品SKU信息
+        if (product.value) {
+            await productStore.fetchProductSkus(productId.value);
         }
     } catch (err: any) {
         error.value = err.message || '获取商品信息失败';
@@ -131,23 +66,15 @@ const fetchProductData = async () => {
     }
 };
 
-// 选择规格
-const selectSpec = (specId: number, value: SpecValue) => {
-    selectedSpecs.value[specId] = value;
-};
 
-// 监听商品ID变化，重新获取数据
-watch(() => productId.value, (newVal, oldVal) => {
-    if (newVal !== oldVal) {
-        fetchProductData();
-    }
-});
 
 // 组件挂载时获取商品数据
 onMounted(() => {
     fetchProductData();
 });
+
 </script>
+
 
 <style scoped>
 /* 样式请根据需要添加 */

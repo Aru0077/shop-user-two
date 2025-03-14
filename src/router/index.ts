@@ -80,11 +80,7 @@ const routes: Array<RouteRecordRaw> = [
             meta: {
                   title: '商品详情',
                   showTabBar: false,
-                  navbar: {
-                        leftButton: 'back',
-                        rightButton: 'more',
-                        showBackground:false
-                  }
+                  showNavbar: false, 
             }
       },
       {

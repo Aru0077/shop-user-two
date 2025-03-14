@@ -2,7 +2,7 @@
     <div id="app" class=" flex flex-col h-screen w-screen overflow-hidden">
 
         <!-- 顶部固定 navbar -->
-        <div class=" w-screen">
+        <div v-if="shouldShowNavbar" class=" w-screen">
             <!-- 移动端navbar -->
             <div v-if="isMobile" class="h-[60px]">
                 <NavBar />
@@ -16,12 +16,12 @@
         </div>
 
         <!-- 内容区域 -->
-        <div class="flex-1 overflow-hidden">
+        <div class="flex-1 overflow-hidden w-full">
             <router-view />
         </div>
         
         <!-- 底部固定TabBar -->
-        <div v-show="isMobile && showTabBar" class="h-[70px]">
+        <div v-show="isMobile && showTabBar" class="h-[70px] w-full">
             <TabBar />
         </div>
     </div>
@@ -41,8 +41,10 @@ const uiStore = useUiStore();
 
 // 计算属性
 const showTabBar = computed(() => route.meta.showTabBar !== false);
+const shouldShowNavbar = computed(() => route.meta.showNavbar !== false);
 const isDesktop = computed(() => uiStore.isDesktop);
 const isMobile = computed(() => uiStore.isMobile);
+ 
 
 
 
@@ -53,6 +55,8 @@ onMounted(async () => {
     window.addEventListener('resize', uiStore.handleResize);
     await initializeStores();
 });
+
+
 </script>
 
 <style>

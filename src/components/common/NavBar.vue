@@ -1,12 +1,12 @@
 <template>
     <nav class="h-[60px] flex justify-between items-center px-4 z-50 transition-colors duration-300 border-b "
         :class="{ 'bg-white/80 backdrop-blur-sm': navbarOptions.showBackground, 'bg-transparent': !navbarOptions.showBackground }">
-
+        <!-- 导航栏内容保持不变 -->
         <!-- Left Button -->
         <div v-if="navbarOptions.leftButton"
             class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer"
             @click="handleLeftButtonClick">
-            <img v-if="navbarOptions.leftButton === 'logo'"  :src="LogoIcon" alt="" class="w-6 h-6" /> 
+            <img v-if="navbarOptions.leftButton === 'logo'" :src="LogoIcon" alt="" class="w-6 h-6" />
             <ArrowLeft v-if="navbarOptions.leftButton === 'back'" class="w-6 h-6 text-black" />
             <Menu v-if="navbarOptions.leftButton === 'menu'" class="w-6 h-6 text-black" />
         </div>
@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed} from 'vue';
+import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
     ShoppingCart,

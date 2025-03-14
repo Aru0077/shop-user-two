@@ -1,6 +1,6 @@
 <template>
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <div v-for="(item, index) in displayProducts" :key="item.id || index" class="w-full px-1 mb-4">
+        <div v-for="(item, index) in displayProducts" :key="item.id || index" class="w-full px-1 mb-4" @click="navigateToProductDetail(item)">
             <div class="aspect-square">
                 <div class="w-full h-full">
                     <img :src="item.mainImage || 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png'"
@@ -32,10 +32,12 @@
 
 <script setup lang="ts">
 import { defineProps, computed } from 'vue'; 
+import { useRouter } from 'vue-router';
 import { getFormattedPrice } from '@/utils/price.utils';
 import type { Product } from '@/types/product.type';
 
-// 引入UI状态管理
+// 引入路由
+const router = useRouter();
 
 const props = defineProps({
     products: {
@@ -55,4 +57,13 @@ const displayProducts = computed(() => {
         ? props.products.slice(0, props.maxItems)
         : [];
 });
+
+// 跳转到商品详情页
+const navigateToProductDetail = (product: Product) => {
+    if (product && product.id) {
+        router.push(`/product/${product.id}`);
+    }
+};
+
+
 </script>
