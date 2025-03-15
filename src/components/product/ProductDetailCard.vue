@@ -1,8 +1,8 @@
 <template>
     <div class="img relative">
         <!-- 主图骨架屏 -->
-        <div v-if="!product.mainImage" class="w-full h-[300px] bg-gray-200 animate-pulse rounded"></div>
-        <img v-else :src="product.mainImage || undefined" alt="" class="w-full">
+        <div v-if="!product.mainImage" class="w-full h-[500px] bg-gray-200 animate-pulse rounded"></div>
+        <img v-else :src="product.mainImage" alt="" class="w-full">
 
         <!-- 图片下方的圆角卡片 - 保持负边距向上偏移 -->
         <div class="bg-white rounded-t-2xl h-auto z-10 relative -mt-6 py-4">

@@ -1,6 +1,18 @@
 <template>
     <div id="app" class=" flex flex-col h-screen w-screen overflow-hidden">
 
+        <!-- 启动页 -->
+        <div v-if="isAppLoading" class="fixed inset-0 z-50 flex items-center justify-center bg-white">
+            <div class="text-center">
+                <img src="@/assets/logo.png" alt="Logo" class="w-24 h-24 mx-auto mb-4">
+                <div class="text-lg font-bold">Loading...</div>
+                <div class="mt-4 h-1 w-48 bg-gray-200 rounded-full mx-auto overflow-hidden">
+                    <div class="h-full bg-black animate-pulse rounded-full"></div>
+                </div>
+            </div>
+        </div>
+
+
         <!-- 顶部固定 navbar -->
         <div v-if="shouldShowNavbar" class=" w-screen">
             <!-- 移动端navbar -->
@@ -41,14 +53,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { initializeStores } from '@/stores/index.store';
 import { useRoute } from 'vue-router';
 import { useUiStore } from '@/stores/ui.store';
 import NavBar from './components/common/NavBar.vue';
 import TabBar from './components/common/TabBar.vue';
 
-// 初始化 store
+
+const isAppLoading = ref(true);
+
+// 初始化 store 
 const route = useRoute();
 const uiStore = useUiStore();
 
@@ -66,7 +81,14 @@ const isMobile = computed(() => uiStore.isMobile);
 onMounted(async () => {
     uiStore.initializeScreenSize();
     window.addEventListener('resize', uiStore.handleResize);
-    await initializeStores();
+    try {
+        await initializeStores();
+    } finally {
+        // 不管成功失败，1.5秒后关闭启动页
+        setTimeout(() => {
+            isAppLoading.value = false;
+        }, 1500);
+    }
 });
 
 
