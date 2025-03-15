@@ -96,6 +96,10 @@ import { useCartStore } from '@/stores/cart.store';
 import { useUserStore } from '@/stores/user.store';
 import type { ProductDetail, Sku } from '@/types/product.type';
 import { formatPrice } from '@/utils/price.utils';
+import { useToast } from '@/composables/useToast';
+
+// 在现有引入的下方添加
+const toast = useToast();
 
 const props = defineProps<{
     product: ProductDetail | null;
@@ -212,7 +216,7 @@ const decreaseQuantity = () => {
 // 处理加入购物车或立即购买操作
 const handleAction = async () => {
     if (!props.product || !selectedSkuId.value) {
-        showToast('请选择商品规格');
+        toast.error('请选择商品规格');
         return;
     }
 
@@ -227,7 +231,7 @@ const handleAction = async () => {
         }
     } catch (error) {
         console.error('操作失败:', error);
-        showToast('操作失败，请重试');
+        toast.error('操作失败，请重试');
     } finally {
         isSubmitting.value = false;
     }
@@ -235,7 +239,10 @@ const handleAction = async () => {
 
 // 加入购物车
 const handleAddToCart = async () => {
-    if (!props.product || !selectedSkuId.value) return;
+    if (!props.product || !selectedSkuId.value) {
+        toast.error('请选择商品规格');
+        return;
+    }
 
     try {
         // 1. 准备本地提交的数据
@@ -243,21 +250,22 @@ const handleAddToCart = async () => {
             productId: props.product.id,
             skuId: selectedSkuId.value,
             quantity: quantity.value
-        }; 
-        
+        };
+
         // 2. 先关闭弹窗
         closeSelector();
-        showToast('成功加入购物车');
-        // 3. 后台发送请求
-        cartStore.addToCart(cartData).then(() => {
-            showToast('成功加入购物车');
-        }).catch(error => {
-            console.error('加入购物车失败:', error);
-            showToast('加入购物车失败，请重试');
+
+        // 3. 立即显示成功提示
+        toast.success('success');
+
+        // 4. 后台发送请求 - 成功时不做提示，失败时显示英文错误信息
+        cartStore.addToCart(cartData).catch(error => {
+            console.error('Adding to cart failed:', error);
+            toast.error('Failed to add item to cart. Please try again.');
         });
     } catch (error) {
-        console.error('准备加入购物车数据失败:', error);
-        showToast('加入购物车失败，请重试');
+        console.error('Preparing cart data failed:', error);
+        toast.error('Failed to add item to cart. Please try again.');
     }
 };
 
@@ -289,11 +297,7 @@ const handleBuyNow = async () => {
     closeSelector();
 };
 
-// 显示提示
-const showToast = (message: string) => {
-    // 实际项目中应该替换为更好的UI提示组件
-    alert(message);
-};
+
 
 // 当商品数据变化时重置选择
 watch(() => props.product, (newProduct) => {
