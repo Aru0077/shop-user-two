@@ -1,7 +1,7 @@
 <template>
     <div class="img relative">
         <!-- 主图骨架屏 -->
-        <div v-if="!product.mainImage" class="w-full h-[500px] bg-gray-200 animate-pulse rounded"></div>
+        <div v-if="!product.mainImage" class="w-full h-[400px] bg-gray-200 animate-pulse rounded"></div>
         <img v-else :src="product.mainImage" alt="" class="w-full">
 
         <!-- 图片下方的圆角卡片 - 保持负边距向上偏移 -->

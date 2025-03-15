@@ -5,7 +5,7 @@
             <div class="absolute inset-0 bg-transparent" @click="closeSelector"></div>
 
             <!-- 弹窗内容 -->
-            <div class="relative bg-white rounded-t-3xl w-full max-h-[70vh] flex flex-col z-10">
+            <div class="relative bg-white rounded-t-3xl w-full min-h-[60vh]  max-h-[80vh] flex flex-col z-10 shadow-xl">
                 <!-- 关闭按钮 -->
                 <div class="absolute top-4 right-4 z-20">
                     <button @click="closeSelector"
