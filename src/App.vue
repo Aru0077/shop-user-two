@@ -9,17 +9,21 @@
             </div>
 
             <!-- 桌面端navbar -->
-             <div v-if="isDesktop">
+            <div v-if="isDesktop">
                 22
-             </div>
-            
+            </div>
+
         </div>
 
         <!-- 内容区域 -->
         <div class="flex-1 overflow-hidden w-full">
-            <router-view />
+            <router-view v-slot="{ Component }">
+                <keep-alive :include="['HomePage', 'CategoryPage', 'ProfilePage']">
+                    <component :is="Component" />
+                </keep-alive>
+            </router-view>
         </div>
-        
+
         <!-- 底部固定TabBar -->
         <div v-show="isMobile && showTabBar" class="h-[70px] w-full">
             <TabBar />
@@ -44,7 +48,7 @@ const showTabBar = computed(() => route.meta.showTabBar !== false);
 const shouldShowNavbar = computed(() => route.meta.showNavbar !== false);
 const isDesktop = computed(() => uiStore.isDesktop);
 const isMobile = computed(() => uiStore.isMobile);
- 
+
 
 
 
@@ -69,6 +73,4 @@ onMounted(async () => {
     width: 100vw;
     overflow: hidden;
 }
-
-
 </style>

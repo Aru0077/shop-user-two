@@ -15,6 +15,7 @@ const pinia = createPinia()
 // 创建Vue应用实例
 const app = createApp(App)
 
+
 app.use(pinia)   // 使用Pinia实例
 app.use(router)  // 使用路由
 

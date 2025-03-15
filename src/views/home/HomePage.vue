@@ -52,11 +52,7 @@ const latestProducts = computed(() => productStore.latestProducts || []);
 const topSellingProducts = computed(() => productStore.topSellingProducts || []);
 
 onMounted(async () => {
-    // 初始化产品数据
-    if (!productStore.homeData) {
-        await productStore.init();
-    }
-    loading.value = false;
+    loading.value = productStore.loading;
 });
 
 
