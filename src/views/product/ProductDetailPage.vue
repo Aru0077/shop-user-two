@@ -1,20 +1,20 @@
 <template>
     <div class="flex flex-col overflow-hidden h-screen w-screen">
         <!-- 顶部导航和内容区域 -->
-        <div class="flex-1 w-full relative"> 
+        <div class="flex-1 w-full relative">
             <!-- 内容区域 - 去除顶部内边距，允许内容在 header 下滚动 -->
-            <div v-if="product" class="overflow-y-auto absolute top-0 left-0 right-0 bottom-[60px]"> 
-                <ProductDetailCard :product="product" /> 
-            </div> 
+            <div v-if="product" class="overflow-y-auto absolute top-0 left-0 right-0 bottom-[60px]">
+                <ProductDetailCard :product="product" />
+            </div>
             <!-- 顶部导航栏 - 使用透明背景并确保在内容之上 -->
             <div class="fixed top-0 left-0 right-0 h-[60px] w-full z-20 bg-transparent box-border">
                 <ProductNavbar />
-            </div> 
+            </div>
         </div>
 
         <!-- 底部操作区 -->
         <div class="fixed bottom-0 left-0 right-0 h-[60px] w-full z-50  box-border">
-            <ProductTabbar /> 
+            <ProductTabbar />
         </div>
     </div>
 </template>
@@ -51,13 +51,11 @@ const fetchProductData = async () => {
     error.value = null;
 
     try {
-        // 第一步：获取商品详情
-        await productStore.fetchProductDetail(productId.value);
-
-        // 第二步：获取商品SKU信息
-        if (product.value) {
-            await productStore.fetchProductSkus(productId.value);
-        }
+        // 并行请求基础信息和SKU信息
+        await Promise.all([
+            productStore.fetchProductDetail(productId.value),
+            productStore.fetchProductSkus(productId.value),
+        ]);
     } catch (err: any) {
         error.value = err.message || '获取商品信息失败';
         console.error('获取商品信息失败:', err);

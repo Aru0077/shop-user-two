@@ -37,7 +37,7 @@
 
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, nextTick } from 'vue';
 import { useProductStore } from '@/stores/product.store';
 
 import PageTitle from '@/components/common/PageTitle.vue';

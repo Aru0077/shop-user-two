@@ -6,11 +6,16 @@
         <div class="bg-white rounded-t-2xl h-auto z-10 relative -mt-6 py-4">
             <!-- 文字区域 -->
             <div class="px-4">
+
+
                 <!-- 价格+销量 -->
                 <div class="flex items-end justify-between">
                     <div class="flex items-end">
-                        <!-- 促销价 -->
-                        <div class="text-red-500 font-bold text-[22px]">
+                        <!-- 骨架屏加载状态 -->
+                        <div v-if="!product.skus?.length" class="h-[22px] w-[120px] bg-gray-200 animate-pulse rounded">
+                        </div>
+                        <!-- 显示促销价 -->
+                        <div v-else class="text-red-500 font-bold text-[22px]">
                             {{ formattedPrice }}
                         </div>
                         <!-- 原价（划线价） -->
@@ -18,8 +23,11 @@
                             {{ formattedOriginalPrice }}
                         </div>
                     </div>
-                    <div class="font-bold text-[14px]">Sales:{{ product.salesCount || 0 }}</div>
+                    <!-- 销量也使用骨架屏 -->
+                    <div v-if="!product.skus?.length" class="h-[14px] w-[80px] bg-gray-200 animate-pulse rounded"></div>
+                    <div v-else class="font-bold text-[14px]">Sales:{{ product.salesCount || 0 }}</div>
                 </div>
+
 
                 <!-- 标题 -->
                 <div class="font-bold text-[18px] mt-2">{{ product.name }}</div>

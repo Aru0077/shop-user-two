@@ -111,5 +111,16 @@ export const productApi = {
        */
       getHomePageData(): Promise<HomePageData> {
             return http.get('/products/home-data', null, { useCache: true });
-      }
+      },
+
+      /**
+       * 获取完整商品详情（包含SKU信息）
+       * @param id 商品ID
+       */
+      getProductFullDetail(id: number): Promise<ProductDetail> {
+            return http.get(`/products/${id}/full`);
+      },
+
+
+      
 };

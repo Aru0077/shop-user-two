@@ -175,6 +175,53 @@ export const useProductStore = defineStore('product', () => {
             }
       }
 
+      // 获取完整商品详情（包含基础信息和SKU）
+      async function fetchProductFullDetail(id: number, forceRefresh = false) {
+            const cacheKey = `${PRODUCT_DETAIL_PREFIX}${id}`;
+
+            // 如果当前正在查看的商品就是请求的商品且不强制刷新，直接返回
+            if (currentProduct.value && currentProduct.value.id === id && !forceRefresh) {
+                  addToRecentProducts(currentProduct.value);
+                  return currentProduct.value;
+            }
+
+            // 尝试从缓存获取
+            if (!forceRefresh) {
+                  const cachedProduct = storage.get<ProductDetail>(cacheKey, null);
+                  if (cachedProduct) {
+                        currentProduct.value = cachedProduct;
+                        addToRecentProducts(cachedProduct);
+                        return cachedProduct;
+                  }
+            }
+
+            loading.value = true;
+            error.value = null;
+
+            try {
+                  const response = await productApi.getProductFullDetail(id);
+                  currentProduct.value = response;
+
+                  // 标记SKU已加载完成
+                  if (currentProduct.value) {
+                        currentProduct.value.loadingSkus = false;
+                  }
+
+                  // 缓存商品详情
+                  storage.set(cacheKey, response, PRODUCT_DETAIL_EXPIRY);
+
+                  // 添加到最近浏览
+                  addToRecentProducts(response);
+
+                  return response;
+            } catch (err: any) {
+                  error.value = err.message || '获取商品详情失败';
+                  throw err;
+            } finally {
+                  loading.value = false;
+            }
+      }
+
       // 获取商品SKU信息
       async function fetchProductSkus(id: number) {
             loading.value = true;
@@ -343,6 +390,8 @@ export const useProductStore = defineStore('product', () => {
             homeData.value = null;
       }
 
+
+
       return {
             // 状态
             categories,
@@ -363,6 +412,7 @@ export const useProductStore = defineStore('product', () => {
             fetchCategoryTree,
             fetchHomeData,
             fetchProductDetail,
+            fetchProductFullDetail,
             searchProducts,
             fetchCategoryProducts,
             clearProductCache,
@@ -370,6 +420,7 @@ export const useProductStore = defineStore('product', () => {
             fetchProductSkus,
             fetchPromotionProducts,
             fetchLatestProducts,
-            fetchTopSellingProducts
+            fetchTopSellingProducts,
+            
       };
 });
