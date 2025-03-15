@@ -23,7 +23,7 @@
 import ProductNavbar from '@/components/product/ProductNavbar.vue';
 import ProductDetailCard from '@/components/product/ProductDetailCard.vue';
 import ProductTabbar from '@/components/product/ProductTabbar.vue';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, provide } from 'vue';
 import { useRoute } from 'vue-router';
 import { useProductStore } from '@/stores/product.store';
 import type { ApiError } from '@/types/common.type'
@@ -66,6 +66,10 @@ const error = ref<string | null>(null);
 
 // 商品详情
 const product = computed(() => productStore.currentProduct || emptyProduct.value);
+
+// 提供产品数据给子组件
+provide('product', product);
+
 
 // 获取商品完整详情（包含基础信息和SKU）
 const fetchProductData = async () => {
