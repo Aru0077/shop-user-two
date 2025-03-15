@@ -15,7 +15,7 @@
         <div class="w-full h-6"></div>
 
         <!-- 促销海报 -->
-        <Banner />
+        <Banner :bannerData="bannerData" />
 
         <!-- 间距 占位符 -->
         <div class="w-full h-6"></div>
@@ -37,7 +37,7 @@
 
 
 <script setup>
-import { ref, onMounted, computed, nextTick } from 'vue';
+import { ref, onMounted, computed, nextTick, watch } from 'vue';
 import { useProductStore } from '@/stores/product.store';
 
 import PageTitle from '@/components/common/PageTitle.vue';
@@ -48,6 +48,14 @@ import Recommend from '@/components/home/Recommend.vue';
 
 const productStore = useProductStore();
 const loading = ref(true);
+const bannerData = ref(null);
+
+// Calculate banner data whenever homeData changes
+watch(() => productStore.homeData, (newHomeData) => {
+    if (newHomeData && newHomeData.banner) {
+        bannerData.value = newHomeData.banner;
+    }
+}, { immediate: true }); // Immediate evaluation to handle initial state
 
 // 计算属性，获取最新产品和热门产品
 const latestProducts = computed(() => productStore.latestProducts || []);

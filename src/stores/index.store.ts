@@ -22,39 +22,39 @@ export {
 export async function initializeStores() {
     const userStore = useUserStore();
     const productStore = useProductStore();
-    const cartStore = useCartStore();
-    const favoriteStore = useFavoriteStore();
-    const addressStore = useAddressStore();
-    const orderStore = useOrderStore();
 
-    // 先初始化用户状态和产品数据
+    // 第一阶段：仅初始化核心数据
     userStore.init();
-    await productStore.init();
 
-    // 初始化购物车数据（未登录用户也需要本地购物车）
-    await cartStore.initCart();
+    // 首屏必需的数据 
+    await productStore.init({
+        loadHomeDataOnly: true // 只加载首页数据，分类等数据可以延迟加载
+    });
 
-    // 如果用户已登录，则初始化需要授权的数据
-    if (userStore.isLoggedIn) {
-        try {
-            // 并行初始化用户相关数据
-            await Promise.all([
-                favoriteStore.init(),
-                addressStore.init(),
-                orderStore.init()
-            ]);
+    // 第二阶段：延迟500ms后初始化其他重要数据
+    setTimeout(async () => {
+        const cartStore = useCartStore();
+        await cartStore.initCart();
 
-            // 合并本地购物车到服务器
-            await cartStore.mergeLocalCartToServer();
-        } catch (error) {
-            console.error('初始化用户数据失败:', error);
+        // 第三阶段：用户相关数据在用户已登录时延迟加载
+        if (userStore.isLoggedIn) {
+            setTimeout(async () => {
+                const favoriteStore = useFavoriteStore();
+                const addressStore = useAddressStore();
+                const orderStore = useOrderStore();
 
-            // 如果获取授权数据失败，可能是token实际无效
-            if ((error as ApiError).code === 401) {
-                userStore.clearUserState();
-            }
+                // 并行初始化用户相关数据
+                await Promise.all([
+                    favoriteStore.init(),
+                    addressStore.init(),
+                    orderStore.init()
+                ]);
+
+                // 合并本地购物车到服务器
+                await cartStore.mergeLocalCartToServer();
+            }, 1000);
         }
-    }
+    }, 500);
 }
 
 // 用户登录后的处理

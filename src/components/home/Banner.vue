@@ -15,44 +15,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
-import { useProductStore } from '@/stores/product.store';
+import { defineProps } from 'vue';
 
-const productStore = useProductStore();
-const bannerData = ref(null);
-
-// 替换现有的onMounted方法
-onMounted(() => {
-    // 检查首页数据是否已存在
-    if (productStore.homeData) {
-        if (productStore.homeData.banner) {
-            bannerData.value = productStore.homeData.banner;
-        }
-        return;
-    }
-
-    // 如果正在初始化，不需要重复请求
-    if (productStore.isInitializing) {
-        // 监听数据变化
-        const unwatch = watch(() => productStore.homeData, (newHomeData) => {
-            if (newHomeData && newHomeData.banner) {
-                bannerData.value = newHomeData.banner;
-                unwatch(); // 数据加载后停止监听
-            }
-        });
-        return;
-    }
-
-    // 如果还没有初始化，手动请求数据
-    if (!productStore.isInitialized) {
-        productStore.fetchHomeData().then(() => {
-            if (productStore.homeData && productStore.homeData.banner) {
-                bannerData.value = productStore.homeData.banner;
-            }
-        }).catch(err => {
-            console.error('加载Banner数据失败:', err);
-        });
+// Accept banner data as a prop instead of fetching it directly
+const props = defineProps({
+    bannerData: {
+        type: Object,
+        default: () => null
     }
 });
-
 </script>
