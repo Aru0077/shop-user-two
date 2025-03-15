@@ -30,15 +30,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject, watch, onMounted } from 'vue';
+import { ref, inject, watch, onMounted, computed } from 'vue';
 import { Heart, SquareArrowOutUpRight, Wallet } from 'lucide-vue-next';
 import ShoppingCartPlus from '@/components/icon/ShoppingCartPlus.vue';
 import SkuSelector from '@/components/product/SkuSelector.vue';
 import type { ProductDetail } from '@/types/product.type';
 import { useFavoriteStore } from '@/stores/favorite.store';
 import { useUserStore } from '@/stores/user.store';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { useProductStore } from '@/stores/product.store';
 import { useToast } from '@/composables/useToast';
+
+// 初始化 store
+const route = useRoute();
+const productStore = useProductStore();
+
+// 从路由中获取id
+const productId = computed(() => Number(route.params.id));
+
+// 直接从store获取产品数据
+const productData = computed(() => productStore.currentProduct);
+
 
 // 注入父组件传递的产品数据
 const product = inject<ProductDetail | null>('product', null);
@@ -91,9 +103,13 @@ function updateLocalFavoriteState() {
 
 // 切换收藏状态
 const toggleFavorite = async () => {
+
+    console.log("ProductTabbar mounted, product:", product?.id);
+    console.log("User logged in:", userStore.isLoggedIn);
+
     // 如果产品不存在，直接返回
     if (!product || !product.id) return;
-   
+   console.log("User logged in:", 22222);
     // 如果用户未登录，跳转到登录页
     if (!userStore.isLoggedIn) {
         router.push({

@@ -20,40 +20,40 @@
 </template>
 
 <script setup lang="ts">
+// 引入组件
 import ProductNavbar from '@/components/product/ProductNavbar.vue';
 import ProductDetailCard from '@/components/product/ProductDetailCard.vue';
 import ProductTabbar from '@/components/product/ProductTabbar.vue';
+// 引入 方法 api
 import { ref, computed, onMounted, provide } from 'vue';
 import { useRoute } from 'vue-router';
 import { useProductStore } from '@/stores/product.store';
-import type { ApiError } from '@/types/common.type'
 import { ProductStatus } from '@/types/common.type';
+import type { ApiError } from '@/types/common.type'
 import type { ProductDetail } from '@/types/product.type';
 
-
+//  为显示 骨架屏 配置空 商品数据，
 const emptyProduct = ref<ProductDetail>({
-  id: 0,
-  categoryId: 0,
-  name: "",
-  content: null,
-  mainImage: null,
-  detailImages: [],
-  is_promotion: 0,
-  status: ProductStatus.DRAFT, // 使用枚举值而不是字符串
-  productCode: "",
-  salesCount: 0,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  skus: [],
-  // ProductDetail特有字段
-  specs: [],
-  validSpecCombinations: {},
-  loadingSkus: true
+    id: 0,
+    categoryId: 0,
+    name: "",
+    content: null,
+    mainImage: null,
+    detailImages: [],
+    is_promotion: 0,
+    status: ProductStatus.DRAFT, // 使用枚举值而不是字符串
+    productCode: "",
+    salesCount: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    skus: [],
+    // ProductDetail特有字段
+    specs: [],
+    validSpecCombinations: {},
+    loadingSkus: true
 });
 
-
-
-// 获取路由和路由参数
+// 获取路由和路由参数 从路由中获取商品id
 const route = useRoute();
 const productId = computed(() => Number(route.params.id));
 
@@ -74,12 +74,12 @@ provide('product', product);
 // 获取商品完整详情（包含基础信息和SKU）
 const fetchProductData = async () => {
     if (!productId.value) return;
-    
+
     // 避免重复请求同一商品
     if (product.value && product.value.id === productId.value) {
         return;
     }
-    
+
     loading.value = true;
     error.value = null;
 
