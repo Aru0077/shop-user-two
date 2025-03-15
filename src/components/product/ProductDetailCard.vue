@@ -1,6 +1,8 @@
 <template>
     <div class="img relative">
-        <img :src="product.mainImage || undefined" alt="" class="w-full">
+        <!-- 主图骨架屏 -->
+        <div v-if="!product.mainImage" class="w-full h-[300px] bg-gray-200 animate-pulse rounded"></div>
+        <img v-else :src="product.mainImage || undefined" alt="" class="w-full">
 
         <!-- 图片下方的圆角卡片 - 保持负边距向上偏移 -->
         <div class="bg-white rounded-t-2xl h-auto z-10 relative -mt-6 py-4">
@@ -29,15 +31,26 @@
                 </div>
 
 
-                <!-- 标题 -->
-                <div class="font-bold text-[18px] mt-2">{{ product.name }}</div>
+                <!-- 标题骨架屏 -->
+                <div v-if="!product.name" class="h-[24px] w-full bg-gray-200 animate-pulse rounded mt-2"></div>
+                <div v-else class="font-bold text-[18px] mt-2">{{ product.name }}</div>
 
-                <!-- 文字介绍 -->
-                <div class="mt-4">{{ product.content }}</div>
+                <!-- 文字介绍骨架屏 -->
+                <div v-if="!product.content" class="mt-4">
+                    <div class="h-[16px] w-full bg-gray-200 animate-pulse rounded mb-2"></div>
+                    <div class="h-[16px] w-5/6 bg-gray-200 animate-pulse rounded mb-2"></div>
+                    <div class="h-[16px] w-4/6 bg-gray-200 animate-pulse rounded"></div>
+                </div>
+                <div v-else class="mt-4">{{ product.content }}</div>
             </div>
 
             <div class="mt-4">
-                <img v-for="(imgUrl, index) in detailImagesList" :key="index" :src="imgUrl" alt="商品详情图"
+                <!-- 详情图片骨架屏 -->
+                <div v-if="!detailImagesList.length" class="w-full">
+                    <div class="h-[200px] w-full bg-gray-200 animate-pulse rounded mb-2"></div>
+                    <div class="h-[200px] w-full bg-gray-200 animate-pulse rounded mb-2"></div>
+                </div>
+                <img v-else v-for="(imgUrl, index) in detailImagesList" :key="index" :src="imgUrl" alt="商品详情图"
                     class="w-full" />
             </div>
         </div>

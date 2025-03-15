@@ -37,14 +37,13 @@
 
 
 <script setup>
-import { ref, onMounted, computed, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useProductStore } from '@/stores/product.store';
 
 import PageTitle from '@/components/common/PageTitle.vue';
 import SearchInput from '@/components/home/SearchInput.vue';
 import Banner from '@/components/home/Banner.vue';
 import Recommend from '@/components/home/Recommend.vue';
-
 
 const productStore = useProductStore();
 const loading = ref(true);
@@ -55,40 +54,22 @@ watch(() => productStore.homeData, (newHomeData) => {
     if (newHomeData && newHomeData.banner) {
         bannerData.value = newHomeData.banner;
     }
-}, { immediate: true }); // Immediate evaluation to handle initial state
+}, { immediate: true });
 
 // 计算属性，获取最新产品和热门产品
 const latestProducts = computed(() => productStore.latestProducts || []);
 const topSellingProducts = computed(() => productStore.topSellingProducts || []);
 
-// 替换现有的onMounted方法
-onMounted(async () => {
-    // 优先渲染UI，延迟加载数据
+// 简化后的 onMounted 方法 - 移除所有数据初始化代码
+onMounted(() => {
+    // 只管理 UI 加载状态
     loading.value = true;
 
-    // 使用nextTick确保DOM更新后再执行数据加载
-    nextTick(async () => {
-        try {
-            // 检查初始化状态
-            if (productStore.isInitialized || productStore.isInitializing) {
-                // 已初始化或正在初始化，不需要做任何事情
-                loading.value = false;
-                return;
-            }
-
-            // 如果尚未初始化，则初始化产品数据
-            if (!productStore.homeData) {
-                await productStore.fetchHomeData();
-            }
-        } catch (err) {
-            console.error('加载首页数据失败:', err);
-        } finally {
-            loading.value = false;
-        }
+    nextTick(() => {
+        // 完成加载
+        loading.value = false;
     });
 });
-
-
 </script>
 
 <style>
