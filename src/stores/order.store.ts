@@ -32,6 +32,28 @@ export const useOrderStore = defineStore('order', () => {
             limit: 10,
             total: 0
       });
+      // 添加初始化状态跟踪变量
+      const isInitialized = ref<boolean>(false);
+      const isInitializing = ref<boolean>(false);
+
+      // 添加init方法
+      async function init() {
+            if (!userStore.isLoggedIn) return;
+
+            // 避免重复初始化
+            if (isInitialized.value || isInitializing.value) return;
+            isInitializing.value = true;
+
+            try {
+                  // 获取首页订单列表，例如第一页10条待付款订单
+                  await fetchOrders(1, 10);
+                  isInitialized.value = true;
+            } catch (err) {
+                  console.error('订单初始化失败:', err);
+            } finally {
+                  isInitializing.value = false;
+            }
+      }
 
       // 用户store
       const userStore = useUserStore();
@@ -297,6 +319,8 @@ export const useOrderStore = defineStore('order', () => {
 
       return {
             // 状态
+            isInitialized,
+            isInitializing,
             orders,
             currentOrder,
             loading,
@@ -304,6 +328,7 @@ export const useOrderStore = defineStore('order', () => {
             pagination,
 
             // 动作
+            init,
             fetchOrders,
             fetchOrderDetail,
             createOrder,

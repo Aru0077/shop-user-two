@@ -14,14 +14,39 @@ const ADDRESSES_EXPIRY = 12 * 60 * 60 * 1000;
 const ADDRESSES_VERSION = '1.0.0';
 
 export const useAddressStore = defineStore('address', () => {
+      // 用户store
+      const userStore = useUserStore();
+
       // 状态
       const addresses = ref<UserAddress[]>([]);
       const loading = ref<boolean>(false);
       const error = ref<string | null>(null);
       const lastFetchTime = ref<number>(0);
 
-      // 用户store
-      const userStore = useUserStore();
+      // 添加初始化状态跟踪变量
+      const isInitialized = ref<boolean>(false);
+      const isInitializing = ref<boolean>(false);
+
+      // 添加init方法
+      async function init() {
+            // 避免重复初始化
+            if (isInitialized.value || isInitializing.value) return;
+            isInitializing.value = true;
+
+            try {
+                  // 如果已登录，获取地址列表
+                  if (userStore.isLoggedIn) {
+                        await fetchAddresses();
+                  }
+                  isInitialized.value = true;
+            } catch (err) {
+                  console.error('地址初始化失败:', err);
+            } finally {
+                  isInitializing.value = false;
+            }
+      }
+
+
 
       // 计算属性
       const defaultAddress = computed(() => {
@@ -176,6 +201,8 @@ export const useAddressStore = defineStore('address', () => {
 
       return {
             // 状态
+            isInitialized,
+            isInitializing,
             addresses,
             loading,
             error,
@@ -185,6 +212,7 @@ export const useAddressStore = defineStore('address', () => {
             defaultAddress,
 
             // 动作
+            init,
             fetchAddresses,
             createAddress,
             updateAddress,

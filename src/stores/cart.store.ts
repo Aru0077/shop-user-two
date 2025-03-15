@@ -20,6 +20,9 @@ export const useCartStore = defineStore('cart', () => {
       const error = ref<string | null>(null);
       const totalItems = ref<number>(0);
       const lastSyncTime = ref<number>(0);
+      // 添加初始化状态跟踪变量
+      const isInitialized = ref<boolean>(false);
+      const isInitializing = ref<boolean>(false);
 
       // 用户store
       const userStore = useUserStore();
@@ -38,18 +41,30 @@ export const useCartStore = defineStore('cart', () => {
 
       // 初始化购物车 - 从本地缓存或服务器加载
       async function initCart() {
-            // 先从缓存恢复
-            const cartStorage = storage.get<{ version: string, items: CartItem[], timestamp: number }>(CART_DATA_KEY, null);
+            // 避免重复初始化
+            if (isInitialized.value || isInitializing.value) return;
+            isInitializing.value = true;
 
-            if (cartStorage && cartStorage.version === CART_DATA_VERSION) {
-                  cartItems.value = cartStorage.items;
-                  lastSyncTime.value = cartStorage.timestamp;
-                  updateTotalItems();
-            }
+            try {
+                  // 先从缓存恢复
+                  const cartStorage = storage.get<{ version: string, items: CartItem[], timestamp: number }>(CART_DATA_KEY, null);
 
-            // 如果已登录，则从服务器获取最新数据
-            if (userStore.isLoggedIn) {
-                  await fetchCartFromServer();
+                  if (cartStorage && cartStorage.version === CART_DATA_VERSION) {
+                        cartItems.value = cartStorage.items;
+                        lastSyncTime.value = cartStorage.timestamp;
+                        updateTotalItems();
+                  }
+
+                  // 如果已登录，则从服务器获取最新数据
+                  if (userStore.isLoggedIn) {
+                        await fetchCartFromServer();
+                  }
+
+                  isInitialized.value = true;
+            } catch (err) {
+                  console.error('购物车初始化失败:', err);
+            } finally {
+                  isInitializing.value = false;
             }
       }
 
@@ -116,7 +131,8 @@ export const useCartStore = defineStore('cart', () => {
                               skuId: params.skuId,
                               quantity: params.quantity || 1,
                               updatedAt: new Date().toISOString(),
-                              isAvailable: true
+                              isAvailable: true,
+                              createdAt: ''
                         };
 
                         // 查找是否已存在相同商品
@@ -270,6 +286,8 @@ export const useCartStore = defineStore('cart', () => {
 
       return {
             // 状态
+            isInitialized,
+            isInitializing,
             cartItems,
             loading,
             error,

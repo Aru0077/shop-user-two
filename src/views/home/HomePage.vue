@@ -53,6 +53,7 @@ const loading = ref(true);
 const latestProducts = computed(() => productStore.latestProducts || []);
 const topSellingProducts = computed(() => productStore.topSellingProducts || []);
 
+// 替换现有的onMounted方法
 onMounted(async () => {
     // 优先渲染UI，延迟加载数据
     loading.value = true;
@@ -60,10 +61,19 @@ onMounted(async () => {
     // 使用nextTick确保DOM更新后再执行数据加载
     nextTick(async () => {
         try {
-            // 如果已有数据，不再重复加载
+            // 检查初始化状态
+            if (productStore.isInitialized || productStore.isInitializing) {
+                // 已初始化或正在初始化，不需要做任何事情
+                loading.value = false;
+                return;
+            }
+
+            // 如果尚未初始化，则初始化产品数据
             if (!productStore.homeData) {
                 await productStore.fetchHomeData();
             }
+        } catch (err) {
+            console.error('加载首页数据失败:', err);
         } finally {
             loading.value = false;
         }

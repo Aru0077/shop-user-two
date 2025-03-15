@@ -26,6 +26,7 @@ import ProductTabbar from '@/components/product/ProductTabbar.vue';
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useProductStore } from '@/stores/product.store';
+import type { ApiError } from '@/types/common.type'
 
 // 获取路由和路由参数
 const route = useRoute();
@@ -40,37 +41,34 @@ const error = ref<string | null>(null);
 
 // 商品详情
 const product = computed(() => productStore.currentProduct);
-console.log(product.value);
 
-
-// 获取商品详情和SKU
+// 获取商品完整详情（包含基础信息和SKU）
 const fetchProductData = async () => {
     if (!productId.value) return;
-
+    
+    // 避免重复请求同一商品
+    if (product.value && product.value.id === productId.value) {
+        return;
+    }
+    
     loading.value = true;
     error.value = null;
 
     try {
-        // 并行请求基础信息和SKU信息
-        await Promise.all([
-            productStore.fetchProductDetail(productId.value),
-            productStore.fetchProductSkus(productId.value),
-        ]);
-    } catch (err: any) {
-        error.value = err.message || '获取商品信息失败';
+        // 使用一次性获取的方法
+        await productStore.fetchProductFullDetail(productId.value);
+    } catch (err) {
+        error.value = (err as ApiError).message || '获取商品信息失败';
         console.error('获取商品信息失败:', err);
     } finally {
         loading.value = false;
     }
 };
 
-
-
 // 组件挂载时获取商品数据
 onMounted(() => {
     fetchProductData();
 });
-
 </script>
 
 

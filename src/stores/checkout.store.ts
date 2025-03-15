@@ -27,6 +27,9 @@ export const useCheckoutStore = defineStore('checkout', () => {
     const loading = ref<boolean>(false);
     const error = ref<string | null>(null);
     const lastFetchTime = ref<number>(0);
+    // 添加初始化状态跟踪变量
+    const isInitialized = ref<boolean>(false);
+    const isInitializing = ref<boolean>(false);
 
     // 使用其他store
     const userStore = useUserStore();
@@ -40,6 +43,12 @@ export const useCheckoutStore = defineStore('checkout', () => {
     async function initCheckout(forceRefresh = false) {
         if (!userStore.isLoggedIn) return;
 
+        // 避免重复初始化
+        if (isInitializing.value) return;
+        if (isInitialized.value && !forceRefresh) return;
+
+        isInitializing.value = true;
+
         // 如果不强制刷新，尝试从缓存获取
         if (!forceRefresh) {
             const cachedCheckoutInfo = storage.get<{
@@ -47,11 +56,11 @@ export const useCheckoutStore = defineStore('checkout', () => {
                 checkoutInfo: CheckoutInfo,
                 timestamp: number
             }>(CHECKOUT_INFO_KEY, null);
-            
+
             if (cachedCheckoutInfo && cachedCheckoutInfo.version === CHECKOUT_DATA_VERSION) {
                 checkoutInfo.value = cachedCheckoutInfo.checkoutInfo;
                 lastFetchTime.value = cachedCheckoutInfo.timestamp;
-                
+
                 // 设置默认值
                 if (checkoutInfo.value.defaultAddressId) {
                     selectedAddressId.value = checkoutInfo.value.defaultAddressId;
@@ -61,7 +70,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
                 } else if (checkoutInfo.value.paymentMethods.length > 0) {
                     selectedPaymentType.value = checkoutInfo.value.paymentMethods[0].id;
                 }
-                
+
                 return checkoutInfo.value;
             }
         }
@@ -70,6 +79,23 @@ export const useCheckoutStore = defineStore('checkout', () => {
         error.value = null;
 
         try {
+
+            // 如果不强制刷新，尝试从缓存获取
+            if (!forceRefresh) {
+                const cachedCheckoutInfo = storage.get<{
+                    version: string,
+                    checkoutInfo: CheckoutInfo,
+                    timestamp: number
+                }>(CHECKOUT_INFO_KEY, null);
+
+                if (cachedCheckoutInfo && cachedCheckoutInfo.version === CHECKOUT_DATA_VERSION) {
+                    // 原有逻辑...
+                    isInitialized.value = true;
+                    return checkoutInfo.value;
+                }
+            }
+
+
             // 获取结算信息
             const response = await checkoutApi.getCheckoutInfo();
             checkoutInfo.value = response;
@@ -93,6 +119,8 @@ export const useCheckoutStore = defineStore('checkout', () => {
                 selectedPaymentType.value = response.paymentMethods[0].id;
             }
 
+            isInitialized.value = true;
+
             return response;
         } catch (err: any) {
             error.value = err.message || '获取结算信息失败';
@@ -100,6 +128,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
             return null;
         } finally {
             loading.value = false;
+            isInitializing.value = false;
         }
     }
 
@@ -111,7 +140,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
         try {
             const response = await cartApi.previewOrderAmount(params);
             orderPreview.value = response;
-            
+
             // 生成缓存键，包含参数信息
             let cacheKey = ORDER_PREVIEW_KEY;
             if (params.cartItemIds) {
@@ -119,7 +148,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
             } else if (params.productInfo) {
                 cacheKey += `_product_${params.productInfo.productId}_${params.productInfo.skuId}_${params.productInfo.quantity}`;
             }
-            
+
             // 缓存预览结果
             const orderPreviewData = {
                 version: CHECKOUT_DATA_VERSION,
@@ -127,7 +156,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
                 timestamp: Date.now()
             };
             storage.set(cacheKey, orderPreviewData, ORDER_PREVIEW_EXPIRY);
-            
+
             return response;
         } catch (err: any) {
             error.value = err.message || '预览订单金额失败';
@@ -146,12 +175,12 @@ export const useCheckoutStore = defineStore('checkout', () => {
             preview: OrderAmountPreview,
             timestamp: number
         }>(cacheKey, null);
-        
+
         if (cachedPreview && cachedPreview.version === CHECKOUT_DATA_VERSION) {
             orderPreview.value = cachedPreview.preview;
             return cachedPreview.preview;
         }
-        
+
         return await previewOrderAmount({ cartItemIds });
     }
 
@@ -164,12 +193,12 @@ export const useCheckoutStore = defineStore('checkout', () => {
             preview: OrderAmountPreview,
             timestamp: number
         }>(cacheKey, null);
-        
+
         if (cachedPreview && cachedPreview.version === CHECKOUT_DATA_VERSION) {
             orderPreview.value = cachedPreview.preview;
             return cachedPreview.preview;
         }
-        
+
         return await previewOrderAmount({
             productInfo: { productId, skuId, quantity }
         });
@@ -200,7 +229,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
     // 清除结算缓存
     function clearCheckoutCache() {
         storage.remove(CHECKOUT_INFO_KEY);
-        
+
         // 清除所有订单预览缓存
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
@@ -208,13 +237,15 @@ export const useCheckoutStore = defineStore('checkout', () => {
                 storage.remove(key.replace(storage['options'].prefix!, ''));
             }
         }
-        
+
         checkoutInfo.value = null;
         orderPreview.value = null;
     }
 
     return {
         // 状态
+        isInitialized,
+        isInitializing,
         checkoutInfo,
         orderPreview,
         selectedAddressId,

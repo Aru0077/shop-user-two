@@ -18,28 +18,30 @@ export {
     useCheckoutStore
 };
 
-// 初始化所有store
+// 初始化所有store 
 export async function initializeStores() {
     const userStore = useUserStore();
     const productStore = useProductStore();
     const cartStore = useCartStore();
     const favoriteStore = useFavoriteStore();
     const addressStore = useAddressStore();
+    const orderStore = useOrderStore();
 
-    // 先初始化产品数据（分类等）- 无论用户是否登录
+    // 先初始化用户状态和产品数据
+    userStore.init();
     await productStore.init();
 
     // 初始化购物车数据（未登录用户也需要本地购物车）
     await cartStore.initCart();
 
-    // 检查token是否有效，使用改进后的方法
-    if (userStore.checkTokenExpiry()) {
-        // 用户已登录且token有效，初始化需要授权的数据
+    // 如果用户已登录，则初始化需要授权的数据
+    if (userStore.isLoggedIn) {
         try {
             // 并行初始化用户相关数据
             await Promise.all([
                 favoriteStore.init(),
-                addressStore.fetchAddresses()
+                addressStore.init(),
+                orderStore.init()
             ]);
 
             // 合并本地购物车到服务器
@@ -48,8 +50,6 @@ export async function initializeStores() {
             console.error('初始化用户数据失败:', error);
 
             // 如果获取授权数据失败，可能是token实际无效
-            // 进行额外检查并可能清除用户状态
-            // 使用类型安全的方式检查错误
             if ((error as ApiError).code === 401) {
                 userStore.clearUserState();
             }

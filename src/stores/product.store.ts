@@ -10,6 +10,7 @@ import type {
       SearchProductsParams,
       HomePageData
 } from '@/types/product.type';
+import type { ApiError } from '@/types/common.type';
 
 // 缓存键
 const CATEGORIES_KEY = 'product_categories';
@@ -35,36 +36,60 @@ export const useProductStore = defineStore('product', () => {
       const searchLoading = ref<boolean>(false);
       const error = ref<string | null>(null);
 
+      const isInitialized = ref(false);
+      const isInitializing = ref(false);
+
       // 计算属性
       const latestProducts = computed(() => homeData.value?.latestProducts || []);
       const topSellingProducts = computed(() => homeData.value?.topSellingProducts || []);
 
-      // 初始化
+      // 初始化 
       async function init() {
-            // 从缓存加载分类数据
-            const cachedCategories = storage.get<Category[]>(CATEGORIES_KEY, null);
-            if (cachedCategories && cachedCategories.length > 0) {
-                  categories.value = cachedCategories;
-            }
+            // 避免重复初始化
+            if (isInitialized.value || isInitializing.value) return;
 
-            // 从缓存加载首页数据
-            const cachedHomeData = storage.get<HomePageData>(HOME_DATA_KEY, null);
-            if (cachedHomeData) {
-                  homeData.value = cachedHomeData;
-            }
+            isInitializing.value = true;
+            error.value = null;
 
-            // 从缓存加载最近浏览的商品
-            const cachedRecentProducts = storage.get<ProductDetail[]>(RECENT_PRODUCTS_KEY, null);
-            if (cachedRecentProducts && cachedRecentProducts.length > 0) {
-                  recentProducts.value = cachedRecentProducts;
-            }
+            try {
+                  // 从缓存加载分类数据
+                  const cachedCategories = storage.get<Category[]>(CATEGORIES_KEY, null);
+                  if (cachedCategories && cachedCategories.length > 0) {
+                        categories.value = cachedCategories;
+                  }
 
-            // 并行加载数据
-            await Promise.all([
-                  // 如果缓存为空，才请求新数据
-                  (!cachedCategories || cachedCategories.length === 0) ? fetchCategoryTree() : Promise.resolve(),
-                  !cachedHomeData ? fetchHomeData() : Promise.resolve()
-            ]);
+                  // 从缓存加载首页数据
+                  const cachedHomeData = storage.get<HomePageData>(HOME_DATA_KEY, null);
+                  if (cachedHomeData) {
+                        homeData.value = cachedHomeData;
+                  }
+
+                  // 从缓存加载最近浏览的商品
+                  const cachedRecentProducts = storage.get<ProductDetail[]>(RECENT_PRODUCTS_KEY, null);
+                  if (cachedRecentProducts && cachedRecentProducts.length > 0) {
+                        recentProducts.value = cachedRecentProducts;
+                  }
+
+                  // 并行加载数据
+                  await Promise.all([
+                        // 如果缓存为空，才请求新数据
+                        (!cachedCategories || cachedCategories.length === 0) ? fetchCategoryTree() : Promise.resolve(),
+                        !cachedHomeData ? fetchHomeData() : Promise.resolve()
+                  ]);
+
+                  // 标记初始化完成
+                  isInitialized.value = true;
+
+                  console.log('产品数据初始化完成');
+
+            } catch (err) {
+                  // 处理初始化错误
+                  error.value = (err as ApiError).message || '初始化产品数据失败';
+                  console.error('初始化产品数据失败:', err);
+            } finally {
+                  // 无论成功或失败，都需要重置初始化中状态
+                  isInitializing.value = false;
+            }
       }
 
       // 获取分类树
@@ -421,6 +446,6 @@ export const useProductStore = defineStore('product', () => {
             fetchPromotionProducts,
             fetchLatestProducts,
             fetchTopSellingProducts,
-            
+
       };
 });

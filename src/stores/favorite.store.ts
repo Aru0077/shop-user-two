@@ -27,6 +27,9 @@ export const useFavoriteStore = defineStore('favorite', () => {
       const loading = ref<boolean>(false);
       const error = ref<string | null>(null);
       const lastFetchTime = ref<number>(0);
+      // 添加初始化状态跟踪变量
+      const isInitialized = ref<boolean>(false);
+      const isInitializing = ref<boolean>(false);
 
       // 用户store
       const userStore = useUserStore();
@@ -38,20 +41,32 @@ export const useFavoriteStore = defineStore('favorite', () => {
       async function init() {
             if (!userStore.isLoggedIn) return;
 
-            // 从缓存加载收藏ID
-            const favoriteIdsCache = storage.get<{
-                  version: string,
-                  ids: number[],
-                  timestamp: number
-            }>(FAVORITE_IDS_KEY, null);
+            // 避免重复初始化
+            if (isInitialized.value || isInitializing.value) return;
+            isInitializing.value = true;
 
-            if (favoriteIdsCache && favoriteIdsCache.version === FAVORITES_VERSION) {
-                  favoriteIds.value = favoriteIdsCache.ids;
-                  lastFetchTime.value = favoriteIdsCache.timestamp;
+            try {
+                  // 从缓存加载收藏ID
+                  const favoriteIdsCache = storage.get<{
+                        version: string,
+                        ids: number[],
+                        timestamp: number
+                  }>(FAVORITE_IDS_KEY, null);
+
+                  if (favoriteIdsCache && favoriteIdsCache.version === FAVORITES_VERSION) {
+                        favoriteIds.value = favoriteIdsCache.ids;
+                        lastFetchTime.value = favoriteIdsCache.timestamp;
+                  }
+
+                  // 获取最新收藏ID列表
+                  await fetchFavoriteIds();
+
+                  isInitialized.value = true;
+            } catch (err) {
+                  console.error('收藏初始化失败:', err);
+            } finally {
+                  isInitializing.value = false;
             }
-
-            // 获取最新收藏ID列表
-            await fetchFavoriteIds();
       }
 
       // 获取收藏ID列表
@@ -274,6 +289,8 @@ export const useFavoriteStore = defineStore('favorite', () => {
 
       return {
             // 状态
+            isInitialized,
+            isInitializing,
             favorites,
             favoriteIds,
             totalFavorites,

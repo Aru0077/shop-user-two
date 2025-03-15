@@ -18,6 +18,27 @@ export const useUserStore = defineStore('user', () => {
       const currentUser = ref<User | null>(storage.get(USER_INFO_KEY, null));
       const loading = ref<boolean>(false);
       const error = ref<string | null>(null);
+      // 添加初始化状态跟踪变量
+      const isInitialized = ref<boolean>(false);
+      const isInitializing = ref<boolean>(false);
+
+      // 添加init方法
+      function init() {
+            // 避免重复初始化
+            if (isInitialized.value || isInitializing.value) return;
+            isInitializing.value = true;
+
+            try {
+                  // 检查token是否有效
+                  const isValid = checkTokenExpiry();
+                  isInitialized.value = true;
+                  return isValid;
+            } catch (err) {
+                  console.error('用户状态初始化失败:', err);
+            } finally {
+                  isInitializing.value = false;
+            }
+      }
 
       // 计算属性
       const isLoggedIn = computed(() => !!token.value && checkTokenExpiry());
@@ -134,6 +155,8 @@ export const useUserStore = defineStore('user', () => {
 
       return {
             // 状态
+            isInitialized,
+            isInitializing,
             token,
             currentUser,
             loading,
@@ -143,6 +166,7 @@ export const useUserStore = defineStore('user', () => {
             isLoggedIn,
 
             // 动作
+            init,
             login,
             logout,
             register,
