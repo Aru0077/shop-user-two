@@ -47,3 +47,10 @@ export enum PaymentStatus {
       UNPAID = 0,           // 未支付
       PAID = 1,             // 已支付
 }
+
+
+export interface ApiError {
+      code: number;
+      message: string;
+      data?: any;
+}

@@ -2,6 +2,8 @@
 import axios from 'axios';
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { storage } from '@/utils/storage';
+import { useUserStore } from '@/stores/user.store';
+import router from '@/router';
 
 // 定义接口响应类型与后端对应
 interface ApiResponse<T = any> {
@@ -69,8 +71,8 @@ service.interceptors.request.use(
             addPendingRequest(config);
 
             // 从 localStorage 获取 token 并添加到请求头
-            const token = storage.get('user_token', null); 
-            
+            const token = storage.get('user_token', null);
+
             if (token && config.headers) {
                   config.headers['Authorization'] = `Bearer ${token}`;
             }
@@ -84,8 +86,6 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
       (response: AxiosResponse<ApiResponse>) => {
-            // console.log('Response:', response);
-            
             // 请求完成后，从pendingRequests中移除
             removePendingRequest(response.config);
 
@@ -106,8 +106,6 @@ service.interceptors.response.use(
             return response.data;
       },
       (error) => {
-            console.log('Error:', error);
-            
             // 如果请求被取消，不处理错误
             if (axios.isCancel(error)) {
                   console.log('Request canceled:', error.message);
@@ -131,10 +129,21 @@ service.interceptors.response.use(
             // 根据状态码处理不同类型的错误
             switch (errorCode) {
                   case ErrorCode.UNAUTHORIZED:
-                        // 处理未授权错误，例如清除token并重定向到登录页
-                        localStorage.removeItem('token');
-                        // window.location.href = '/login';
+                        // 处理401未授权错误
                         message = '登录状态已过期，请重新登录';
+
+                        // 获取userStore实例并清除用户状态
+                        const userStore = useUserStore();
+                        userStore.clearUserState();
+
+                        // 如果当前路由需要授权，重定向到登录页
+                        const currentRoute = router.currentRoute.value;
+                        if (currentRoute.meta.requiresAuth) {
+                              router.push({
+                                    path: '/login',
+                                    query: { redirect: currentRoute.fullPath }
+                              });
+                        }
                         break;
                   case ErrorCode.FORBIDDEN:
                         message = '没有权限访问该资源';

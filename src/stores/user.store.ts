@@ -7,6 +7,7 @@ import type { User, LoginParams, RegisterParams, DeleteAccountParams } from '@/t
 
 // 缓存键
 const TOKEN_KEY = 'user_token';
+const TOKEN_EXPIRY_KEY = 'user_token_expiry';
 const USER_INFO_KEY = 'user_info';
 // 缓存时间 (7天)
 const AUTH_EXPIRY = 7 * 24 * 60 * 60 * 1000;
@@ -17,9 +18,9 @@ export const useUserStore = defineStore('user', () => {
       const currentUser = ref<User | null>(storage.get(USER_INFO_KEY, null));
       const loading = ref<boolean>(false);
       const error = ref<string | null>(null);
-      
+
       // 计算属性
-      const isLoggedIn = computed(() => !!token.value);
+      const isLoggedIn = computed(() => !!token.value && checkTokenExpiry());
 
       // 登录
       async function login(params: LoginParams) {
@@ -29,14 +30,18 @@ export const useUserStore = defineStore('user', () => {
             try {
                   const response = await userApi.login(params);
 
-                  console.log("登录结果",response);
-                  
+                  console.log("登录结果", response);
+
                   // 更新状态
                   token.value = response.token;
                   currentUser.value = response.user;
 
-                  // 使用storage工具持久化
+                  // 计算token过期时间
+                  const expiryTime = Date.now() + AUTH_EXPIRY;
+
+                  // 持久化存储
                   storage.set(TOKEN_KEY, response.token, AUTH_EXPIRY);
+                  storage.set(TOKEN_EXPIRY_KEY, expiryTime, AUTH_EXPIRY);
                   storage.set(USER_INFO_KEY, response.user, AUTH_EXPIRY);
 
                   return response;
@@ -67,8 +72,8 @@ export const useUserStore = defineStore('user', () => {
             token.value = null;
             currentUser.value = null;
 
-            // 使用storage工具删除缓存
             storage.remove(TOKEN_KEY);
+            storage.remove(TOKEN_EXPIRY_KEY);
             storage.remove(USER_INFO_KEY);
       }
 
@@ -107,15 +112,18 @@ export const useUserStore = defineStore('user', () => {
 
       // 检查token是否过期
       function checkTokenExpiry() {
-            if (token.value && storage.has(TOKEN_KEY)) {
-                  return true;
-            }
-            // Token不存在或已过期，清除状态
-            if (token.value) {
+            if (!token.value) return false;
+
+            // 获取过期时间
+            const expiryTime = storage.get<number>(TOKEN_EXPIRY_KEY, 0);
+
+            // 如果没有过期时间或已过期
+            if (!expiryTime || Date.now() >= expiryTime) {
                   clearUserState();
                   return false;
             }
-            return false;
+
+            return true;
       }
 
       // 刷新用户信息

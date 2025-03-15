@@ -39,7 +39,7 @@ const routes: Array<RouteRecordRaw> = [
                   navbar: {
                         leftButton: 'logo',
                         rightButton: 'cart',
-                        showBackground:true
+                        showBackground: true
                   }
             }
       },
@@ -53,7 +53,7 @@ const routes: Array<RouteRecordRaw> = [
                   navbar: {
                         leftButton: 'logo',
                         rightButton: 'cart',
-                        showBackground:true
+                        showBackground: true
                   }
             }
       },
@@ -67,7 +67,7 @@ const routes: Array<RouteRecordRaw> = [
                   navbar: {
                         leftButton: 'logo',
                         rightButton: 'cart',
-                        showBackground:true
+                        showBackground: true
                   },
                   requiresAuth: true
             }
@@ -80,7 +80,7 @@ const routes: Array<RouteRecordRaw> = [
             meta: {
                   title: '商品详情',
                   showTabBar: false,
-                  showNavbar: false, 
+                  showNavbar: false,
             }
       },
       {
@@ -232,7 +232,8 @@ router.beforeEach((to, _from, next) => {
       // 检查页面是否需要登录
       if (to.meta.requiresAuth) {
             const userStore = useUserStore();
-            if (!userStore.isLoggedIn) {
+            // 使用checkTokenExpiry而不是isLoggedIn
+            if (!userStore.checkTokenExpiry()) {
                   // 跳转到登录页面，并记录来源页面
                   next({
                         path: '/login',
