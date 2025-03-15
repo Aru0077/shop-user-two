@@ -5,7 +5,7 @@
             <div class="absolute inset-0 bg-transparent" @click="closeSelector"></div>
 
             <!-- 弹窗内容 -->
-            <div class="relative bg-white rounded-t-3xl w-full min-h-[60vh]  max-h-[80vh] flex flex-col z-10 shadow-xl">
+            <div class="relative bg-white rounded-t-3xl w-full min-h-[60vh] max-h-[80vh] flex flex-col z-10 shadow-xl">
                 <!-- 关闭按钮 -->
                 <div class="absolute top-4 right-4 z-20">
                     <button @click="closeSelector"
@@ -98,15 +98,17 @@ import type { ProductDetail, Sku } from '@/types/product.type';
 import { formatPrice } from '@/utils/price.utils';
 import { useToast } from '@/composables/useToast';
 
-// 在现有引入的下方添加
+// 注入toast服务
 const toast = useToast();
 
+// 定义接收的props
 const props = defineProps<{
     product: ProductDetail | null;
     isOpen: boolean;
     mode: 'cart' | 'buy';
 }>();
 
+// 定义事件
 const emit = defineEmits<{
     'update:is-open': [value: boolean];
 }>();
@@ -153,7 +155,6 @@ const maxStock = computed(() => {
 
 // 方法
 const closeSelector = () => {
-    // if (isSubmitting.value) return; // 提交中不允许关闭
     emit('update:is-open', false);
 };
 
@@ -296,8 +297,6 @@ const handleBuyNow = async () => {
 
     closeSelector();
 };
-
-
 
 // 当商品数据变化时重置选择
 watch(() => props.product, (newProduct) => {

@@ -2,20 +2,32 @@
     <div class="flex flex-col overflow-hidden h-screen w-screen">
         <!-- 顶部导航和内容区域 -->
         <div class="flex-1 w-full relative">
-            <!-- 内容区域 - 去除顶部内边距，允许内容在 header 下滚动 -->
+            <!-- 内容区域 -->
             <div v-show="product" class="overflow-y-auto absolute top-0 left-0 right-0 bottom-[60px]">
                 <ProductDetailCard :product="product" />
             </div>
-            <!-- 顶部导航栏 - 使用透明背景并确保在内容之上 -->
+            <!-- 顶部导航栏 -->
             <div class="fixed top-0 left-0 right-0 h-[60px] w-full z-20 bg-transparent box-border">
                 <ProductNavbar />
             </div>
         </div>
 
         <!-- 底部操作区 -->
-        <div class="fixed bottom-0 left-0 right-0 h-[60px] w-full z-50  box-border">
-            <ProductTabbar />
+        <div class="fixed bottom-0 left-0 right-0 h-[60px] w-full z-50 box-border">
+            <ProductTabbar 
+                :product="product"
+                @open-cart="openSkuSelector('cart')"
+                @open-buy="openSkuSelector('buy')"
+            />
         </div>
+
+        <!-- SKU选择器 - 直接在父组件中引入并传递数据 -->
+        <SkuSelector 
+            :product="product" 
+            :is-open="isSkuSelectorOpen" 
+            :mode="selectorMode"
+            @update:is-open="isSkuSelectorOpen = $event" 
+        />
     </div>
 </template>
 
@@ -24,15 +36,17 @@
 import ProductNavbar from '@/components/product/ProductNavbar.vue';
 import ProductDetailCard from '@/components/product/ProductDetailCard.vue';
 import ProductTabbar from '@/components/product/ProductTabbar.vue';
-// 引入 方法 api
-import { ref, computed, onMounted, provide } from 'vue';
+import SkuSelector from '@/components/product/SkuSelector.vue';
+
+// 引入方法和API
+import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useProductStore } from '@/stores/product.store';
 import { ProductStatus } from '@/types/common.type';
 import type { ApiError } from '@/types/common.type'
 import type { ProductDetail } from '@/types/product.type';
 
-//  为显示 骨架屏 配置空 商品数据，
+// 为显示骨架屏配置空商品数据
 const emptyProduct = ref<ProductDetail>({
     id: 0,
     categoryId: 0,
@@ -41,19 +55,18 @@ const emptyProduct = ref<ProductDetail>({
     mainImage: null,
     detailImages: [],
     is_promotion: 0,
-    status: ProductStatus.DRAFT, // 使用枚举值而不是字符串
+    status: ProductStatus.DRAFT,
     productCode: "",
     salesCount: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     skus: [],
-    // ProductDetail特有字段
     specs: [],
     validSpecCombinations: {},
     loadingSkus: true
 });
 
-// 获取路由和路由参数 从路由中获取商品id
+// 从路由中获取商品id
 const route = useRoute();
 const productId = computed(() => Number(route.params.id));
 
@@ -64,14 +77,20 @@ const productStore = useProductStore();
 const loading = ref(true);
 const error = ref<string | null>(null);
 
-// 商品详情
+// SKU选择器状态 - 在父组件中管理
+const isSkuSelectorOpen = ref(false);
+const selectorMode = ref<'cart' | 'buy'>('cart');
+
+// 商品详情 - 将传递给子组件
 const product = computed(() => productStore.currentProduct || emptyProduct.value);
 
-// 提供产品数据给子组件
-provide('product', product);
+// 打开SKU选择器
+const openSkuSelector = (mode: 'cart' | 'buy') => {
+    selectorMode.value = mode;
+    isSkuSelectorOpen.value = true;
+};
 
-
-// 获取商品完整详情（包含基础信息和SKU）
+// 获取商品完整详情
 const fetchProductData = async () => {
     if (!productId.value) return;
 
@@ -84,7 +103,6 @@ const fetchProductData = async () => {
     error.value = null;
 
     try {
-        // 使用一次性获取的方法
         await productStore.fetchProductFullDetail(productId.value);
     } catch (err) {
         error.value = (err as ApiError).message || '获取商品信息失败';
@@ -99,8 +117,3 @@ onMounted(() => {
     fetchProductData();
 });
 </script>
-
-
-<style scoped>
-/* 样式请根据需要添加 */
-</style>
