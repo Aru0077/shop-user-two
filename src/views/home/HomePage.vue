@@ -21,13 +21,15 @@
         <div class="w-full h-6"></div>
 
         <!-- 新品推荐 -->
-        <Recommend v-if="latestProducts.length" :products="latestProducts" :title="'New Arrivals'" :viewAllText="'View All'" />
+        <Recommend v-if="latestProducts.length" :products="latestProducts" :title="'New Arrivals'"
+            :viewAllText="'View All'" />
 
         <!-- 间距 占位符 -->
         <div class="w-full h-6"></div>
 
         <!-- 热卖推荐 -->
-        <Recommend v-if="topSellingProducts.length" :products="topSellingProducts" :title="'Best Sellers'" :viewAllText="'View All'" />
+        <Recommend v-if="topSellingProducts.length" :products="topSellingProducts" :title="'Best Sellers'"
+            :viewAllText="'View All'" />
 
 
     </div>
@@ -52,7 +54,20 @@ const latestProducts = computed(() => productStore.latestProducts || []);
 const topSellingProducts = computed(() => productStore.topSellingProducts || []);
 
 onMounted(async () => {
-    loading.value = productStore.loading;
+    // 优先渲染UI，延迟加载数据
+    loading.value = true;
+
+    // 使用nextTick确保DOM更新后再执行数据加载
+    nextTick(async () => {
+        try {
+            // 如果已有数据，不再重复加载
+            if (!productStore.homeData) {
+                await productStore.fetchHomeData();
+            }
+        } finally {
+            loading.value = false;
+        }
+    });
 });
 
 

@@ -14,14 +14,35 @@
             </div>
 
         </div>
-
-        <!-- 内容区域 -->
+ 
+        <!-- 内容区域 - 添加transition效果以增强感知性能 -->
         <div class="flex-1 overflow-hidden w-full">
             <router-view v-slot="{ Component }">
                 <keep-alive :include="['HomePage', 'CategoryPage', 'ProfilePage']">
-                    <component :is="Component" />
-                </keep-alive>
+                        <suspense>
+                            <component :is="Component" />
+                            <template #fallback>
+                                <div class="flex items-center justify-center h-full">
+                                    <div class="text-center">加载中...</div>
+                                </div>
+                            </template>
+                        </suspense>
+                    </keep-alive>
             </router-view>
+            <!-- <router-view v-slot="{ Component }">
+                <transition name="fade" mode="out-in">
+                    <keep-alive :include="['HomePage', 'CategoryPage', 'ProfilePage']">
+                        <suspense>
+                            <component :is="Component" />
+                            <template #fallback>
+                                <div class="flex items-center justify-center h-full">
+                                    <div class="text-center">加载中...</div>
+                                </div>
+                            </template>
+                        </suspense>
+                    </keep-alive>
+                </transition>
+            </router-view> -->
         </div>
 
         <!-- 底部固定TabBar -->
@@ -72,5 +93,15 @@ onMounted(async () => {
     height: 100vh;
     width: 100vw;
     overflow: hidden;
+}
+
+/* 添加过渡效果 */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.15s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
 }
 </style>

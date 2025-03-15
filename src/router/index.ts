@@ -248,7 +248,28 @@ router.beforeEach((to, _from, next) => {
             document.title = `${to.meta.title} - 购物商城`;
       }
 
+      if (to.name === 'Home') {
+            preloadComponent(CategoryPage);
+            preloadComponent(ProfilePage);
+      } else if (to.name === 'Category') {
+            preloadComponent(HomePage);
+            preloadComponent(ProfilePage);
+      } else if (to.name === 'Profile') {
+            preloadComponent(HomePage);
+            preloadComponent(CategoryPage);
+      }
+
       next();
 });
+
+// 添加组件预加载
+const preloadComponent = (component: any) => {
+      // 如果是异步组件，触发预加载
+      if (typeof component === 'function' && 'then' in component) {
+            component();
+      }
+      return component;
+};
+
 
 export default router;

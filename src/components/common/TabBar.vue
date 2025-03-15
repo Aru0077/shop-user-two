@@ -30,36 +30,46 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, watch } from 'vue'
 import { Home, Layers, User } from 'lucide-vue-next';
 import { useRouter, useRoute } from 'vue-router';
 
 const router = useRouter();
 const route = useRoute();
 
-const navigateTo = (path: string) => {
-    router.push(path);
-};
-
-const isActive = (path: string) => {
-    return route.path === path || route.path.startsWith(`${path}/`);
-};
-
 // 为每个路径预先计算active状态
-const activeStates = computed(() => {
-    return {
-        home: isActive('/home'),
-        category: isActive('/category'),
-        profile: isActive('/profile')
-    };
+// 使用普通对象存储状态，避免频繁计算
+const activeStates = ref({
+    home: false,
+    category: false,
+    profile: false
 });
+
+// 只在路由变化时更新一次
+watch(() => route.path, (newPath) => {
+    activeStates.value = {
+        home: newPath === '/home' || newPath.startsWith('/home/'),
+        category: newPath === '/category' || newPath.startsWith('/category/'),
+        profile: newPath === '/profile' || newPath.startsWith('/profile/')
+    };
+}, { immediate: true });
+
+const navigateTo = (path: string) => {
+    // 避免相同路由重复跳转
+    if (route.path !== path && !route.path.startsWith(path + '/')) {
+        router.push(path);
+    }
+};
+
 </script>
 
 <style scoped>
 .active .icon-container::before {
-    /* 添加硬件加速 */
-    transform: translateZ(0);
-    will-change: transform, opacity;
+    /* 优化硬件加速 */
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
+    backface-visibility: hidden;
+    perspective: 1000px;
 
     content: '';
     position: absolute;
@@ -68,16 +78,17 @@ const activeStates = computed(() => {
     background-color: black;
     border-radius: 50%;
     z-index: -1;
-    animation: scale-up 0.2s ease-out forwards;
+    animation: scale-up 0.15s ease-out forwards;
 }
 
 @keyframes scale-up {
     0% {
-        transform: scale(0) translateZ(0);
+        transform: scale(0) translate3d(0, 0, 0);
         opacity: 0;
     }
+
     100% {
-        transform: scale(1) translateZ(0);
+        transform: scale(1) translate3d(0, 0, 0);
         opacity: 1;
     }
 }
