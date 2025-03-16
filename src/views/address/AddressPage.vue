@@ -29,8 +29,8 @@
                 class="bg-white p-4 rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.08)]">
                 <div class="flex justify-between items-start mb-2">
                     <div class="flex items-center">
-                        <span class="font-medium text-gray-800">{{ address.receiverName }}</span>
-                        <span class="text-gray-500 ml-2">{{ address.receiverPhone }}</span>
+                        <span class="font-medium text-gray-800">{{ address.receiverName }} ,</span>
+                        <span class="text-gray-500 ml-1">{{ address.receiverPhone }}</span>
                     </div>
                     <div class="flex space-x-2">
                         <button @click="handleEdit(address)" class="p-1 rounded-full hover:bg-gray-100">
@@ -42,7 +42,7 @@
                     </div>
                 </div>
                 <div class="text-gray-600 text-sm mb-3">
-                    {{ address.province }} {{ address.city }} {{ address.detailAddress }}
+                    {{ address.province }} , {{ address.city }} , {{ address.detailAddress }}
                 </div>
                 <div class="flex justify-between items-center">
                     <div v-if="address.isDefault === 1"
