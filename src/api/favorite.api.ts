@@ -1,6 +1,6 @@
 // src/api/favorite.api.ts
 import http from '@/utils/request';
-import type { 
+import type {
       AddFavoriteParams,
       BatchRemoveFavoritesParams,
       FavoritesResponse,
@@ -17,14 +17,17 @@ export const favoriteApi = {
        * @param limit 每页数量
        */
       getFavorites(page: number = 1, limit: number = 10): Promise<FavoritesResponse> {
-            return http.get('/favorites', { params: { page, limit } });
+            // 改为直接URL查询参数形式
+            return http.get(`/favorites?page=${page}&limit=${limit}`);
       },
+
 
       /**
        * 获取收藏商品ID列表
        */
       getFavoriteIds(): Promise<FavoriteIdsResponse> {
-            return http.get('/favorites', { params: { idsOnly: true } });
+            // 保持直接URL查询参数形式
+            return http.get('/favorites?idsOnly=true');
       },
 
       /**

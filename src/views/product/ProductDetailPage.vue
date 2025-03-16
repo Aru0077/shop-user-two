@@ -111,8 +111,6 @@ const fetchProductData = async () => {
 
 // 组件挂载时获取商品数据
 onMounted(async () => {
-    fetchProductData();
-    
     // 如果用户已登录，确保收藏状态已初始化
     if (userStore.isLoggedIn) {
         const favoriteStore = useFavoriteStore();
@@ -120,5 +118,7 @@ onMounted(async () => {
             await favoriteStore.init();
         }
     }
+
+    fetchProductData();
 });
 </script>

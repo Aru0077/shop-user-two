@@ -8,19 +8,6 @@ import HomePage from '@/views/home/HomePage.vue';
 import CategoryPage from '@/views/category/CategoryPage.vue';
 import ProfilePage from '@/views/profile/ProfilePage.vue';
 
-// 功能页面组件
-const ProductDetailPage = () => import('@/views/product/ProductDetailPage.vue');
-const ProductListPage = () => import('@/views/product/ProductListPage.vue');
-const CartPage = () => import('@/views/cart/CartPage.vue');
-const CheckoutPage = () => import('@/views/checkout/CheckoutPage.vue');
-const OrderListPage = () => import('@/views/order/OrderListPage.vue');
-const OrderDetailPage = () => import('@/views/order/OrderDetailPage.vue');
-const AddressPage = () => import('@/views/address/AddressPage.vue');
-const FavoritePage = () => import('@/views/favorite/FavoritePage.vue');
-const NotFoundPage = () => import('@/views/error/NotFoundPage.vue');
-const LoginPage = () => import('@/views/auth/Login.vue');
-const RegisterPage = () => import('@/views/auth/Register.vue');
-
 // 定义路由 
 const routes: Array<RouteRecordRaw> = [
       {
@@ -76,7 +63,7 @@ const routes: Array<RouteRecordRaw> = [
       {
             path: '/product/:id',
             name: 'ProductDetail',
-            component: ProductDetailPage,
+            component: () => import('@/views/product/ProductDetailPage.vue'),
             meta: {
                   title: '商品详情',
                   showTabBar: false,
@@ -86,7 +73,7 @@ const routes: Array<RouteRecordRaw> = [
       {
             path: '/product-list/:type',
             name: 'ProductList',
-            component: ProductListPage,
+            component: () => import('@/views/product/ProductListPage.vue'),
             meta: {
                   title: '商品列表',
                   showTabBar: false,
@@ -99,7 +86,7 @@ const routes: Array<RouteRecordRaw> = [
       {
             path: '/cart',
             name: 'Cart',
-            component: CartPage,
+            component: () => import('@/views/cart/CartPage.vue'),
             meta: {
                   title: '购物车',
                   showTabBar: false,
@@ -113,7 +100,7 @@ const routes: Array<RouteRecordRaw> = [
       {
             path: '/checkout',
             name: 'Checkout',
-            component: CheckoutPage,
+            component: () => import('@/views/checkout/CheckoutPage.vue'),
             meta: {
                   title: '结算',
                   showTabBar: false,
@@ -126,7 +113,7 @@ const routes: Array<RouteRecordRaw> = [
       {
             path: '/order',
             name: 'OrderList',
-            component: OrderListPage,
+            component: () => import('@/views/order/OrderListPage.vue'),
             meta: {
                   title: '我的订单',
                   showTabBar: false,
@@ -139,7 +126,7 @@ const routes: Array<RouteRecordRaw> = [
       {
             path: '/order/:id',
             name: 'OrderDetail',
-            component: OrderDetailPage,
+            component: () => import('@/views/order/OrderDetailPage.vue'),
             meta: {
                   title: '订单详情',
                   showTabBar: false,
@@ -152,7 +139,7 @@ const routes: Array<RouteRecordRaw> = [
       {
             path: '/address',
             name: 'Address',
-            component: AddressPage,
+            component: () => import('@/views/address/AddressPage.vue'),
             meta: {
                   title: '收货地址',
                   showTabBar: false,
@@ -166,7 +153,7 @@ const routes: Array<RouteRecordRaw> = [
       {
             path: '/favorite',
             name: 'Favorite',
-            component: FavoritePage,
+            component: () => import('@/views/favorite/FavoritePage.vue'),
             meta: {
                   title: '我的收藏',
                   showTabBar: false,
@@ -181,7 +168,7 @@ const routes: Array<RouteRecordRaw> = [
       {
             path: '/login',
             name: 'Login',
-            component: LoginPage,
+            component: () => import('@/views/auth/Login.vue'),
             meta: {
                   title: '登录',
                   showTabBar: false,
@@ -193,9 +180,45 @@ const routes: Array<RouteRecordRaw> = [
       {
             path: '/register',
             name: 'Register',
-            component: RegisterPage,
+            component: () => import('@/views/auth/Register.vue'),
             meta: {
                   title: '注册',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back'
+                  },
+            }
+      },
+      {
+            path: '/privacy-policy',
+            name: 'PrivacyPolicy',
+            component: () => import('@/views/auth/PrivacyPolicy.vue'),
+            meta: {
+                  title: '隐私政策',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back'
+                  },
+            }
+      },
+      {
+            path: '/terms-of-service',
+            name: 'TermsOfService',
+            component: () => import('@/views/auth/TermsOfService.vue'),
+            meta: {
+                  title: '服务条款',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back'
+                  },
+            }
+      },
+      {
+            path: '/delete-account',
+            name: 'DeleteAccount',
+            component: () => import('@/views/auth/DeleteAccount.vue'),
+            meta: {
+                  title: '删除账号',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
@@ -206,7 +229,7 @@ const routes: Array<RouteRecordRaw> = [
       {
             path: '/:pathMatch(.*)*',
             name: 'NotFound',
-            component: NotFoundPage,
+            component: () => import('@/views/error/NotFoundPage.vue'),
             meta: {
                   title: '页面不存在',
                   showTabBar: false

@@ -186,49 +186,25 @@ const request = <T = any>(config: RequestConfig): Promise<T> => {
 export const http = {
       // 支持请求缓存的GET方法
       get: <T = any>(url: string, params?: any, config?: RequestConfig): Promise<T> => {
-            const useCache = config?.useCache;
-            const cacheKey = `api_cache_${url}_${JSON.stringify(params)}`;
+            // 检查URL是否已包含查询参数
+            const hasQueryParams = url.includes('?');
 
-            // 如果启用缓存且缓存中有数据，直接返回缓存数据
-            if (useCache) {
-                  const cachedData = localStorage.getItem(cacheKey);
-                  if (cachedData) {
-                        try {
-                              const cache = JSON.parse(cachedData);
-                              const { data, expiry } = cache as { data: T; expiry: number };
-                              // 检查缓存是否过期
-                              if (expiry > Date.now()) {
-                                    return Promise.resolve(data);
-                              }
-                              // 缓存过期，删除
-                              localStorage.removeItem(cacheKey);
-                        } catch (e) {
-                              localStorage.removeItem(cacheKey);
-                        }
-                  }
+            if (hasQueryParams) {
+                  // 如果URL已包含查询参数，不再添加params对象
+                  return request<T>({
+                        ...config,
+                        method: 'get',
+                        url,
+                  });
+            } else {
+                  // 否则正常处理params
+                  return request<T>({
+                        ...config,
+                        method: 'get',
+                        url,
+                        params,
+                  });
             }
-
-            return request<T>({
-                  ...config,
-                  method: 'get',
-                  url,
-                  params,
-            }).then(data => {
-                  // 如果启用缓存，将结果存入缓存
-                  if (useCache) {
-                        try {
-                              // 默认缓存5分钟
-                              const cacheExpiry = Date.now() + (1000 * 60 * 5);
-                              localStorage.setItem(cacheKey, JSON.stringify({
-                                    data,
-                                    expiry: cacheExpiry
-                              }));
-                        } catch (e) {
-                              console.warn('Failed to cache response:', e);
-                        }
-                  }
-                  return data;
-            });
       },
 
       post: <T = any>(url: string, data?: any, config?: RequestConfig): Promise<T> => {
