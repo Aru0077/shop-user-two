@@ -41,7 +41,9 @@ import SkuSelector from '@/components/product/SkuSelector.vue';
 // 引入方法和API
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { useUserStore } from '@/stores/user.store';
 import { useProductStore } from '@/stores/product.store';
+import { useFavoriteStore } from '@/stores/favorite.store';
 import { ProductStatus } from '@/types/common.type';
 import type { ApiError } from '@/types/common.type'
 import type { ProductDetail } from '@/types/product.type';
@@ -51,16 +53,10 @@ const emptyProduct = ref<ProductDetail>({
     id: 0,
     categoryId: 0,
     name: "",
-    content: null,
-    mainImage: null,
-    detailImages: [],
-    is_promotion: 0,
     status: ProductStatus.DRAFT,
     productCode: "",
-    salesCount: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    skus: [],
+    createdAt: "",
+    updatedAt: "",
     specs: [],
     validSpecCombinations: {},
     loadingSkus: true
@@ -72,6 +68,7 @@ const productId = computed(() => Number(route.params.id));
 
 // 使用商品状态管理
 const productStore = useProductStore();
+const userStore = useUserStore()
 
 // 组件内部状态
 const loading = ref(true);
@@ -95,7 +92,7 @@ const fetchProductData = async () => {
     if (!productId.value) return;
 
     // 避免重复请求同一商品
-    if (product.value && product.value.id === productId.value) {
+    if (product.value && product.value.id === productId.value && !product.value.loadingSkus) {
         return;
     }
 
@@ -113,7 +110,15 @@ const fetchProductData = async () => {
 };
 
 // 组件挂载时获取商品数据
-onMounted(() => {
+onMounted(async () => {
     fetchProductData();
+    
+    // 如果用户已登录，确保收藏状态已初始化
+    if (userStore.isLoggedIn) {
+        const favoriteStore = useFavoriteStore();
+        if (!favoriteStore.isInitialized) {
+            await favoriteStore.init();
+        }
+    }
 });
 </script>

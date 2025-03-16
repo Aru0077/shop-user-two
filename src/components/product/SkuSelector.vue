@@ -246,27 +246,24 @@ const handleAddToCart = async () => {
     }
 
     try {
-        // 1. 准备本地提交的数据
+        // 1. 准备提交的数据
         const cartData = {
             productId: props.product.id,
             skuId: selectedSkuId.value,
             quantity: quantity.value
         };
 
-        // 2. 先关闭弹窗
+        // 2. 先关闭弹窗提供良好的用户体验
         closeSelector();
-
-        // 3. 立即显示成功提示
-        toast.success('success');
-
-        // 4. 后台发送请求 - 成功时不做提示，失败时显示英文错误信息
-        cartStore.addToCart(cartData).catch(error => {
-            console.error('Adding to cart failed:', error);
-            toast.error('Failed to add item to cart. Please try again.');
-        });
+        
+        // 3. 添加到购物车并等待结果
+        await cartStore.addToCart(cartData);
+        
+        // 4. 请求成功后才显示成功提示
+        toast.success('添加成功');
     } catch (error) {
-        console.error('Preparing cart data failed:', error);
-        toast.error('Failed to add item to cart. Please try again.');
+        console.error('Adding to cart failed:', error);
+        toast.error('添加购物车失败，请重试');
     }
 };
 

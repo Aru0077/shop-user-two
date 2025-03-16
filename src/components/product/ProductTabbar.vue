@@ -57,38 +57,44 @@ const isLocalFavorite = ref(false);
 
 // 在组件挂载时初始化
 onMounted(async () => {
-    // 如果用户已登录
+    // 如果用户已登录，则确保获取收藏列表
     if (userStore.isLoggedIn) {
-        // 如果收藏store未初始化，先初始化
-        if (!favoriteStore.isInitialized && !favoriteStore.isInitializing) {
-            await favoriteStore.init();
+        try {
+            // 无论收藏 store 当前状态如何，都尝试确保有收藏 ID 数据
+            if (!favoriteStore.isInitialized) {
+                await favoriteStore.init();
+            }
+            
+            // 如果初始化完成但没有收藏 ID，显式获取一次
+            if (favoriteStore.isInitialized && favoriteStore.favoriteIds.length === 0) {
+                await favoriteStore.fetchFavoriteIds();
+            }
+            
+            // 设置初始收藏状态
+            updateLocalFavoriteState();
+        } catch (error) {
+            console.error('初始化收藏状态失败:', error);
         }
-        // 如果收藏IDs未获取，获取收藏IDs
-        else if (favoriteStore.isInitialized && favoriteStore.favoriteIds.length === 0) {
-            await favoriteStore.fetchFavoriteIds();
-        }
-
-        // 设置初始收藏状态
-        updateLocalFavoriteState();
     }
 });
-
 // 监听商品变化，更新本地收藏状态
 watch(() => props.product, updateLocalFavoriteState, { immediate: true });
 
 // 监听收藏IDs变化，更新本地收藏状态
 watch(() => favoriteStore.favoriteIds, updateLocalFavoriteState);
 
-// 更新本地收藏状态
+// 更新本地收藏状态 
 function updateLocalFavoriteState() {
     if (props.product && props.product.id && userStore.isLoggedIn) {
+        // 确保读取最新的收藏状态
         isLocalFavorite.value = favoriteStore.isFavorite(props.product.id);
+        console.log('商品收藏状态:', isLocalFavorite.value, '商品ID:', props.product.id);
     } else {
         isLocalFavorite.value = false;
     }
 }
 
-// 切换收藏状态
+// 切换收藏状态 
 const toggleFavorite = async () => {
     // 如果产品不存在，直接返回
     if (!props.product || !props.product.id) return;
@@ -110,29 +116,31 @@ const toggleFavorite = async () => {
         isLocalFavorite.value = !wasLocalFavorite;
 
         if (wasLocalFavorite) {
-            // 如果已收藏，则取消收藏
-            toast.success('已取消收藏');
-
-            // 在后台发送请求
-            favoriteStore.removeFavorite(productId).catch(() => {
-                // 如果请求失败，恢复本地状态
+            // 取消收藏
+            const success = await favoriteStore.removeFavorite(productId);
+            if (success) {
+                toast.success('已取消收藏');
+            } else {
+                // 恢复本地状态
                 isLocalFavorite.value = true;
                 toast.error('取消收藏失败，请重试');
-            });
+            }
         } else {
-            // 如果未收藏，则添加收藏
-            toast.success('收藏成功');
-
-            // 在后台发送请求
-            favoriteStore.addFavorite({ productId }).catch(() => {
-                // 如果请求失败，恢复本地状态
+            // 添加收藏
+            const success = await favoriteStore.addFavorite({ productId });
+            if (success) {
+                toast.success('收藏成功');
+            } else {
+                // 恢复本地状态
                 isLocalFavorite.value = false;
                 toast.error('收藏失败，请重试');
-            });
+            }
         }
     } catch (error) {
         console.error('收藏操作失败:', error);
         toast.error('操作失败，请重试');
+        // 错误时恢复原始状态
+        updateLocalFavoriteState();
     }
 };
 </script>
