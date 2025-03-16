@@ -34,6 +34,8 @@ import {
     Plus,
 } from 'lucide-vue-next';
 import LogoIcon from '@/assets/logo.png';
+import { useAddressStore } from '@/stores/address.store';
+
 
 
 interface NavbarOptions {
@@ -45,6 +47,12 @@ interface NavbarOptions {
 // Get current route
 const route = useRoute();
 const router = useRouter();
+const addressStore = useAddressStore();
+
+// 计算属性
+const addresses = computed(() => addressStore.addresses);
+
+
 
 // Default navbar options
 const defaultNavbarOptions: NavbarOptions = {
@@ -70,9 +78,7 @@ const handleLeftButtonClick = () => {
         case 'back':
             router.back();
             break;
-        case 'add':
-            // Handle menu click, e.g., emit event or toggle sidebar
-            break;
+        
         default:
             break;
     }
@@ -84,15 +90,12 @@ const handleRightButtonClick = () => {
         case 'cart':
             router.push('/cart');
             break;
-        case 'search':
-            // Handle search click, e.g., show search overlay
+        case 'add':
+            if(addresses.value.length < 10){
+                router.push('/new-address');
+            } 
             break;
-        case 'user':
-            router.push('/profile');
-            break;
-        case 'settings':
-            router.push('/settings');
-            break;
+      
         default:
             break;
     }
