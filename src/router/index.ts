@@ -151,6 +151,19 @@ const routes: Array<RouteRecordRaw> = [
             }
       },
       {
+            path: '/new-address',
+            name: 'NewAddress',
+            component: () => import('@/views/address/NewAddress.vue'),
+            meta: {
+                  title: '新增地址',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back',
+                  },
+                  requiresAuth: true
+            }
+      },
+      {
             path: '/favorite',
             name: 'Favorite',
             component: () => import('@/views/favorite/FavoritePage.vue'),

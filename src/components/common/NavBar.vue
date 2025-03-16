@@ -2,24 +2,23 @@
     <nav class="h-[60px] flex justify-between items-center px-4 z-50 transition-colors duration-300 border-b "
         :class="{ 'bg-white/80 backdrop-blur-sm': navbarOptions.showBackground, 'bg-transparent': !navbarOptions.showBackground }">
         <!-- 导航栏内容保持不变 -->
-        <!-- Left Button -->
+        <!-- 左侧按钮 Button -->
         <div v-if="navbarOptions.leftButton"
             class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer"
             @click="handleLeftButtonClick">
             <img v-if="navbarOptions.leftButton === 'logo'" :src="LogoIcon" alt="" class="w-6 h-6" />
-            <ArrowLeft v-if="navbarOptions.leftButton === 'back'" class="w-6 h-6 text-black" />
-            <Menu v-if="navbarOptions.leftButton === 'menu'" class="w-6 h-6 text-black" />
+            <ChevronLeft v-if="navbarOptions.leftButton === 'back'" class="w-6 h-6 text-black" />
         </div>
+
         <div v-else class="w-10"></div>
 
-        <!-- Right Button -->
+        <!-- 右侧按钮 Button -->
         <div v-if="navbarOptions.rightButton"
             class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer"
             @click="handleRightButtonClick">
-            <ShoppingCart v-if="navbarOptions.rightButton === 'cart'" class="w-6 h-6 text-black" />
-            <Search v-if="navbarOptions.rightButton === 'search'" class="w-6 h-6 text-black" />
-            <UserCircle v-if="navbarOptions.rightButton === 'user'" class="w-6 h-6 text-black" />
-            <Settings v-if="navbarOptions.rightButton === 'settings'" class="w-6 h-6 text-black" />
+            <ShoppingCart v-if="navbarOptions.rightButton === 'cart'" class="w-6 h-6 text-black" />   
+            <FilePenLine v-if="navbarOptions.rightButton === 'edit'" class="w-6 h-6 text-black"/>
+            <Plus v-if="navbarOptions.rightButton === 'add'" class="w-6 h-6 text-black"/>
         </div>
         <div v-else class="w-10"></div>
     </nav>
@@ -30,11 +29,9 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
     ShoppingCart,
-    Search,
-    UserCircle,
-    Settings,
-    ArrowLeft,
-    Menu
+    FilePenLine,
+    ChevronLeft,
+    Plus,
 } from 'lucide-vue-next';
 import LogoIcon from '@/assets/logo.png';
 
@@ -69,12 +66,11 @@ const navbarOptions = computed<NavbarOptions>(() => {
 const handleLeftButtonClick = () => {
     switch (navbarOptions.value.leftButton) {
         case 'logo':
-            // router.push('/home');
             break;
         case 'back':
             router.back();
             break;
-        case 'menu':
+        case 'add':
             // Handle menu click, e.g., emit event or toggle sidebar
             break;
         default:
