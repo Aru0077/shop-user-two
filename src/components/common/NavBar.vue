@@ -16,9 +16,9 @@
         <div v-if="navbarOptions.rightButton"
             class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer"
             @click="handleRightButtonClick">
-            <ShoppingCart v-if="navbarOptions.rightButton === 'cart'" class="w-6 h-6 text-black" />   
-            <FilePenLine v-if="navbarOptions.rightButton === 'edit'" class="w-6 h-6 text-black"/>
-            <Plus v-if="navbarOptions.rightButton === 'add'" class="w-6 h-6 text-black"/>
+            <ShoppingCart v-if="navbarOptions.rightButton === 'cart'" class="w-6 h-6 text-black" />
+            <FilePenLine v-if="navbarOptions.rightButton === 'edit'" class="w-6 h-6 text-black" />
+            <Plus v-if="navbarOptions.rightButton === 'add'" class="w-6 h-6 text-black" />
         </div>
         <div v-else class="w-10"></div>
     </nav>
@@ -76,9 +76,22 @@ const handleLeftButtonClick = () => {
         case 'logo':
             break;
         case 'back':
-            router.back();
+            // 检查是否在地址列表页，且带有特定标记
+            if (route.path === '/address' && route.query.from === 'editor') {
+                // 清除查询参数，避免影响下次访问
+                const { from, ...otherQuery } = route.query;
+
+                // 直接导航到个人中心页面或应用首页
+                router.replace({
+                    path: '/profile',  // 或其他合适的返回页面，如'/home'
+                    query: otherQuery
+                });
+            } else {
+                // 正常的返回操作
+                router.back();
+            }
             break;
-        
+
         default:
             break;
     }
@@ -91,11 +104,11 @@ const handleRightButtonClick = () => {
             router.push('/cart');
             break;
         case 'add':
-            if(addresses.value.length < 10){
+            if (addresses.value.length < 10) {
                 router.push('/new-address');
-            } 
+            }
             break;
-      
+
         default:
             break;
     }

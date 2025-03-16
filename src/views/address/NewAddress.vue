@@ -233,9 +233,10 @@ const handleSubmit = async () => {
             toast.success('Address added successfully');
         }
 
-        setTimeout(() => {
-            router.replace('/address');
-        }, 200);
+        router.replace({
+            path: '/address',
+            query: { from: 'editor' }  // 添加来源标记
+        });
     } catch (error: any) {
         toast.error(error.message || 'Failed to save address');
     }
@@ -243,8 +244,9 @@ const handleSubmit = async () => {
 
 // 取消操作
 const handleCancel = () => {
-    setTimeout(() => {
-            router.replace('/address');
-        }, 100);
+    router.replace({
+        path: '/address',
+        query: { from: 'editor' }  // 添加来源标记
+    });
 };
 </script>
