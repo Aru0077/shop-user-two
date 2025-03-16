@@ -38,10 +38,10 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue';
+import { defineProps } from 'vue';
 import type { CartItem } from '@/types/cart.type';
 
-const props = defineProps<{
+defineProps<{
     item: CartItem;
     isSelected: boolean;
 }>();

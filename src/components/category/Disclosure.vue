@@ -28,9 +28,9 @@
         <!-- 加载中状态 -->
         <div v-if="loading" class="mt-6 text-center text-gray-500 py-8 bg-white rounded-md shadow-sm">
             <div
-                class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-indigo-500 border-r-transparent mr-2 align-middle">
+                class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-gray-500 border-r-transparent mr-2 align-middle">
             </div>
-            <span>加载分类中...</span>
+            <span>Loading...</span>
         </div>
 
         <!-- 错误信息 -->
