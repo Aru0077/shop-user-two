@@ -5,7 +5,7 @@ import { checkoutApi } from '@/api/checkout.api';
 import { cartApi } from '@/api/cart.api';
 import { storage } from '@/utils/storage';
 import { useUserStore } from './user.store';
-import type { CheckoutInfo, TempOrder } from '@/types/checkout.type';
+import type { CheckoutInfo } from '@/types/checkout.type';
 import type { OrderAmountPreview, PreviewOrderParams } from '@/types/cart.type';
 
 // 缓存键
@@ -31,8 +31,6 @@ export const useCheckoutStore = defineStore('checkout', () => {
     const isInitialized = ref<boolean>(false);
     const isInitializing = ref<boolean>(false);
 
-    // 临时订单
-    const tempOrder = ref<TempOrder | null>(null);
 
     // 使用其他store
     const userStore = useUserStore();
@@ -222,72 +220,8 @@ export const useCheckoutStore = defineStore('checkout', () => {
         remark.value = text;
     }
 
-    // 添加创建临时订单的方法
-    async function createTempOrder(params: {
-        mode: 'cart' | 'quick-buy';
-        cartItemIds?: number[];
-        productInfo?: { productId: number; skuId: number; quantity: number };
-    }) {
-        loading.value = true;
-        error.value = null;
 
-        try {
-            // 调用 API 创建临时订单
-            const response = await checkoutApi.createTempOrder(params);
-            tempOrder.value = response;
 
-            // 如果有默认地址，自动设置
-            if (response.defaultAddressId) {
-                selectedAddressId.value = response.defaultAddressId;
-            }
-
-            // 如果有首选支付方式，自动设置
-            if (response.preferredPaymentType) {
-                selectedPaymentType.value = response.preferredPaymentType;
-            }
-
-            return response;
-        } catch (err: any) {
-            error.value = err.message || '创建临时订单失败';
-            throw err;
-        } finally {
-            loading.value = false;
-        }
-    }
-
-    // 添加临时订单预览更新方法
-    async function updateTempOrder(params: {
-        addressId?: number;
-        paymentType?: string;
-        remark?: string;
-    }) {
-        if (!tempOrder.value) {
-            throw new Error('没有临时订单');
-        }
-
-        loading.value = true;
-        error.value = null;
-
-        try {
-            const response = await checkoutApi.updateTempOrder(
-                tempOrder.value.id,
-                params
-            );
-
-            // 更新临时订单信息
-            tempOrder.value = {
-                ...tempOrder.value,
-                ...response
-            };
-
-            return tempOrder.value;
-        } catch (err: any) {
-            error.value = err.message || '更新临时订单失败';
-            throw err;
-        } finally {
-            loading.value = false;
-        }
-    }
 
     // 重置结算状态
     function resetCheckout() {
@@ -324,7 +258,6 @@ export const useCheckoutStore = defineStore('checkout', () => {
         loading,
         error,
         lastFetchTime,
-        tempOrder,
 
         // 计算属性
         isReadyToCheckout,
@@ -340,7 +273,6 @@ export const useCheckoutStore = defineStore('checkout', () => {
         resetCheckout,
         clearCheckoutCache,
 
-        createTempOrder,
-        updateTempOrder,
+    
     };
 });

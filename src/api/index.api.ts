@@ -7,6 +7,7 @@ import { favoriteApi } from '@/api/favorite.api';
 import { orderApi } from '@/api/order.api';
 import { promotionApi } from '@/api/promotion.api';
 import { checkoutApi } from '@/api/checkout.api';
+import { tempOrderApi } from '@/api/temp-order.api';
 
 
 /**
@@ -20,7 +21,8 @@ export const api = {
       favoriteApi, 
       orderApi, 
       promotionApi, 
-      checkoutApi
+      checkoutApi,
+      tempOrderApi
 };
  
 
