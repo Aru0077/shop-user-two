@@ -183,11 +183,27 @@ watch(cartItems, (newItems) => {
 }, { deep: true });
 
 // 组件挂载时获取购物车数据
+// 组件挂载时获取购物车数据
 onMounted(async () => {
-    if (!cartStore.isInitialized && !cartStore.isInitializing) {
-        await cartStore.initCart();
+    // 确保购物车数据已加载
+    if (!cartStore.isInitialized) {
+        if (cartStore.isInitializing) {
+            // 等待初始化完成
+            await new Promise<void>(resolve => {
+                const unwatch = watch(() => cartStore.isInitializing, (isInitializing) => {
+                    if (!isInitializing) {
+                        unwatch();
+                        resolve();
+                    }
+                });
+            });
+        } else {
+            // 手动初始化
+            await cartStore.initCart();
+        }
     }
 
+    // 初始化完成后，选择可购买商品
     if (cartItems.value.length > 0) {
         // 默认全选可购买的商品
         selectedItems.value = cartItems.value
