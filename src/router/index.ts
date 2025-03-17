@@ -91,7 +91,6 @@ const routes: Array<RouteRecordRaw> = [
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back',
-                        rightButton: 'edit'
                   }
             }
       },

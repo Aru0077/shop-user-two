@@ -1,52 +1,95 @@
-<!-- src/views/cart/components/CartItem.vue -->
+<!-- src/components/cart/CartItem.vue -->
 <template>
-    <div class="flex items-center p-3 bg-white mb-2 rounded-lg shadow-[0_0_15px_rgba(0,0,0,0.08)]">
-        <!-- 选择器 -->
-        <div class="mr-3">
-            <input type="checkbox" :checked="isSelected" @change="$emit('toggle-select', item.id)"
-                class="w-5 h-5 accent-black" />
+    <div class="flex flex-col bg-white rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.08)] overflow-hidden mb-3 relative"
+        :class="{ 'opacity-70': !item.isAvailable }">
+        <!-- 商品不可用标签 -->
+        <div v-if="!item.isAvailable" class="absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1 rounded-bl-lg">
+            不可购买
         </div>
 
-        <!-- 商品图片 -->
-        <div class="w-16 h-16 rounded-md overflow-hidden mr-3">
-            <img :src="item.product?.mainImage || 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png'"
-                :alt="item.product?.name" class="w-full h-full object-cover" />
+        <div class="p-3 flex items-start">
+            <!-- 选择框 -->
+            <div class="mr-3 mt-1">
+                <input type="checkbox" :checked="isSelected" @change="$emit('toggle-select', item.id)"
+                    :disabled="!item.isAvailable" class="w-5 h-5 accent-black" />
+            </div>
+
+            <!-- 商品图片 -->
+            <div class="w-24 h-24 rounded-lg overflow-hidden mr-3 flex-shrink-0 border border-gray-100">
+                <img :src="item.product?.mainImage || 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png'"
+                    :alt="item.product?.name" class="w-full h-full object-cover" />
+            </div>
+
+            <!-- 商品信息 -->
+            <div class="flex-1 min-w-0">
+                <!-- 商品名称 -->
+                <div class="text-sm font-medium line-clamp-2">{{ item.product?.name || '商品名称' }}</div>
+                
+                <!-- 规格信息 -->
+                <div v-if="item.skuData?.sku_specs && item.skuData.sku_specs.length > 0" 
+                    class="text-xs text-gray-500 mt-1 line-clamp-1">
+                    {{ formatSpecs(item.skuData.sku_specs) }}
+                </div>
+                
+                <!-- 价格和数量 -->
+                <div class="flex justify-between items-end mt-2">
+                    <!-- 价格 -->
+                    <div class="text-red-500 font-bold">
+                        {{ formatPrice(item.skuData?.promotion_price || item.skuData?.price) }}
+                    </div>
+
+                    <!-- 非编辑模式下的数量显示 -->
+                    <div v-if="!isEditMode" class="text-sm text-gray-500">
+                        x{{ item.quantity }}
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- 商品信息 -->
-        <div class="flex-1">
-            <div class="text-sm font-medium">{{ item.product?.name || '商品名称' }}</div>
-
-            <!-- 规格信息 -->
-            <div v-if="item.skuData?.sku_specs && item.skuData.sku_specs.length > 0" class="text-xs text-gray-500 mt-1">
-                {{ formatSpecs(item.skuData.sku_specs) }}
-            </div>
-
-            <div class="flex justify-between items-center mt-1">
-                <!-- 价格 -->
-                <div class="text-sm font-bold text-red-500">
-                    {{ formatPrice(item.skuData?.promotion_price || item.skuData?.price) }}
-                </div>
-
-                <!-- 数量 -->
-                <div class="text-sm text-gray-500">
-                    x{{ item.quantity }}
-                </div>
-            </div>
+        <!-- 编辑模式下的操作栏 -->
+        <div v-if="isEditMode" class="flex justify-between items-center p-3 bg-gray-50 border-t border-gray-100">
+            <!-- 删除按钮 -->
+            <button @click="$emit('remove', item.id)" 
+                class="text-gray-500 hover:text-red-500 flex items-center text-xs">
+                <Trash2 :size="14" class="mr-1" />
+                <span>删除</span>
+            </button>
+            
+            <!-- 数量调整器 -->
+            <QuantityAdjuster 
+                :quantity="item.quantity" 
+                :maxQuantity="item.skuData?.stock || 99"
+                :disabled="!item.isAvailable"
+                @update:quantity="updateQuantity"
+            />
         </div>
     </div>
 </template>
 
-<script setup lang="ts"> 
+<script setup lang="ts">
+import { Trash2 } from 'lucide-vue-next';
 import type { CartItem } from '@/types/cart.type';
+import QuantityAdjuster from './QuantityAdjuster.vue';
 
-defineProps<{
-    item: CartItem;
-    isSelected: boolean;
-}>();
+const props = defineProps({
+    item: {
+        type: Object as () => CartItem,
+        required: true
+    },
+    isSelected: {
+        type: Boolean,
+        default: false
+    },
+    isEditMode: {
+        type: Boolean,
+        default: false
+    }
+});
 
-defineEmits<{
+const emit = defineEmits<{
     'toggle-select': [id: number];
+    'update-quantity': [id: number, quantity: number];
+    'remove': [id: number];
 }>();
 
 // 格式化价格
@@ -59,4 +102,9 @@ const formatPrice = (price?: number): string => {
 const formatSpecs = (specs: Array<{ spec: { name: string }, specValue: { value: string } }>): string => {
     return specs.map(spec => `${spec.spec.name}: ${spec.specValue.value}`).join(', ');
 };
-</script>
+
+// 更新数量
+const updateQuantity = (quantity: number) => {
+    emit('update-quantity', props.item.id, quantity);
+};
+</script>   
