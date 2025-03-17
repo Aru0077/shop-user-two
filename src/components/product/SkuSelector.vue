@@ -97,6 +97,7 @@ import { useUserStore } from '@/stores/user.store';
 import type { ProductDetail, Sku } from '@/types/product.type';
 import { formatPrice } from '@/utils/price.utils';
 import { useToast } from '@/composables/useToast';
+import { useTempOrderStore } from '@/stores/temp-order.store'
 
 // 注入toast服务
 const toast = useToast();
@@ -123,6 +124,7 @@ const quantity = ref(1);
 const selectedSpecs = ref<Map<number, number>>(new Map());
 const selectedSkuId = ref<number | null>(null);
 const isSubmitting = ref(false);
+const loading = ref(false)
 
 // 计算属性
 const selectedSku = computed<Sku | null>(() => {
@@ -269,18 +271,34 @@ const handleBuyNow = async () => {
         return;
     }
 
-    // 跳转到结算页面
-    router.push({
-        path: '/checkout',
-        query: {
-            mode: 'quick-buy',
-            productId: props.product.id.toString(),
-            skuId: selectedSkuId.value.toString(),
-            quantity: quantity.value.toString()
-        }
-    });
+    loading.value = true;
 
-    closeSelector();
+    try {
+        // 1. 创建临时订单
+        const tempOrderStore = useTempOrderStore();
+        const tempOrder = await tempOrderStore.createTempOrder({
+            mode: 'quick-buy',
+            productInfo: {
+                productId: props.product.id,
+                skuId: selectedSkuId.value,
+                quantity: quantity.value
+            }
+        });
+
+        // 2. 跳转到结账页面，带上临时订单ID
+        router.push({
+            path: '/checkout',
+            query: {
+                tempOrderId: tempOrder.id
+            }
+        });
+    } catch (error) {
+        toast.error('创建订单失败，请重试');
+        console.error('创建临时订单失败:', error);
+    } finally {
+        loading.value = false;
+        closeSelector();
+    }
 };
 
 // 当商品数据变化时重置选择

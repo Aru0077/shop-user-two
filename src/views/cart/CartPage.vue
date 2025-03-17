@@ -42,14 +42,20 @@ import PageTitle from '@/components/common/PageTitle.vue';
 import CartItem from '@/components/cart/CartItem.vue';
 import CartSummary from '@/components/cart/CartSummary.vue';
 import EmptyCart from '@/components/cart/EmptyCart.vue';
+import { useUserStore } from '@/stores/user.store';
+import { useTempOrderStore } from '@/stores/temp-order.store'
 
 // 初始化
 const router = useRouter();
 const cartStore = useCartStore();
+const userStore = useUserStore()
 const toast = useToast();
 
 // 状态
-const loading = computed(() => cartStore.loading);
+const loading = ref(false);
+watch(() => cartStore.loading, (newLoading) => {
+    loading.value = newLoading;
+});
 const cartItems = computed(() => cartStore.cartItems);
 const isEditMode = ref(false);
 const selectedItems = ref<number[]>([]);
@@ -154,19 +160,44 @@ const batchRemove = async () => {
     }
 };
 
-// 去结算
-const checkout = () => {
+// 去结算 
+const checkout = async () => {
     if (selectedItems.value.length === 0) {
-        toast.error('Please select items to checkout');
+        toast.error('请选择要结算的商品');
         return;
     }
 
-    router.push({
-        path: '/checkout',
-        query: {
-            cartItemIds: selectedItems.value.join(',')
-        }
-    });
+    // 检查用户是否登录
+    if (!userStore.isLoggedIn) {
+        router.push({
+            path: '/login',
+            query: { redirect: '/cart' }
+        });
+        return;
+    }
+
+    loading.value = true;
+    try {
+        // 1. 创建临时订单
+        const tempOrderStore = useTempOrderStore();
+        const tempOrder = await tempOrderStore.createTempOrder({
+            mode: 'cart',
+            cartItemIds: selectedItems.value
+        });
+
+        // 2. 跳转到结账页面，带上临时订单ID
+        router.push({
+            path: '/checkout',
+            query: {
+                tempOrderId: tempOrder.id
+            }
+        });
+    } catch (error) {
+        toast.error('创建订单失败，请重试');
+        console.error('创建临时订单失败:', error);
+    } finally {
+        loading.value = false;
+    }
 };
 
 // 去首页购物
