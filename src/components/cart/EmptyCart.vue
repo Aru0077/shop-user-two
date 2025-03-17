@@ -4,10 +4,10 @@
         <div class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-4">
             <ShoppingCart :size="36" class="text-gray-400" />
         </div>
-        <div class="text-gray-500 mb-6">购物车还是空的</div>
+        <div class="text-gray-500 mb-6">Your Cart is Empty</div>
         <button @click="$emit('shop-now')" class="bg-black text-white py-3 px-8 rounded-full flex items-center">
             <ShoppingBag :size="16" class="mr-2" />
-            去购物
+            Shop Now
         </button>
     </div>
 </template>

@@ -5,7 +5,7 @@
         <!-- 商品不可用标签 -->
         <div v-if="!item.isAvailable"
             class="absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1 rounded-bl-lg">
-            不可购买
+            Unavailable
         </div>
 
         <div class="p-3 flex items-start">
@@ -24,7 +24,7 @@
             <!-- 商品信息 -->
             <div class="flex-1 min-w-0">
                 <!-- 商品名称 -->
-                <div class="text-sm font-medium line-clamp-2">{{ item.product?.name || '商品名称' }}</div>
+                <div class="text-sm font-medium line-clamp-2">{{ item.product?.name || 'Product Name' }}</div>
 
                 <!-- 规格信息 -->
                 <div v-if="item.skuData?.sku_specs && item.skuData.sku_specs.length > 0"
@@ -53,7 +53,7 @@
             <button @click="$emit('remove', item.id)"
                 class="text-gray-500 hover:text-red-500 flex items-center text-xs">
                 <Trash2 :size="14" class="mr-1" />
-                <span>删除</span>
+                <span>Delete</span>
             </button>
 
             <!-- 数量调整器 -->
@@ -96,7 +96,7 @@ const emit = defineEmits<{
 
 // 格式化价格
 const formatPrice = (price?: number): string => {
-    if (price === undefined) return '价格未知';
+    if (price === undefined) return 'Price Unknown';
     return price.toLocaleString('mn-MN') + ' ₮';
 };
 

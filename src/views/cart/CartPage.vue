@@ -5,7 +5,7 @@
         <div class="flex justify-between items-center mb-4">
             <PageTitle mainTitle="My Cart" />
             <div v-if="cartItems.length > 0" @click="toggleEditMode" class="text-sm font-medium cursor-pointer">
-                {{ isEditMode ? '完成' : 'Edit' }}
+                {{ isEditMode ? 'Done' : 'Edit' }}
             </div>
         </div>
 
@@ -127,9 +127,9 @@ const removeItem = async (id: number) => {
         if (index !== -1) {
             selectedItems.value.splice(index, 1);
         }
-        toast.success('商品已移除');
+        toast.success('Product removed');
     } catch (error: any) {
-        toast.error(error.message || '删除失败');
+        toast.error(error.message || 'Failed to delete');
     }
 };
 
@@ -137,7 +137,7 @@ const removeItem = async (id: number) => {
 const batchRemove = async () => {
     if (selectedItems.value.length === 0) return;
 
-    const confirmed = window.confirm(`确定要删除选中的 ${selectedItems.value.length} 件商品吗？`);
+    const confirmed = window.confirm(`Confirm deletion of ${selectedItems.value.length} selected items?`);
     if (!confirmed) return;
 
     try {
@@ -148,16 +148,16 @@ const batchRemove = async () => {
 
         // 清空选中列表
         selectedItems.value = [];
-        toast.success('选中商品已删除');
+        toast.success('Selected items removed');
     } catch (error: any) {
-        toast.error(error.message || '删除失败');
+        toast.error(error.message || 'Failed to delete');
     }
 };
 
 // 去结算
 const checkout = () => {
     if (selectedItems.value.length === 0) {
-        toast.error('请选择要结算的商品');
+        toast.error('Please select items to checkout');
         return;
     }
 
