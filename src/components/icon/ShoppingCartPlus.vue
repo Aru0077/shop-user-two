@@ -14,7 +14,6 @@
 
 <script setup>
 import { ShoppingCart, Plus } from 'lucide-vue-next';
-import { defineProps } from 'vue';
 
 // 定义组件属性
 const props = defineProps({

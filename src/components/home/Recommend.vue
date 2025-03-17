@@ -10,8 +10,7 @@
     </div>
 </template>
 
-<script setup>
-import { defineProps } from 'vue';
+<script setup> 
 import ProductGrid from '../product/ProductGrid.vue';
 import { useRouter } from 'vue-router';
 

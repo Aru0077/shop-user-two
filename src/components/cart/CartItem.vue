@@ -37,8 +37,7 @@
     </div>
 </template>
 
-<script setup lang="ts">
-import { defineProps } from 'vue';
+<script setup lang="ts"> 
 import type { CartItem } from '@/types/cart.type';
 
 defineProps<{
