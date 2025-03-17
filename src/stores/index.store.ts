@@ -1,4 +1,5 @@
 // src/stores/index.store.ts
+import { eventBus } from '@/utils/eventBus';
 import { useUserStore } from './user.store';
 import { useProductStore } from './product.store';
 import { useCartStore } from './cart.store';
@@ -6,7 +7,6 @@ import { useOrderStore } from './order.store';
 import { useFavoriteStore } from './favorite.store';
 import { useAddressStore } from './address.store';
 import { useCheckoutStore } from './checkout.store';
-import type { ApiError } from '@/types/common.type'
 
 export {
     useUserStore,
@@ -19,43 +19,49 @@ export {
 };
 
 // 初始化所有store 
+// 重构后的初始化方法，基于事件驱动
 export async function initializeStores() {
     const userStore = useUserStore();
     const productStore = useProductStore();
-
-    // 第一阶段：仅初始化核心数据
-    userStore.init();
-
-    // 首屏必需的数据 
-    await productStore.init({
-        loadHomeDataOnly: true // 只加载首页数据，分类等数据可以延迟加载
-    });
-
-    // 第二阶段：延迟500ms后初始化其他重要数据
-    setTimeout(async () => {
+    
+    // 发布应用初始化开始事件
+    eventBus.emit('app:initializing');
+    
+    // 第一阶段：核心数据初始化
+    await Promise.all([
+        userStore.init(),
+        productStore.init({ loadHomeDataOnly: true })
+    ]);
+    
+    // 第二阶段：延迟初始化非关键数据
+    setTimeout(() => {
         const cartStore = useCartStore();
-        await cartStore.initCart();
-
-        // 第三阶段：用户相关数据在用户已登录时延迟加载
+        cartStore.initCart();
+        
+        // 第三阶段：仅对登录用户初始化其他数据
         if (userStore.isLoggedIn) {
-            setTimeout(async () => {
+            setTimeout(() => {
                 const favoriteStore = useFavoriteStore();
                 const addressStore = useAddressStore();
                 const orderStore = useOrderStore();
-
-                // 并行初始化用户相关数据
-                await Promise.all([
+                
+                // 并行初始化各模块
+                Promise.all([
                     favoriteStore.init(),
                     addressStore.init(),
                     orderStore.init()
-                ]);
-
-                // 合并本地购物车到服务器
-                await cartStore.mergeLocalCartToServer();
+                ]).finally(() => {
+                    // 所有初始化完成后，发布应用就绪事件
+                    eventBus.emit('app:initialized');
+                });
             }, 1000);
+        } else {
+            // 未登录用户，直接发布应用就绪事件
+            eventBus.emit('app:initialized');
         }
     }, 500);
 }
+
 
 // 用户登录后的处理
 export async function onUserLogin() {

@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { userApi } from '@/api/user.api';
 import { storage } from '@/utils/storage';
+import { eventBus } from '@/utils/eventBus';
 import type { User, LoginParams, RegisterParams, DeleteAccountParams } from '@/types/user.type';
 
 // 缓存键
@@ -24,7 +25,6 @@ export const useUserStore = defineStore('user', () => {
 
       // 添加init方法
       function init() {
-            // 避免重复初始化
             if (isInitialized.value || isInitializing.value) return;
             isInitializing.value = true;
 
@@ -32,9 +32,14 @@ export const useUserStore = defineStore('user', () => {
                   // 检查token是否有效
                   const isValid = checkTokenExpiry();
                   isInitialized.value = true;
+
+                  // 发布初始化完成事件
+                  eventBus.emit('user:initialized', isValid);
+
                   return isValid;
             } catch (err) {
                   console.error('用户状态初始化失败:', err);
+                  eventBus.emit('app:error', { code: 1001, message: '用户状态初始化失败' });
             } finally {
                   isInitializing.value = false;
             }
@@ -51,8 +56,6 @@ export const useUserStore = defineStore('user', () => {
             try {
                   const response = await userApi.login(params);
 
-                  console.log("登录结果", response);
-
                   // 更新状态
                   token.value = response.token;
                   currentUser.value = response.user;
@@ -65,9 +68,13 @@ export const useUserStore = defineStore('user', () => {
                   storage.set(TOKEN_EXPIRY_KEY, expiryTime, AUTH_EXPIRY);
                   storage.set(USER_INFO_KEY, response.user, AUTH_EXPIRY);
 
+                  // 发布登录成功事件
+                  eventBus.emit('user:login', { userId: response.user.id });
+
                   return response;
             } catch (err: any) {
                   error.value = err.message || '登录失败';
+                  eventBus.emit('app:error', { code: 1002, message: err.message || '登录失败' });
                   throw err;
             } finally {
                   loading.value = false;
@@ -83,8 +90,11 @@ export const useUserStore = defineStore('user', () => {
             } catch (err) {
                   console.error('退出登录时出错:', err);
             } finally {
-                  // 即使API调用失败也清除本地状态
+                  // 清除用户状态
                   clearUserState();
+
+                  // 发布登出事件
+                  eventBus.emit('user:logout');
             }
       }
 

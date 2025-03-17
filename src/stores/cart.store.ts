@@ -1,9 +1,10 @@
 // src/stores/cart.store.ts
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { cartApi } from '@/api/cart.api';
 import { storage } from '@/utils/storage';
 import { useUserStore } from './user.store';
+import { eventBus } from '@/utils/eventBus';
 import type { CartItem, AddToCartParams, UpdateCartItemParams } from '@/types/cart.type';
 
 // 缓存键
@@ -29,6 +30,29 @@ export const useCartStore = defineStore('cart', () => {
 
       // 用户store
       const userStore = useUserStore();
+      // 不再直接引用 userStore
+      const isUserLoggedIn = ref(false);
+
+      // 监听用户事件
+      onMounted(() => {
+            // 监听用户登录事件
+            eventBus.on('user:login', () => {
+                  isUserLoggedIn.value = true;
+                  // 登录后自动同步购物车
+                  fetchCartFromServer();
+                  mergeLocalCartToServer();
+            });
+
+            // 监听用户登出事件
+            eventBus.on('user:logout', () => {
+                  isUserLoggedIn.value = false;
+            });
+
+            // 监听用户初始化事件
+            eventBus.on('user:initialized', (isLoggedIn) => {
+                  isUserLoggedIn.value = isLoggedIn;
+            });
+      });
 
       // 计算属性
       const totalAmount = computed(() => {
@@ -44,7 +68,6 @@ export const useCartStore = defineStore('cart', () => {
 
       // 初始化购物车 - 从本地缓存或服务器加载
       async function initCart() {
-            // 避免重复初始化
             if (isInitialized.value || isInitializing.value) return;
             isInitializing.value = true;
 
@@ -59,13 +82,15 @@ export const useCartStore = defineStore('cart', () => {
                   }
 
                   // 如果已登录，则从服务器获取最新数据
-                  if (userStore.isLoggedIn) {
+                  if (isUserLoggedIn.value) {
                         await fetchCartFromServer();
                   }
 
                   isInitialized.value = true;
+                  eventBus.emit('cart:initialized', true);
             } catch (err) {
                   console.error('购物车初始化失败:', err);
+                  eventBus.emit('app:error', { code: 2001, message: '购物车初始化失败' });
             } finally {
                   isInitializing.value = false;
             }
@@ -186,9 +211,14 @@ export const useCartStore = defineStore('cart', () => {
 
             try {
                   // 如果已登录，调用API
-                  if (userStore.isLoggedIn) {
+                  if (isUserLoggedIn.value) {
                         const response = await cartApi.addToCart(params);
                         await fetchCartFromServer(); // 刷新购物车
+                        eventBus.emit('cart:item-added', {
+                              productId: params.productId,
+                              skuId: params.skuId,
+                              quantity: params.quantity || 1
+                        });
                         return response;
                   } else {
                         // 未登录，模拟添加到本地购物车
@@ -218,9 +248,16 @@ export const useCartStore = defineStore('cart', () => {
 
                         updateTotalItems();
                         saveCartToStorage();
+
+                        eventBus.emit('cart:item-added', {
+                              productId: params.productId,
+                              skuId: params.skuId,
+                              quantity: params.quantity || 1
+                        });
                   }
             } catch (err: any) {
                   error.value = err.message || '添加到购物车失败';
+                  eventBus.emit('app:error', { code: 2002, message: err.message || '添加到购物车失败' });
                   throw err;
             } finally {
                   loading.value = false;
@@ -282,7 +319,7 @@ export const useCartStore = defineStore('cart', () => {
             error.value = null;
 
             try {
-                  if (userStore.isLoggedIn) {
+                  if (isUserLoggedIn.value) {
                         await cartApi.clearCart();
                   }
 
@@ -290,6 +327,8 @@ export const useCartStore = defineStore('cart', () => {
                   cartItems.value = [];
                   totalItems.value = 0;
                   storage.remove(CART_DATA_KEY);
+
+                  eventBus.emit('cart:cleared');
             } catch (err: any) {
                   error.value = err.message || '清空购物车失败';
                   throw err;
