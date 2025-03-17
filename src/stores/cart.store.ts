@@ -1,8 +1,8 @@
 // src/stores/cart.store.ts
 import { defineStore } from 'pinia';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { cartApi } from '@/api/cart.api';
-import { storage } from '@/utils/storage'; 
+import { storage } from '@/utils/storage';
 import { eventBus } from '@/utils/eventBus';
 import type { CartItem, AddToCartParams, UpdateCartItemParams } from '@/types/cart.type';
 
@@ -26,28 +26,24 @@ export const useCartStore = defineStore('cart', () => {
       // 乐观更新
       const pendingUpdates = ref<Map<number, { quantity: number, timer: number | null }>>(new Map());
       const updatingItems = ref<Set<number>>(new Set());
- 
+
       // 不再直接引用
       const isUserLoggedIn = ref(false);
 
-      // 监听用户事件
-      onMounted(() => {
-            // 将注释掉的代码取消注释并修改
-            eventBus.on('user:login', () => {
-                  isUserLoggedIn.value = true;
-                  // 登录后自动同步购物车
-                  fetchCartFromServer();
-                  mergeLocalCartToServer();
-            });
+      // 监听用户事件 - 直接在顶层注册，与其他store保持一致
+      eventBus.on('user:login', () => {
+            isUserLoggedIn.value = true;
+            // 登录后自动同步购物车
+            fetchCartFromServer();
+            mergeLocalCartToServer();
+      });
 
-            eventBus.on('user:logout', () => {
-                  isUserLoggedIn.value = false;
-            });
+      eventBus.on('user:logout', () => {
+            isUserLoggedIn.value = false;
+      });
 
-            eventBus.on('user:initialized', (isLoggedIn) => {
-                  isUserLoggedIn.value = isLoggedIn;
-            });
-
+      eventBus.on('user:initialized', (isLoggedIn) => {
+            isUserLoggedIn.value = isLoggedIn;
       });
 
       // 计算属性

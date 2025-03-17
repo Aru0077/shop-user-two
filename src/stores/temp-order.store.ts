@@ -94,6 +94,10 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                   }
 
                   isInitialized.value = true;
+
+                  // 添加：发送初始化完成事件
+                  eventBus.emit('tempOrder:initialized', true);
+
             } catch (err) {
                   console.error('临时订单初始化失败:', err);
             } finally {

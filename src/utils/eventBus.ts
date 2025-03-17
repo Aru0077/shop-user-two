@@ -43,6 +43,9 @@ export type EventPayloads = {
 
       // 商品相关
       'product:initialized': boolean;
+
+      // 临时订单
+      'tempOrder:initialized': boolean;
 }
 
 // 创建事件总线实例
