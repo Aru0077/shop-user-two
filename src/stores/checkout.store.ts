@@ -5,6 +5,7 @@ import { checkoutApi } from '@/api/checkout.api';
 import { cartApi } from '@/api/cart.api';
 import { storage } from '@/utils/storage';
 import { useUserStore } from './user.store';
+import { eventBus } from '@/utils/eventBus'
 import type { CheckoutInfo } from '@/types/checkout.type';
 import type { OrderAmountPreview, PreviewOrderParams } from '@/types/cart.type';
 
@@ -121,7 +122,8 @@ export const useCheckoutStore = defineStore('checkout', () => {
             }
 
             isInitialized.value = true;
-
+            // Add this line to emit initialization event
+            eventBus.emit('checkout:initialized', true);
             return response;
         } catch (err: any) {
             error.value = err.message || '获取结算信息失败';
@@ -273,6 +275,6 @@ export const useCheckoutStore = defineStore('checkout', () => {
         resetCheckout,
         clearCheckoutCache,
 
-    
+
     };
 });

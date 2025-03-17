@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { productApi } from '@/api/product.api';
 import { storage } from '@/utils/storage';
+import { eventBus } from '@/utils/eventBus'
 import type {
       Category,
       Product,
@@ -47,37 +48,41 @@ export const useProductStore = defineStore('product', () => {
       async function init(options = { loadHomeDataOnly: false }) {
             // 避免重复初始化
             if (isInitialized.value || isInitializing.value) return;
-            
+
             isInitializing.value = true;
             error.value = null;
-            
+
             try {
-                // 优先加载首页和缓存数据
-                const cachedHomeData = storage.get<HomePageData>(HOME_DATA_KEY, null);
-                if (cachedHomeData) {
-                    homeData.value = cachedHomeData;
-                } else {
-                    await fetchHomeData();
-                }
-                
-                // 如果不是只加载首页数据，则加载其他数据
-                if (!options.loadHomeDataOnly) {
-                    const cachedCategories = storage.get<Category[]>(CATEGORIES_KEY, null);
-                    if (!cachedCategories || cachedCategories.length === 0) {
-                        await fetchCategoryTree();
-                    } else {
-                        categories.value = cachedCategories;
-                    }
-                }
-                
-                isInitialized.value = true;
+                  // 优先加载首页和缓存数据
+                  const cachedHomeData = storage.get<HomePageData>(HOME_DATA_KEY, null);
+                  if (cachedHomeData) {
+                        homeData.value = cachedHomeData;
+                  } else {
+                        await fetchHomeData();
+                  }
+
+                  // 如果不是只加载首页数据，则加载其他数据
+                  if (!options.loadHomeDataOnly) {
+                        const cachedCategories = storage.get<Category[]>(CATEGORIES_KEY, null);
+                        if (!cachedCategories || cachedCategories.length === 0) {
+                              await fetchCategoryTree();
+                        } else {
+                              categories.value = cachedCategories;
+                        }
+                  }
+
+                  isInitialized.value = true;
+
+                  // Add this line to emit initialization event
+                  eventBus.emit('product:initialized', true);
+
             } catch (err) {
-                error.value = (err as ApiError).message || '初始化产品数据失败';
-                console.error('初始化产品数据失败:', err);
+                  error.value = (err as ApiError).message || '初始化产品数据失败';
+                  console.error('初始化产品数据失败:', err);
             } finally {
-                isInitializing.value = false;
+                  isInitializing.value = false;
             }
-        }
+      }
 
       // 获取分类树
       async function fetchCategoryTree(forceRefresh = false) {

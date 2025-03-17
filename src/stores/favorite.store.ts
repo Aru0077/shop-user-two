@@ -4,6 +4,7 @@ import { ref, computed } from 'vue';
 import { favoriteApi } from '@/api/favorite.api';
 import { storage } from '@/utils/storage';
 import { useUserStore } from './user.store';
+import { eventBus } from '@/utils/eventBus'
 import type {
       Favorite,
       AddFavoriteParams,
@@ -62,6 +63,9 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   await fetchFavoriteIds();
 
                   isInitialized.value = true;
+
+                  // Add this line to emit initialization event
+                  eventBus.emit('favorite:initialized', true);
             } catch (err) {
                   console.error('收藏初始化失败:', err);
             } finally {

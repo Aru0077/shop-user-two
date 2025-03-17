@@ -40,6 +40,9 @@ export type EventPayloads = {
       'app:initialized': undefined;
       'app:network-status': { online: boolean };
       'app:error': { code: number; message: string };
+
+      // 商品相关
+      'product:initialized': boolean;
 }
 
 // 创建事件总线实例

@@ -4,6 +4,7 @@ import { ref } from 'vue';
 import { orderApi } from '@/api/order.api';
 import { storage } from '@/utils/storage';
 import { useUserStore } from './user.store';
+import { eventBus } from '@/utils/eventBus'
 import type {
       OrderBasic,
       OrderDetail,
@@ -48,6 +49,9 @@ export const useOrderStore = defineStore('order', () => {
                   // 获取首页订单列表，例如第一页10条待付款订单
                   await fetchOrders(1, 10);
                   isInitialized.value = true;
+
+                  // Add this line to emit initialization event
+                  eventBus.emit('order:initialized', true);
             } catch (err) {
                   console.error('订单初始化失败:', err);
             } finally {

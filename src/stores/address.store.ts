@@ -4,6 +4,7 @@ import { ref, computed } from 'vue';
 import { addressApi } from '@/api/address.api';
 import { storage } from '@/utils/storage';
 import { useUserStore } from './user.store';
+import { eventBus } from '@/utils/eventBus'
 import type { UserAddress, CreateAddressParams, UpdateAddressParams } from '@/types/address.type';
 
 // 缓存键
@@ -39,6 +40,8 @@ export const useAddressStore = defineStore('address', () => {
                         await fetchAddresses();
                   }
                   isInitialized.value = true;
+
+                  eventBus.emit('address:initialized', true);
             } catch (err) {
                   console.error('地址初始化失败:', err);
             } finally {
