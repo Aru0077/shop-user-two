@@ -3,7 +3,8 @@
     <div class="flex flex-col bg-white rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.08)] overflow-hidden mb-3 relative"
         :class="{ 'opacity-70': !item.isAvailable }">
         <!-- 商品不可用标签 -->
-        <div v-if="!item.isAvailable" class="absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1 rounded-bl-lg">
+        <div v-if="!item.isAvailable"
+            class="absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1 rounded-bl-lg">
             不可购买
         </div>
 
@@ -24,13 +25,13 @@
             <div class="flex-1 min-w-0">
                 <!-- 商品名称 -->
                 <div class="text-sm font-medium line-clamp-2">{{ item.product?.name || '商品名称' }}</div>
-                
+
                 <!-- 规格信息 -->
-                <div v-if="item.skuData?.sku_specs && item.skuData.sku_specs.length > 0" 
+                <div v-if="item.skuData?.sku_specs && item.skuData.sku_specs.length > 0"
                     class="text-xs text-gray-500 mt-1 line-clamp-1">
                     {{ formatSpecs(item.skuData.sku_specs) }}
                 </div>
-                
+
                 <!-- 价格和数量 -->
                 <div class="flex justify-between items-end mt-2">
                     <!-- 价格 -->
@@ -49,19 +50,17 @@
         <!-- 编辑模式下的操作栏 -->
         <div v-if="isEditMode" class="flex justify-between items-center p-3 bg-gray-50 border-t border-gray-100">
             <!-- 删除按钮 -->
-            <button @click="$emit('remove', item.id)" 
+            <button @click="$emit('remove', item.id)"
                 class="text-gray-500 hover:text-red-500 flex items-center text-xs">
                 <Trash2 :size="14" class="mr-1" />
                 <span>删除</span>
             </button>
-            
+
             <!-- 数量调整器 -->
-            <QuantityAdjuster 
-                :quantity="item.quantity" 
-                :maxQuantity="item.skuData?.stock || 99"
-                :disabled="!item.isAvailable"
-                @update:quantity="updateQuantity"
-            />
+            <QuantityAdjuster :quantity="item.quantity" :maxQuantity="item.skuData?.stock || 99"
+                :disabled="!item.isAvailable" :isUpdating="cartStore.isItemUpdating(item.id)"
+                @update:quantity="updateQuantity" />
+
         </div>
     </div>
 </template>
@@ -70,6 +69,9 @@
 import { Trash2 } from 'lucide-vue-next';
 import type { CartItem } from '@/types/cart.type';
 import QuantityAdjuster from './QuantityAdjuster.vue';
+import { useCartStore } from '@/stores/cart.store';
+
+const cartStore = useCartStore();
 
 const props = defineProps({
     item: {
@@ -107,4 +109,4 @@ const formatSpecs = (specs: Array<{ spec: { name: string }, specValue: { value: 
 const updateQuantity = (quantity: number) => {
     emit('update-quantity', props.item.id, quantity);
 };
-</script>   
+</script>

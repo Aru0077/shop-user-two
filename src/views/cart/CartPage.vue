@@ -111,7 +111,8 @@ const toggleEditMode = () => {
 // 更新商品数量
 const updateItemQuantity = async (id: number, quantity: number) => {
     try {
-        await cartStore.updateCartItem(id, { quantity });
+        // 使用乐观更新方法
+        await cartStore.optimisticUpdateCartItem(id, quantity);
     } catch (error: any) {
         toast.error(error.message || '更新数量失败');
     }

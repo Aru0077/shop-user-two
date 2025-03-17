@@ -23,6 +23,9 @@ export const useCartStore = defineStore('cart', () => {
       // 添加初始化状态跟踪变量
       const isInitialized = ref<boolean>(false);
       const isInitializing = ref<boolean>(false);
+      // 乐观更新
+      const pendingUpdates = ref<Map<number, { quantity: number, timer: number | null }>>(new Map());
+      const updatingItems = ref<Set<number>>(new Set());
 
       // 用户store
       const userStore = useUserStore();
@@ -110,6 +113,71 @@ export const useCartStore = defineStore('cart', () => {
       function updateTotalItems() {
             totalItems.value = cartItems.value.reduce((sum, item) => sum + item.quantity, 0);
       }
+
+      // 添加乐观更新方法
+      async function optimisticUpdateCartItem(id: number, quantity: number, delay: number = 500) {
+            // 找到对应的购物车项
+            const itemIndex = cartItems.value.findIndex(item => item.id === id);
+            if (itemIndex === -1) return;
+
+            // 保存原始数量，以便回滚
+            const originalQuantity = cartItems.value[itemIndex].quantity;
+
+            // 立即更新本地状态（乐观更新）
+            cartItems.value[itemIndex].quantity = quantity;
+            updateTotalItems();
+
+            // 清除之前的定时器（如果存在）
+            const pending = pendingUpdates.value.get(id);
+            if (pending?.timer) {
+                  clearTimeout(pending.timer);
+            }
+
+            // 创建新的Promise，在定时器完成后解析
+            return new Promise((resolve, reject) => {
+                  const timer = window.setTimeout(async () => {
+                        try {
+                              // 标记为正在更新
+                              updatingItems.value.add(id);
+
+                              // 发送实际请求
+                              if (userStore.isLoggedIn) {
+                                    await cartApi.updateCartItem(id, { quantity });
+                                    // 成功后更新本地缓存
+                                    saveCartToStorage();
+                              } else {
+                                    // 本地模式只需保存到缓存
+                                    saveCartToStorage();
+                              }
+
+                              // 更新成功，移除待更新状态
+                              pendingUpdates.value.delete(id);
+                              resolve(true);
+                        } catch (err) {
+                              // 更新失败，回滚到原始状态
+                              const currentIndex = cartItems.value.findIndex(item => item.id === id);
+                              if (currentIndex !== -1) {
+                                    cartItems.value[currentIndex].quantity = originalQuantity;
+                                    updateTotalItems();
+                                    saveCartToStorage();
+                              }
+                              reject(err);
+                        } finally {
+                              // 无论成功失败，都移除更新中标记
+                              updatingItems.value.delete(id);
+                        }
+                  }, delay);
+
+                  // 保存待更新状态
+                  pendingUpdates.value.set(id, { quantity, timer: timer as unknown as number });
+            });
+      }
+
+      // 检查商品是否正在更新中
+      function isItemUpdating(id: number): boolean {
+            return updatingItems.value.has(id);
+      }
+
 
       // 添加商品到购物车
       async function addToCart(params: AddToCartParams) {
@@ -293,6 +361,8 @@ export const useCartStore = defineStore('cart', () => {
             error,
             totalItems,
             lastSyncTime,
+            pendingUpdates,
+            updatingItems,
 
             // 计算属性
             totalAmount,
@@ -306,6 +376,9 @@ export const useCartStore = defineStore('cart', () => {
             removeCartItem,
             clearCart,
             mergeLocalCartToServer,
-            refreshCartIfNeeded
+            refreshCartIfNeeded,
+
+            optimisticUpdateCartItem,
+            isItemUpdating
       };
 });
