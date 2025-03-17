@@ -21,14 +21,14 @@
         <div class="w-full h-6"></div>
 
         <!-- 新品推荐 -->
-        <Recommend v-if="latestProducts.length" :products="latestProducts" :title="'New Arrivals'"
+        <Recommend v-if="latestProducts.length" :products="latestProducts" :title="'New Arrivals'"  type="latest"
             :viewAllText="'View All'" />
 
         <!-- 间距 占位符 -->
         <div class="w-full h-6"></div>
 
         <!-- 热卖推荐 -->
-        <Recommend v-if="topSellingProducts.length" :products="topSellingProducts" :title="'Best Sellers'"
+        <Recommend v-if="topSellingProducts.length" :products="topSellingProducts" :title="'Best Sellers'" type="topselling"
             :viewAllText="'View All'" />
 
 

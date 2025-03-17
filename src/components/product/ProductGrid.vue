@@ -1,10 +1,17 @@
 <template>
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <div v-for="(item, index) in displayProducts" :key="item.id || index" class="w-full px-1 mb-4" @click="navigateToProductDetail(item)">
-            <div class="aspect-square">
+        <div v-for="(item, index) in displayProducts" :key="item.id || index" class="w-full px-1 mb-4"
+            @click="navigateToProductDetail(item)">
+            <div class="aspect-square relative">
                 <div class="w-full h-full">
                     <img :src="item.mainImage || 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png'"
                         :alt="item.name" class="w-full h-full object-cover rounded-xl">
+
+                    <!-- 促销标志 -->
+                    <div v-if="item.is_promotion === 1"
+                        class="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-md">
+                        SALE
+                    </div>
                 </div>
                 <div class="flex flex-col items-center justify-center mt-1">
                     <div class="text-[13px] font-bold">{{ item.name || '商品名称' }}</div>
@@ -12,7 +19,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- 如果没有数据，显示占位商品 -->
         <div v-if="displayProducts.length === 0" v-for="index in 6" :key="`placeholder-${index}`"
             class="w-full px-1 mb-4">
@@ -31,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'; 
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { getFormattedPrice } from '@/utils/price.utils';
 import type { Product } from '@/types/product.type';

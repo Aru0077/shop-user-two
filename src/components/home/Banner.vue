@@ -1,5 +1,5 @@
 <template>
-    <div class="h-[180px] w-full rounded-3xl relative overflow-hidden">
+    <div class="h-[180px] w-full rounded-3xl relative overflow-hidden" @click="productlist">
         <div class="absolute inset-0 w-full h-full">
             <img :src="bannerData?.imageUrl || 'https://img.js.design/assets/img/60f77156d961d24e3cf74934.png'"
                 :alt="bannerData?.title || '促销产品图片'" class="w-full h-full object-cover">
@@ -16,6 +16,9 @@
 
 <script setup>
 import { defineProps } from 'vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter()
 
 // Accept banner data as a prop instead of fetching it directly
 const props = defineProps({
@@ -24,4 +27,8 @@ const props = defineProps({
         default: () => null
     }
 });
+
+const productlist = () =>{
+    router.push('/product-list/promotion');
+}
 </script>
