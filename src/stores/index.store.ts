@@ -23,28 +23,28 @@ export {
 export async function initializeStores() {
     const userStore = useUserStore();
     const productStore = useProductStore();
-    
+
     // 发布应用初始化开始事件
     eventBus.emit('app:initializing');
-    
+
     // 第一阶段：核心数据初始化
     await Promise.all([
         userStore.init(),
         productStore.init({ loadHomeDataOnly: true })
     ]);
-    
+
     // 第二阶段：延迟初始化非关键数据
     setTimeout(() => {
         const cartStore = useCartStore();
         cartStore.initCart();
-        
+
         // 第三阶段：仅对登录用户初始化其他数据
         if (userStore.isLoggedIn) {
             setTimeout(() => {
                 const favoriteStore = useFavoriteStore();
                 const addressStore = useAddressStore();
                 const orderStore = useOrderStore();
-                
+
                 // 并行初始化各模块
                 Promise.all([
                     favoriteStore.init(),
@@ -70,15 +70,15 @@ export async function onUserLogin() {
     const addressStore = useAddressStore();
 
     try {
-        // 并行初始化各模块数据
-        await Promise.all([
-            cartStore.fetchCartFromServer(),
-            favoriteStore.init(),
-            addressStore.fetchAddresses(true) // 强制刷新
-        ]);
-
-        // 合并本地购物车到服务器
+        // 显式调用购物车同步方法
+        await cartStore.fetchCartFromServer();
         await cartStore.mergeLocalCartToServer();
+
+        // 并行初始化其他模块
+        await Promise.all([
+            favoriteStore.init(),
+            addressStore.fetchAddresses(true)
+        ]);
     } catch (error) {
         console.error('登录后初始化数据失败:', error);
     }

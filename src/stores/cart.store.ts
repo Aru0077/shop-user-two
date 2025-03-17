@@ -35,23 +35,23 @@ export const useCartStore = defineStore('cart', () => {
 
       // 监听用户事件
       onMounted(() => {
-            // 监听用户登录事件
-            eventBus.on('user:login', () => {
-                  isUserLoggedIn.value = true;
-                  // 登录后自动同步购物车
-                  fetchCartFromServer();
-                  mergeLocalCartToServer();
-            });
+            // // 监听用户登录事件
+            // eventBus.on('user:login', () => {
+            //       isUserLoggedIn.value = true;
+            //       // 登录后自动同步购物车
+            //       fetchCartFromServer();
+            //       mergeLocalCartToServer();
+            // });
 
-            // 监听用户登出事件
-            eventBus.on('user:logout', () => {
-                  isUserLoggedIn.value = false;
-            });
+            // // 监听用户登出事件
+            // eventBus.on('user:logout', () => {
+            //       isUserLoggedIn.value = false;
+            // });
 
-            // 监听用户初始化事件
-            eventBus.on('user:initialized', (isLoggedIn) => {
-                  isUserLoggedIn.value = isLoggedIn;
-            });
+            // // 监听用户初始化事件
+            // eventBus.on('user:initialized', (isLoggedIn) => {
+            //       isUserLoggedIn.value = isLoggedIn;
+            // });
       });
 
       // 计算属性
