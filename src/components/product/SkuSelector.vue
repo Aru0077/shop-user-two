@@ -21,7 +21,7 @@
                     </div>
                     <div class="ml-4 flex-1">
                         <div class="text-red-500 text-xl font-bold">
-                            {{ formattedPrice }}
+                            {{ formattedTotalPrice }}
                         </div>
                         <div v-if="selectedSku" class="text-gray-500 text-sm mt-1">
                             库存: {{ selectedSku.stock || 0 }}
@@ -134,18 +134,6 @@ const currentImage = computed((): string => {
     if (selectedSku.value?.image) return selectedSku.value.image;
     if (props.product?.mainImage) return props.product.mainImage;
     return '';
-});
-
-const formattedPrice = computed((): string => {
-    if (!selectedSku.value) return formatPrice(null);
-
-    if (selectedSku.value.promotion_price !== undefined &&
-        selectedSku.value.promotion_price !== null &&
-        props.product?.is_promotion === 1) {
-        return formatPrice(selectedSku.value.promotion_price);
-    }
-
-    return formatPrice(selectedSku.value.price);
 });
 
 const maxStock = computed(() => {
@@ -324,6 +312,26 @@ watch(() => props.product, (newProduct) => {
         selectedSkuId.value = null;
     }
 }, { immediate: true });
+
+// 添加在其他计算属性后面
+const formattedTotalPrice = computed((): string => {
+    if (!selectedSku.value) return formatPrice(null);
+
+    let unitPrice;
+    if (selectedSku.value.promotion_price !== undefined &&
+        selectedSku.value.promotion_price !== null &&
+        props.product?.is_promotion === 1) {
+        unitPrice = selectedSku.value.promotion_price;
+    } else {
+        unitPrice = selectedSku.value.price;
+    }
+
+    // 计算总价：单价 × 数量
+    const totalPrice = unitPrice * quantity.value;
+    return formatPrice(totalPrice);
+});
+
+
 </script>
 
 <style scoped>
