@@ -3,8 +3,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { checkoutApi } from '@/api/checkout.api';
 import { cartApi } from '@/api/cart.api';
-import { storage } from '@/utils/storage';
-import { useUserStore } from './user.store';
+import { storage } from '@/utils/storage'; 
 import { eventBus } from '@/utils/eventBus'
 import type { CheckoutInfo } from '@/types/checkout.type';
 import type { OrderAmountPreview, PreviewOrderParams } from '@/types/cart.type';
@@ -32,9 +31,27 @@ export const useCheckoutStore = defineStore('checkout', () => {
     const isInitialized = ref<boolean>(false);
     const isInitializing = ref<boolean>(false);
 
+    // 添加用户登录状态的本地引用
+    const isUserLoggedIn = ref<boolean>(false);
 
-    // 使用其他store
-    const userStore = useUserStore();
+
+    // 添加事件监听
+    eventBus.on('user:login', () => {
+        isUserLoggedIn.value = true;
+        if (!isInitialized.value) {
+            initCheckout();
+        }
+    });
+
+    eventBus.on('user:logout', () => {
+        isUserLoggedIn.value = false;
+        clearCheckoutCache();
+    });
+
+    eventBus.on('user:initialized', (isLoggedIn) => {
+        isUserLoggedIn.value = isLoggedIn;
+    });
+
 
     // 计算属性
     const isReadyToCheckout = computed(() => {
@@ -43,7 +60,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
 
     // 初始化结算信息
     async function initCheckout(forceRefresh = false) {
-        if (!userStore.isLoggedIn) return;
+        if (!isUserLoggedIn.value) return;
 
         // 避免重复初始化
         if (isInitializing.value) return;

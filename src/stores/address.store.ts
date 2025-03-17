@@ -3,7 +3,6 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { addressApi } from '@/api/address.api';
 import { storage } from '@/utils/storage';
-import { useUserStore } from './user.store';
 import { eventBus } from '@/utils/eventBus'
 import type { UserAddress, CreateAddressParams, UpdateAddressParams } from '@/types/address.type';
 
@@ -15,8 +14,8 @@ const ADDRESSES_EXPIRY = 12 * 60 * 60 * 1000;
 const ADDRESSES_VERSION = '1.0.0';
 
 export const useAddressStore = defineStore('address', () => {
-      // 用户store
-      const userStore = useUserStore();
+      // 用户登录状态
+      const isUserLoggedIn = ref<boolean>(false);
 
       // 状态
       const addresses = ref<UserAddress[]>([]);
@@ -28,27 +27,43 @@ export const useAddressStore = defineStore('address', () => {
       const isInitialized = ref<boolean>(false);
       const isInitializing = ref<boolean>(false);
 
+      // 添加事件监听
+      eventBus.on('user:login', () => {
+            isUserLoggedIn.value = true;
+            if (isInitialized.value) {
+                  fetchAddresses(true);
+            }
+      });
+
+      eventBus.on('user:logout', () => {
+            isUserLoggedIn.value = false;
+            clearAddressCache();
+      });
+
+      eventBus.on('user:initialized', (isLoggedIn) => {
+            isUserLoggedIn.value = isLoggedIn;
+      });
+
       // 添加init方法
       async function init() {
             // 避免重复初始化
             if (isInitialized.value || isInitializing.value) return;
             isInitializing.value = true;
-
+          
             try {
-                  // 如果已登录，获取地址列表
-                  if (userStore.isLoggedIn) {
-                        await fetchAddresses();
-                  }
-                  isInitialized.value = true;
-
-                  eventBus.emit('address:initialized', true);
+              // 如果已登录，获取地址列表
+              if (isUserLoggedIn.value) {
+                await fetchAddresses();
+              }
+              isInitialized.value = true;
+          
+              eventBus.emit('address:initialized', true);
             } catch (err) {
-                  console.error('地址初始化失败:', err);
+              console.error('地址初始化失败:', err);
             } finally {
-                  isInitializing.value = false;
+              isInitializing.value = false;
             }
-      }
-
+          }
 
 
       // 计算属性
@@ -58,7 +73,7 @@ export const useAddressStore = defineStore('address', () => {
 
       // 获取地址列表
       async function fetchAddresses(forceRefresh = false) {
-            if (!userStore.isLoggedIn) return [];
+            if (!isUserLoggedIn.value) return [];
 
             // 检查是否需要强制刷新
             if (!forceRefresh) {
@@ -191,7 +206,7 @@ export const useAddressStore = defineStore('address', () => {
 
       // 在一定时间后刷新地址（如6小时）
       async function refreshAddressesIfNeeded(forceRefresh = false) {
-            if (!userStore.isLoggedIn) return;
+            if (!isUserLoggedIn.value) return;
 
             const now = Date.now();
             // 6小时刷新一次

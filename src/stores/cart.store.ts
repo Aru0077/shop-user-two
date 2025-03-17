@@ -2,8 +2,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed, onMounted } from 'vue';
 import { cartApi } from '@/api/cart.api';
-import { storage } from '@/utils/storage';
-import { useUserStore } from './user.store';
+import { storage } from '@/utils/storage'; 
 import { eventBus } from '@/utils/eventBus';
 import type { CartItem, AddToCartParams, UpdateCartItemParams } from '@/types/cart.type';
 
@@ -27,31 +26,28 @@ export const useCartStore = defineStore('cart', () => {
       // 乐观更新
       const pendingUpdates = ref<Map<number, { quantity: number, timer: number | null }>>(new Map());
       const updatingItems = ref<Set<number>>(new Set());
-
-      // 用户store
-      const userStore = useUserStore();
-      // 不再直接引用 userStore
+ 
+      // 不再直接引用
       const isUserLoggedIn = ref(false);
 
       // 监听用户事件
       onMounted(() => {
-            // // 监听用户登录事件
-            // eventBus.on('user:login', () => {
-            //       isUserLoggedIn.value = true;
-            //       // 登录后自动同步购物车
-            //       fetchCartFromServer();
-            //       mergeLocalCartToServer();
-            // });
+            // 将注释掉的代码取消注释并修改
+            eventBus.on('user:login', () => {
+                  isUserLoggedIn.value = true;
+                  // 登录后自动同步购物车
+                  fetchCartFromServer();
+                  mergeLocalCartToServer();
+            });
 
-            // // 监听用户登出事件
-            // eventBus.on('user:logout', () => {
-            //       isUserLoggedIn.value = false;
-            // });
+            eventBus.on('user:logout', () => {
+                  isUserLoggedIn.value = false;
+            });
 
-            // // 监听用户初始化事件
-            // eventBus.on('user:initialized', (isLoggedIn) => {
-            //       isUserLoggedIn.value = isLoggedIn;
-            // });
+            eventBus.on('user:initialized', (isLoggedIn) => {
+                  isUserLoggedIn.value = isLoggedIn;
+            });
+
       });
 
       // 计算属性
@@ -98,7 +94,7 @@ export const useCartStore = defineStore('cart', () => {
 
       // 从服务器获取购物车
       async function fetchCartFromServer() {
-            if (!userStore.isLoggedIn) return;
+            if (!isUserLoggedIn.value) return;
 
             loading.value = true;
             error.value = null;
@@ -166,7 +162,7 @@ export const useCartStore = defineStore('cart', () => {
                               updatingItems.value.add(id);
 
                               // 发送实际请求
-                              if (userStore.isLoggedIn) {
+                              if (isInitialized.value) {
                                     await cartApi.updateCartItem(id, { quantity });
                                     // 成功后更新本地缓存
                                     saveCartToStorage();
@@ -270,7 +266,7 @@ export const useCartStore = defineStore('cart', () => {
             error.value = null;
 
             try {
-                  if (userStore.isLoggedIn) {
+                  if (isInitialized.value) {
                         await cartApi.updateCartItem(id, params);
                         await fetchCartFromServer(); // 刷新购物车
                   } else {
@@ -296,7 +292,7 @@ export const useCartStore = defineStore('cart', () => {
             error.value = null;
 
             try {
-                  if (userStore.isLoggedIn) {
+                  if (isInitialized.value) {
                         await cartApi.deleteCartItem(id);
                         await fetchCartFromServer(); // 刷新购物车
                   } else {
@@ -339,7 +335,7 @@ export const useCartStore = defineStore('cart', () => {
 
       // 合并本地购物车到服务器
       async function mergeLocalCartToServer() {
-            if (!userStore.isLoggedIn || cartItems.value.length === 0) return;
+            if (!isUserLoggedIn.value || cartItems.value.length === 0) return;
 
             loading.value = true;
 
@@ -380,7 +376,7 @@ export const useCartStore = defineStore('cart', () => {
 
       // 在一定时间后刷新购物车（如15分钟）
       async function refreshCartIfNeeded(forceRefresh = false) {
-            if (!userStore.isLoggedIn) return;
+            if (!isInitialized.value) return;
 
             const now = Date.now();
             // 15分钟刷新一次

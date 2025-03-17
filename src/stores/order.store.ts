@@ -2,8 +2,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { orderApi } from '@/api/order.api';
-import { storage } from '@/utils/storage';
-import { useUserStore } from './user.store';
+import { storage } from '@/utils/storage'; 
 import { eventBus } from '@/utils/eventBus'
 import type {
       OrderBasic,
@@ -37,9 +36,29 @@ export const useOrderStore = defineStore('order', () => {
       const isInitialized = ref<boolean>(false);
       const isInitializing = ref<boolean>(false);
 
+      // 添加用户登录状态的本地引用
+      const isUserLoggedIn = ref<boolean>(false);
+
+      // 添加事件监听
+      eventBus.on('user:login', () => {
+            isUserLoggedIn.value = true;
+            if (!isInitialized.value) {
+                  init();
+            }
+      });
+
+      eventBus.on('user:logout', () => {
+            isUserLoggedIn.value = false;
+            clearAllOrderCache();
+      });
+
+      eventBus.on('user:initialized', (isLoggedIn) => {
+            isUserLoggedIn.value = isLoggedIn;
+      });
+
       // 添加init方法
       async function init() {
-            if (!userStore.isLoggedIn) return;
+            if (!isUserLoggedIn.value) return;
 
             // 避免重复初始化
             if (isInitialized.value || isInitializing.value) return;
@@ -58,13 +77,11 @@ export const useOrderStore = defineStore('order', () => {
                   isInitializing.value = false;
             }
       }
-
-      // 用户store
-      const userStore = useUserStore();
+ 
 
       // 获取订单列表
       async function fetchOrders(page: number = 1, limit: number = 10, status?: number, forceRefresh = false) {
-            if (!userStore.isLoggedIn) return null;
+            if (!isUserLoggedIn.value) return null;
 
             // 缓存键包含分页和状态信息
             const cacheKey = `${ORDER_LIST_KEY}_page${page}_limit${limit}${status !== undefined ? '_status' + status : ''}`;
@@ -125,7 +142,7 @@ export const useOrderStore = defineStore('order', () => {
 
       // 获取订单详情
       async function fetchOrderDetail(id: string, forceRefresh = false) {
-            if (!userStore.isLoggedIn) return null;
+            if (!isUserLoggedIn.value) return null;
 
             // 当前查看的订单就是请求的订单且不强制刷新，直接返回
             if (currentOrder.value && currentOrder.value.id === id && !forceRefresh) {
@@ -174,7 +191,7 @@ export const useOrderStore = defineStore('order', () => {
 
       // 创建订单
       async function createOrder(params: CreateOrderParams) {
-            if (!userStore.isLoggedIn) return null;
+            if (!isUserLoggedIn.value) return null;
 
             loading.value = true;
             error.value = null;
@@ -196,7 +213,7 @@ export const useOrderStore = defineStore('order', () => {
 
       // 快速购买
       async function quickBuy(params: QuickBuyParams) {
-            if (!userStore.isLoggedIn) return null;
+            if (!isUserLoggedIn.value) return null;
 
             loading.value = true;
             error.value = null;
@@ -218,7 +235,7 @@ export const useOrderStore = defineStore('order', () => {
 
       // 支付订单
       async function payOrder(id: string, params: PayOrderParams) {
-            if (!userStore.isLoggedIn) return null;
+            if (!isUserLoggedIn.value) return null;
 
             loading.value = true;
             error.value = null;
@@ -244,7 +261,7 @@ export const useOrderStore = defineStore('order', () => {
 
       // 取消订单
       async function cancelOrder(id: string) {
-            if (!userStore.isLoggedIn) return null;
+            if (!isUserLoggedIn.value) return null;
 
             loading.value = true;
             error.value = null;
@@ -270,7 +287,7 @@ export const useOrderStore = defineStore('order', () => {
 
       // 确认收货
       async function confirmReceipt(id: string) {
-            if (!userStore.isLoggedIn) return null;
+            if (!isUserLoggedIn.value) return null;
 
             loading.value = true;
             error.value = null;

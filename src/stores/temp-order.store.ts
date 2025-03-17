@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { tempOrderApi } from '@/api/temp-order.api';
 import { storage } from '@/utils/storage';
-import { useUserStore } from './user.store';
+import { eventBus } from '@/utils/eventBus'
 import type { TempOrder, CreateTempOrderParams } from '@/types/temp-order.type';
 
 // 缓存键
@@ -24,8 +24,25 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
       const isInitialized = ref<boolean>(false);
       const isInitializing = ref<boolean>(false);
 
-      // 使用其他store
-      const userStore = useUserStore();
+      // 添加用户登录状态的本地引用
+      const isUserLoggedIn = ref<boolean>(false);
+
+      // 添加事件监听
+      eventBus.on('user:login', () => {
+            isUserLoggedIn.value = true;
+            if (!isInitialized.value) {
+                  init();
+            }
+      });
+
+      eventBus.on('user:logout', () => {
+            isUserLoggedIn.value = false;
+            clearTempOrder();
+      });
+
+      eventBus.on('user:initialized', (isLoggedIn) => {
+            isUserLoggedIn.value = isLoggedIn;
+      });
 
       // 计算属性
       const isExpired = computed(() => {
@@ -49,7 +66,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
 
       // 初始化方法
       async function init() {
-            if (!userStore.isLoggedIn) return;
+            if (!isUserLoggedIn.value) return;
 
             // 避免重复初始化
             if (isInitialized.value || isInitializing.value) return;
@@ -98,7 +115,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
 
       // 创建临时订单
       async function createTempOrder(params: CreateTempOrderParams) {
-            if (!userStore.isLoggedIn) {
+            if (!isUserLoggedIn.value) {
                   throw new Error('请先登录');
             }
 
@@ -136,7 +153,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
 
       // 获取临时订单
       async function getTempOrder(id: string) {
-            if (!userStore.isLoggedIn) {
+            if (!isUserLoggedIn.value) {
                   throw new Error('请先登录');
             }
 
@@ -182,7 +199,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                   throw new Error('没有临时订单');
             }
 
-            if (!userStore.isLoggedIn) {
+            if (!isUserLoggedIn.value) {
                   throw new Error('请先登录');
             }
 
@@ -235,7 +252,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                   throw new Error('没有临时订单');
             }
 
-            if (!userStore.isLoggedIn) {
+            if (!isUserLoggedIn.value) {
                   throw new Error('请先登录');
             }
 
@@ -277,7 +294,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                   throw new Error('没有临时订单');
             }
 
-            if (!userStore.isLoggedIn) {
+            if (!isUserLoggedIn.value) {
                   throw new Error('请先登录');
             }
 

@@ -2,8 +2,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { favoriteApi } from '@/api/favorite.api';
-import { storage } from '@/utils/storage';
-import { useUserStore } from './user.store';
+import { storage } from '@/utils/storage'; 
 import { eventBus } from '@/utils/eventBus'
 import type {
       Favorite,
@@ -31,16 +30,33 @@ export const useFavoriteStore = defineStore('favorite', () => {
       // 添加初始化状态跟踪变量
       const isInitialized = ref<boolean>(false);
       const isInitializing = ref<boolean>(false);
+      // 添加用户登录状态的本地引用
+      const isUserLoggedIn = ref<boolean>(false);
 
-      // 用户store
-      const userStore = useUserStore();
+      // 添加事件监听
+      eventBus.on('user:login', () => {
+            isUserLoggedIn.value = true;
+            if (!isInitialized.value) {
+                  init();
+            }
+      });
+
+      eventBus.on('user:logout', () => {
+            isUserLoggedIn.value = false;
+            clearFavoriteCache();
+      });
+
+      eventBus.on('user:initialized', (isLoggedIn) => {
+            isUserLoggedIn.value = isLoggedIn;
+      });
+
 
       // 计算属性
       const hasFavorites = computed(() => favoriteIds.value.length > 0);
 
       // 初始化
       async function init() {
-            if (!userStore.isLoggedIn) return;
+            if (!isUserLoggedIn.value) return;
 
             // 避免重复初始化
             if (isInitialized.value || isInitializing.value) return;
@@ -75,7 +91,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
 
       // 获取收藏ID列表
       async function fetchFavoriteIds(forceRefresh = false) {
-            if (!userStore.isLoggedIn) return;
+            if (!isUserLoggedIn.value) return;
 
             // 如果不是强制刷新且已有数据，且刷新时间在6小时内，直接返回
             if (!forceRefresh && favoriteIds.value.length > 0) {
@@ -118,7 +134,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
 
       // 获取收藏列表
       async function fetchFavorites(page: number = 1, limit: number = 10, forceRefresh = false) {
-            if (!userStore.isLoggedIn) return null;
+            if (!isUserLoggedIn.value) return null;
 
             // 如果不是强制刷新，尝试从缓存获取
             if (!forceRefresh && page === 1) {
@@ -174,7 +190,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
 
       // 添加收藏 - 乐观更新版本
       async function addFavorite(params: AddFavoriteParams) {
-            if (!userStore.isLoggedIn) return false;
+            if (!isUserLoggedIn.value) return false;
 
             // 乐观更新 - 立即修改本地状态
             const productId = params.productId;
@@ -209,7 +225,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
 
       // 移除收藏 - 乐观更新版本
       async function removeFavorite(productId: number) {
-            if (!userStore.isLoggedIn) return false;
+            if (!isUserLoggedIn.value) return false;
 
             // 乐观更新 - 立即修改本地状态
             const originalIds = [...favoriteIds.value];
@@ -253,7 +269,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
 
       // 批量移除收藏
       async function batchRemoveFavorites(params: BatchRemoveFavoritesParams) {
-            if (!userStore.isLoggedIn) return false;
+            if (!isUserLoggedIn.value) return false;
 
             loading.value = true;
             error.value = null;
