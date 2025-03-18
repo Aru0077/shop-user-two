@@ -313,6 +313,24 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
         }
     }
 
+    function reset() {
+        // 重置数据状态
+        tempOrder.value = null;
+        loading.value = false;
+        error.value = null;
+        
+        // 重置初始化状态标志
+        isInitialized.value = false;
+        isInitializing.value = false;
+        
+        // 重用现有的本地状态清理函数
+        clearLocalState();
+        
+        // 清除临时订单缓存
+        tempOrderService.clearTempOrderCache();
+      }
+
+      
     return {
         // 状态
         tempOrder,
@@ -341,6 +359,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
         setPaymentType,
         setRemark,
         clearTempOrder,
-        dispose
+        dispose,
+        reset
     };
 });

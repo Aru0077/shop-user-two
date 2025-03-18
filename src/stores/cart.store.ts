@@ -28,6 +28,7 @@ export const useCartStore = defineStore('cart', () => {
 
     // 初始化购物车
     async function initCart() {
+        if (!isUserLoggedIn.value) return false;
         if (isInitialized.value || isInitializing.value) return;
         isInitializing.value = true;
 
@@ -72,6 +73,11 @@ export const useCartStore = defineStore('cart', () => {
 
     // 获取购物车列表
     async function fetchCartFromServer(forceRefresh = false) {
+        if (!isUserLoggedIn.value) {
+            error.value = '请先登录';
+            return [];
+        }
+
         loading.value = true;
         error.value = null;
 
@@ -90,6 +96,11 @@ export const useCartStore = defineStore('cart', () => {
 
     // 添加商品到购物车
     async function addToCart(params: AddToCartParams) {
+        if (!isUserLoggedIn.value) {
+            error.value = '请先登录';
+            return false;
+        }
+
         loading.value = true;
         error.value = null;
 
@@ -106,6 +117,11 @@ export const useCartStore = defineStore('cart', () => {
 
     // 更新购物车项乐观更新版本
     async function optimisticUpdateCartItem(id: number, quantity: number, delay: number = 500) {
+        if (!isUserLoggedIn.value) {
+            error.value = '请先登录';
+            return false;
+        }
+
         // 找到对应的购物车项
         const itemIndex = cartItems.value.findIndex(item => item.id === id);
         if (itemIndex === -1) return;
@@ -155,6 +171,11 @@ export const useCartStore = defineStore('cart', () => {
 
     // 更新购物车项
     async function updateCartItem(id: number, params: UpdateCartItemParams) {
+        if (!isUserLoggedIn.value) {
+            error.value = '请先登录';
+            return false;
+        }
+
         loading.value = true;
         error.value = null;
 
@@ -171,6 +192,11 @@ export const useCartStore = defineStore('cart', () => {
 
     // 删除购物车项
     async function removeCartItem(id: number) {
+        if (!isUserLoggedIn.value) {
+            error.value = '请先登录';
+            return false;
+        }
+
         loading.value = true;
         error.value = null;
 
@@ -187,6 +213,11 @@ export const useCartStore = defineStore('cart', () => {
 
     // 清空购物车
     async function clearCart() {
+        if (!isUserLoggedIn.value) {
+            error.value = '请先登录';
+            return false;
+        }
+
         loading.value = true;
         error.value = null;
 
@@ -201,25 +232,6 @@ export const useCartStore = defineStore('cart', () => {
         }
     }
 
-    // 合并本地购物车到服务器
-    async function mergeLocalCartToServer() {
-        if (!isUserLoggedIn.value) return;
-
-        loading.value = true;
-        error.value = null;
-
-        try {
-            await cartService.mergeLocalCartToServer();
-            return true;
-        } catch (err: any) {
-            error.value = err.message || '合并购物车失败';
-            console.error('合并购物车失败:', err);
-            return false;
-        } finally {
-            loading.value = false;
-        }
-    }
-
     // 检查商品是否正在更新中
     function isItemUpdating(id: number): boolean {
         return updatingItems.value.has(id);
@@ -227,11 +239,24 @@ export const useCartStore = defineStore('cart', () => {
 
     // 在一定时间后刷新购物车
     async function refreshCartIfNeeded(forceRefresh = false) {
-        if (!isInitialized.value) return;
+        if (!isUserLoggedIn.value || !isInitialized.value) return;
 
         if (cartService.shouldRefreshCart(forceRefresh)) {
             await fetchCartFromServer(true);
         }
+    }
+
+    // 重置store状态（用于处理用户登出等情况）
+    function reset() {
+        cartItems.value = [];
+        totalItems.value = 0;
+        error.value = null;
+        loading.value = false;
+        lastSyncTime.value = 0;
+        pendingUpdates.value.clear();
+        updatingItems.value.clear();
+        isInitialized.value = false;
+        isInitializing.value = false;
     }
 
     // 清理资源
@@ -271,10 +296,10 @@ export const useCartStore = defineStore('cart', () => {
         updateCartItem,
         removeCartItem,
         clearCart,
-        mergeLocalCartToServer,
         refreshCartIfNeeded,
         optimisticUpdateCartItem,
         isItemUpdating,
+        reset,
         dispose
     };
 });

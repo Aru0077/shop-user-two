@@ -59,6 +59,11 @@ export const useUserStore = defineStore('user', () => {
             }
       }
 
+      // 检查token是否过期
+function checkTokenExpiry() {
+      return authService.checkTokenExpiry();
+  }
+
       // 清除用户状态
       function clearUserState() {
             authService.clearLoginState();
@@ -119,6 +124,7 @@ export const useUserStore = defineStore('user', () => {
             init,
             login,
             logout,
+            checkTokenExpiry,
             register,
             deleteAccount,
             clearUserState,

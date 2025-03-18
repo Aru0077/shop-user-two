@@ -178,6 +178,18 @@ export const useCheckoutStore = defineStore('checkout', () => {
         }
     }
 
+    function reset() {
+        checkoutInfo.value = null;
+        orderPreview.value = null;
+        selectedAddressId.value = null;
+        selectedPaymentType.value = '';
+        remark.value = '';
+        loading.value = false;
+        error.value = null;
+        lastFetchTime.value = 0;
+        isInitialized.value = false;
+    }
+
     return {
         // 状态
         isInitialized,
@@ -206,6 +218,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
         resetCheckout,
         clearCheckoutCache,
         refreshCheckoutIfNeeded,
-        dispose
+        dispose,
+        reset
     };
 });

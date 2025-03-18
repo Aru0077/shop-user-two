@@ -193,6 +193,15 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   unsubscribeFavoriteIdsChange = null;
             }
       }
+      function reset() {
+            favorites.value = [];
+            favoriteIds.value = [];
+            totalFavorites.value = 0;
+            error.value = null;
+            loading.value = false;
+            lastFetchTime.value = 0;
+            isInitialized.value = false;  // 重置初始化状态
+      }
 
       return {
             // 状态
@@ -219,6 +228,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
             isFavorite,
             clearFavoriteCache,
             refreshFavoritesIfNeeded,
-            dispose
+            dispose,
+            reset
       };
 });

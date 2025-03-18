@@ -45,7 +45,8 @@ export async function initializeServices(): Promise<boolean> {
         // 无论登录状态，都初始化的公共服务
         initPromises.push(productService.init({ loadHomeDataOnly: true }));
         initPromises.push(cartService.init());
-        
+        initPromises.push(promotionService.init()); // 添加促销服务初始化
+
         // 用户已登录，初始化用户相关服务
         if (authService.isLoggedIn.value) {
             initPromises.push(addressService.init());
@@ -53,7 +54,6 @@ export async function initializeServices(): Promise<boolean> {
             initPromises.push(checkoutService.init());
             initPromises.push(tempOrderService.init());
             initPromises.push(orderService.init());
-            initPromises.push(promotionService.init()); // 添加促销服务初始化
         }
 
         // 等待所有服务初始化

@@ -122,6 +122,15 @@ export const usePromotionStore = defineStore('promotion', () => {
             }
       }
 
+      function reset() {
+            promotions.value = [];
+            currentEligiblePromotion.value = null;
+            loading.value = false;
+            error.value = null;
+            lastFetchTime.value = 0;
+            isInitialized.value = false;
+      }
+
       return {
             // 状态
             isInitialized,
@@ -142,6 +151,7 @@ export const usePromotionStore = defineStore('promotion', () => {
             findPromotionsByType,
             clearPromotionCache,
             refreshPromotionsIfNeeded,
-            dispose
+            dispose,
+            reset
       };
 });

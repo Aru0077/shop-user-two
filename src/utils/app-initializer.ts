@@ -38,21 +38,17 @@ export async function initializeApp(): Promise<boolean> {
                   currentPhase = InitPhase.SERVICES;
             }
 
-            // 第二阶段：初始化核心Store
+            // 第二阶段：初始化核心Store（仅包含用户和产品）
             if (currentPhase < InitPhase.CORE_STORES) {
                   console.log('正在初始化核心Store...');
                   const userStore = useUserStore();
                   const productStore = useProductStore();
-                  const cartStore = useCartStore();
 
                   // 确保用户状态已初始化
                   await userStore.init();
 
-                  // 并行初始化产品和购物车
-                  await Promise.all([
-                        productStore.init({ loadHomeDataOnly: true }),
-                        cartStore.initCart()
-                  ]);
+                  // 初始化产品Store
+                  await productStore.init({ loadHomeDataOnly: true });
 
                   currentPhase = InitPhase.CORE_STORES;
             }
@@ -94,16 +90,18 @@ export async function initializeUserStores(): Promise<boolean> {
             const checkoutStore = useCheckoutStore();
             const orderStore = useOrderStore();
             const tempOrderStore = useTempOrderStore();
-            const promotionStore = usePromotionStore(); // 添加新的促销Store
+            const promotionStore = usePromotionStore();
+            const cartStore = useCartStore(); // 购物车移到用户相关Store
 
-            // 并行初始化各模块
+            // 并行初始化各模块，包括购物车
             await Promise.all([
                   favoriteStore.init(),
                   addressStore.init(),
                   orderStore.init(),
                   checkoutStore.initCheckout(),
                   tempOrderStore.init(),
-                  promotionStore.init() // 添加促销Store初始化
+                  promotionStore.init(),
+                  cartStore.initCart() // 添加购物车初始化
             ]);
 
             console.log('用户Store初始化完成');
@@ -118,15 +116,9 @@ export async function initializeUserStores(): Promise<boolean> {
  * 用户登录后调用，初始化用户相关服务和Store
  */
 export async function onUserLogin(): Promise<void> {
-      const cartStore = useCartStore();
-
       try {
-            // 1. 先同步购物车
-            await cartStore.mergeLocalCartToServer();
-
-            // 2. 初始化用户相关Store
+            // 初始化用户相关Store（包括购物车）
             await initializeUserStores();
-
             currentPhase = InitPhase.USER_STORES;
       } catch (error) {
             console.error('登录后初始化失败:', error);
@@ -143,20 +135,29 @@ export function onUserLogout(): void {
       const orderStore = useOrderStore();
       const checkoutStore = useCheckoutStore();
       const tempOrderStore = useTempOrderStore();
-      const promotionStore = usePromotionStore(); // 添加新的促销Store
+      const promotionStore = usePromotionStore();
+      const cartStore = useCartStore();
 
       // 清除用户状态
       userStore.clearUserState();
 
-      // 清除其他模块缓存
-      addressStore.clearAddressCache();
-      favoriteStore.clearFavoriteCache();
-      orderStore.clearAllOrderCache();
-      checkoutStore.clearCheckoutCache();
-      tempOrderStore.clearTempOrder();
-      promotionStore.clearPromotionCache(); // 添加促销缓存清理
+      // 重置各Store状态并释放资源
+      favoriteStore.reset();
+      addressStore.reset();
+      orderStore.reset();
+      checkoutStore.reset();
+      tempOrderStore.reset();
+      promotionStore.reset();
+      cartStore.reset(); // 购物车也需重置
 
-      // 注意：不清除购物车缓存，因为购物车数据应在未登录状态下保留
+      // 释放资源
+      favoriteStore.dispose();
+      addressStore.dispose();
+      orderStore.dispose();
+      checkoutStore.dispose();
+      tempOrderStore.dispose();
+      promotionStore.dispose();
+      cartStore.dispose();
 
       // 重置初始化阶段
       currentPhase = InitPhase.CORE_STORES;

@@ -91,7 +91,8 @@ const routes: Array<RouteRecordRaw> = [
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back',
-                  }
+                  },
+                  requiresAuth: true 
             }
       },
       // ... 其他路由保持不变，只需更新meta信息中的showTabBar

@@ -92,6 +92,13 @@ class AuthService {
       }
 
       /**
+       * 检查 token 是否过期
+       */
+      public checkTokenExpiry(): boolean {
+            return this.checkTokenValidity();
+      }
+
+      /**
        * 登录
        * @param username 用户名
        * @param password 密码

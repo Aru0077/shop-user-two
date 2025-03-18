@@ -1,6 +1,5 @@
 // src/services/cart.service.ts
 import { cartApi } from '@/api/cart.api';
-import { storage, STORAGE_KEYS, STORAGE_VERSIONS } from '@/utils/storage';
 import { authService } from '@/services/auth.service';
 import type {
       CartItem,
@@ -24,11 +23,9 @@ class CartService {
             // 监听认证状态变化
             this.authStateUnsubscribe = authService.onStateChange((isLoggedIn) => {
                   if (!isLoggedIn) {
-                        // 用户登出时不清除本地购物车
-                        // 保留购物车数据，以便用户再次登录时可以合并
-                  } else {
-                        // 用户登录时，尝试合并本地购物车
-                        this.mergeLocalCartToServer();
+                        // 用户登出时清除购物车数据
+                        this.notifyStateChange([]);
+                        this.notifyCountChange(0);
                   }
             });
       }
@@ -38,20 +35,6 @@ class CartService {
        */
       async init(): Promise<boolean> {
             try {
-                  // 先从本地缓存恢复
-                  const cartStorage = storage.getCartData<{
-                        version: string,
-                        items: CartItem[],
-                        timestamp: number
-                  }>();
-
-                  if (cartStorage && cartStorage.version === STORAGE_VERSIONS.CART) {
-                        this.lastFetchTime = cartStorage.timestamp;
-                        // 通知状态变化
-                        this.notifyStateChange(cartStorage.items);
-                        this.notifyCountChange(this.calculateTotalItems(cartStorage.items));
-                  }
-
                   // 如果已登录，则从服务器获取购物车
                   if (authService.isLoggedIn.value) {
                         await this.getCartList();
@@ -71,40 +54,14 @@ class CartService {
        * @param forceRefresh 是否强制刷新
        */
       async getCartList(page: number = 1, limit: number = 10, forceRefresh = false): Promise<CartItem[]> {
-            // 如果未登录，返回本地购物车
+            // 如果未登录，抛出错误
             if (!authService.isLoggedIn.value) {
-                  const cartStorage = storage.getCartData<{
-                        version: string,
-                        items: CartItem[],
-                        timestamp: number
-                  }>();
-                  return cartStorage?.items || [];
-            }
-
-            // 检查是否需要强制刷新
-            if (!forceRefresh) {
-                  // 先检查缓存
-                  const cartStorage = storage.getCartData<{
-                        version: string,
-                        items: CartItem[],
-                        timestamp: number
-                  }>();
-
-                  if (cartStorage && cartStorage.version === STORAGE_VERSIONS.CART) {
-                        this.lastFetchTime = cartStorage.timestamp;
-                        // 通知状态变化
-                        this.notifyStateChange(cartStorage.items);
-                        this.notifyCountChange(this.calculateTotalItems(cartStorage.items));
-                        return cartStorage.items;
-                  }
+                  throw new Error('请先登录');
             }
 
             try {
                   const response = await cartApi.getCartList(page, limit);
                   this.lastFetchTime = Date.now();
-
-                  // 缓存购物车
-                  this.saveCartToStorage(response.data);
 
                   // 通知状态变化
                   this.notifyStateChange(response.data);
@@ -122,48 +79,7 @@ class CartService {
        */
       async addToCart(params: AddToCartParams): Promise<CartItem> {
             if (!authService.isLoggedIn.value) {
-                  // 未登录，使用本地购物车
-                  const cartStorage = storage.getCartData<{
-                        version: string,
-                        items: CartItem[],
-                        timestamp: number
-                  }>();
-
-                  const items = cartStorage?.items || [];
-
-                  // 检查是否已存在相同商品
-                  const existingIndex = items.findIndex(
-                        item => item.productId === params.productId && item.skuId === params.skuId
-                  );
-
-                  if (existingIndex >= 0) {
-                        // 更新数量
-                        items[existingIndex].quantity += params.quantity || 1;
-                        items[existingIndex].updatedAt = new Date().toISOString();
-                  } else {
-                        // 添加新商品
-                        const newItem: CartItem = {
-                              id: Date.now(), // 临时ID
-                              userId: '',
-                              productId: params.productId,
-                              skuId: params.skuId,
-                              quantity: params.quantity || 1,
-                              updatedAt: new Date().toISOString(),
-                              isAvailable: true,
-                              createdAt: new Date().toISOString()
-                        };
-
-                        items.push(newItem);
-                  }
-
-                  // 更新缓存
-                  this.saveCartToStorage(items);
-
-                  // 通知状态变化
-                  this.notifyStateChange(items);
-                  this.notifyCountChange(this.calculateTotalItems(items));
-
-                  return existingIndex >= 0 ? items[existingIndex] : items[items.length - 1];
+                  throw new Error('请先登录');
             }
 
             try {
@@ -188,6 +104,7 @@ class CartService {
                   throw err;
             }
       }
+
       /**
        * 更新购物车商品数量
        * @param id 购物车项ID
@@ -195,34 +112,7 @@ class CartService {
        */
       async updateCartItem(id: number, params: UpdateCartItemParams): Promise<CartItem> {
             if (!authService.isLoggedIn.value) {
-                  // 未登录，修改本地购物车
-                  const cartStorage = storage.getCartData<{
-                        version: string,
-                        items: CartItem[],
-                        timestamp: number
-                  }>();
-
-                  const items = cartStorage?.items || [];
-                  const index = items.findIndex(item => item.id === id);
-
-                  if (index === -1) {
-                        throw new Error('购物车项不存在');
-                  }
-
-                  items[index] = {
-                        ...items[index],
-                        ...params,
-                        updatedAt: new Date().toISOString()
-                  };
-
-                  // 更新缓存
-                  this.saveCartToStorage(items);
-
-                  // 通知状态变化
-                  this.notifyStateChange(items);
-                  this.notifyCountChange(this.calculateTotalItems(items));
-
-                  return items[index];
+                  throw new Error('请先登录');
             }
 
             try {
@@ -243,24 +133,7 @@ class CartService {
        */
       async deleteCartItem(id: number): Promise<void> {
             if (!authService.isLoggedIn.value) {
-                  // 未登录，修改本地购物车
-                  const cartStorage = storage.getCartData<{
-                        version: string,
-                        items: CartItem[],
-                        timestamp: number
-                  }>();
-
-                  const items = cartStorage?.items || [];
-                  const newItems = items.filter(item => item.id !== id);
-
-                  // 更新缓存
-                  this.saveCartToStorage(newItems);
-
-                  // 通知状态变化
-                  this.notifyStateChange(newItems);
-                  this.notifyCountChange(this.calculateTotalItems(newItems));
-
-                  return;
+                  throw new Error('请先登录');
             }
 
             try {
@@ -278,21 +151,11 @@ class CartService {
        */
       async clearCart(): Promise<void> {
             if (!authService.isLoggedIn.value) {
-                  // 未登录，清空本地购物车
-                  this.saveCartToStorage([]);
-
-                  // 通知状态变化
-                  this.notifyStateChange([]);
-                  this.notifyCountChange(0);
-
-                  return;
+                  throw new Error('请先登录');
             }
 
             try {
                   await cartApi.clearCart();
-
-                  // 清空缓存
-                  this.saveCartToStorage([]);
 
                   // 通知状态变化
                   this.notifyStateChange([]);
@@ -307,6 +170,10 @@ class CartService {
        * @param params 预览参数
        */
       async previewOrderAmount(params: PreviewOrderParams): Promise<OrderAmountPreview> {
+            if (!authService.isLoggedIn.value) {
+                  throw new Error('请先登录');
+            }
+
             try {
                   const response = await cartApi.previewOrderAmount(params);
                   return response;
@@ -316,69 +183,10 @@ class CartService {
       }
 
       /**
-       * 合并本地购物车到服务器
-       */
-      async mergeLocalCartToServer(): Promise<void> {
-            if (!authService.isLoggedIn.value) {
-                  return;
-            }
-
-            try {
-                  // 获取本地购物车
-                  const cartStorage = storage.getCartData<{
-                        version: string,
-                        items: CartItem[],
-                        timestamp: number
-                  }>();
-
-                  if (!cartStorage || !cartStorage.items.length) {
-                        return;
-                  }
-
-                  // 获取服务器购物车
-                  const serverResponse = await cartApi.getCartList(1, 100);
-                  const serverItems = serverResponse.data;
-
-                  // 合并本地购物车到服务器
-                  for (const item of cartStorage.items) {
-                        // 检查服务器上是否已存在
-                        const existsOnServer = serverItems.some(
-                              serverItem => serverItem.productId === item.productId && serverItem.skuId === item.skuId
-                        );
-
-                        if (!existsOnServer) {
-                              await cartApi.addToCart({
-                                    productId: item.productId,
-                                    skuId: item.skuId,
-                                    quantity: item.quantity
-                              });
-                        }
-                  }
-
-                  // 完成后刷新购物车
-                  await this.getCartList(1, 100, true);
-            } catch (err) {
-                  console.error('合并购物车失败:', err);
-            }
-      }
-
-      /**
-       * 保存购物车到存储
-       */
-      private saveCartToStorage(items: CartItem[]): void {
-            const cartData = {
-                  version: STORAGE_VERSIONS.CART,
-                  items: items,
-                  timestamp: Date.now()
-            };
-            storage.saveCartData(cartData);
-      }
-
-      /**
        * 清除购物车缓存
        */
       clearCartCache(): void {
-            storage.remove(STORAGE_KEYS.CART_DATA);
+            // 直接通知状态变化
             this.notifyStateChange([]);
             this.notifyCountChange(0);
       }
@@ -388,6 +196,7 @@ class CartService {
        */
       shouldRefreshCart(forceRefresh = false): boolean {
             if (forceRefresh) return true;
+            if (!authService.isLoggedIn.value) return false;
 
             const now = Date.now();
             // 15分钟刷新一次
