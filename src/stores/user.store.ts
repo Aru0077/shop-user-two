@@ -4,24 +4,23 @@ import { ref, computed } from 'vue';
 import { userApi } from '@/api/user.api';
 import { storage } from '@/utils/storage';
 import { eventBus } from '@/utils/eventBus';
-import type { User, LoginParams, RegisterParams, DeleteAccountParams } from '@/types/user.type';
+import { authService } from '@/services/auth.service';
+import type { LoginParams, RegisterParams, DeleteAccountParams } from '@/types/user.type';
 
-// 缓存键
-const TOKEN_KEY = 'user_token';
-const TOKEN_EXPIRY_KEY = 'user_token_expiry';
-const USER_INFO_KEY = 'user_info';
-// 缓存时间 (7天)
-const AUTH_EXPIRY = 7 * 24 * 60 * 60 * 1000;
+// 缓存键 
+const TOKEN_EXPIRY_KEY = 'user_token_expiry'; 
 
 export const useUserStore = defineStore('user', () => {
-      // 状态
-      const token = ref<string | null>(storage.get(TOKEN_KEY, null));
-      const currentUser = ref<User | null>(storage.get(USER_INFO_KEY, null));
+      // 状态 
       const loading = ref<boolean>(false);
       const error = ref<string | null>(null);
-      // 添加初始化状态跟踪变量
       const isInitialized = ref<boolean>(false);
       const isInitializing = ref<boolean>(false);
+
+      // 计算属性现在委托给 authService
+      const isLoggedIn = computed(() => authService.isLoggedIn.value);
+      const token = computed(() => authService.token.value);
+      const currentUser = computed(() => authService.currentUser.value);
 
       // 添加init方法
       function init() {
@@ -29,8 +28,8 @@ export const useUserStore = defineStore('user', () => {
             isInitializing.value = true;
 
             try {
-                  // 检查token是否有效
-                  const isValid = checkTokenExpiry();
+                  // 使用 authService 初始化
+                  const isValid = authService.init();
                   isInitialized.value = true;
 
                   // 发布初始化完成事件
@@ -45,28 +44,19 @@ export const useUserStore = defineStore('user', () => {
             }
       }
 
-      // 计算属性
-      const isLoggedIn = computed(() => !!token.value && checkTokenExpiry());
 
       // 登录
       async function login(params: LoginParams) {
             loading.value = true;
+            authService.setLoading(true);
             error.value = null;
+            authService.setError(null);
 
             try {
                   const response = await userApi.login(params);
 
-                  // 更新状态
-                  token.value = response.token;
-                  currentUser.value = response.user;
-
-                  // 计算token过期时间
-                  const expiryTime = Date.now() + AUTH_EXPIRY;
-
-                  // 持久化存储
-                  storage.set(TOKEN_KEY, response.token, AUTH_EXPIRY);
-                  storage.set(TOKEN_EXPIRY_KEY, expiryTime, AUTH_EXPIRY);
-                  storage.set(USER_INFO_KEY, response.user, AUTH_EXPIRY);
+                  // 使用 authService 设置登录状态
+                  authService.setLoginState(response.token, response.user);
 
                   // 发布登录成功事件
                   eventBus.emit('user:login', { userId: response.user.id });
@@ -74,24 +64,26 @@ export const useUserStore = defineStore('user', () => {
                   return response;
             } catch (err: any) {
                   error.value = err.message || '登录失败';
+                  authService.setError(err.message || '登录失败');
                   eventBus.emit('app:error', { code: 1002, message: err.message || '登录失败' });
                   throw err;
             } finally {
                   loading.value = false;
+                  authService.setLoading(false);
             }
       }
 
       // 注销
       async function logout() {
             try {
-                  if (token.value) {
+                  if (authService.token.value) {
                         await userApi.logout();
                   }
             } catch (err) {
                   console.error('退出登录时出错:', err);
             } finally {
-                  // 清除用户状态
-                  clearUserState();
+                  // 使用 authService 清除登录状态
+                  authService.clearLoginState();
 
                   // 发布登出事件
                   eventBus.emit('user:logout');
@@ -100,12 +92,7 @@ export const useUserStore = defineStore('user', () => {
 
       // 清除用户状态
       function clearUserState() {
-            token.value = null;
-            currentUser.value = null;
-
-            storage.remove(TOKEN_KEY);
-            storage.remove(TOKEN_EXPIRY_KEY);
-            storage.remove(USER_INFO_KEY);
+            authService.clearLoginState();
       }
 
       // 注册
