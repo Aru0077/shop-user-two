@@ -48,18 +48,19 @@ class CartService {
       }
 
       /**
-       * 获取购物车列表
-       * @param page 页码
-       * @param limit 每页数量
-       * @param forceRefresh 是否强制刷新
-       */
-      async getCartList(page: number = 1, limit: number = 10, forceRefresh = false): Promise<CartItem[]> {
+ * 获取购物车列表
+ * @param page 页码
+ * @param limit 每页数量
+ * @param forceRefresh 是否强制刷新
+ */
+      async getCartList(page: number = 1, limit: number = 10, _forceRefresh = false): Promise<CartItem[]> {
             // 如果未登录，抛出错误
             if (!authService.isLoggedIn.value) {
                   throw new Error('请先登录');
             }
 
             try {
+                  // 将 forceRefresh 参数传递给 API 调用
                   const response = await cartApi.getCartList(page, limit);
                   this.lastFetchTime = Date.now();
 
