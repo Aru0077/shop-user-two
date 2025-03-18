@@ -112,7 +112,7 @@ import { AlertTriangle, Lock, Eye, EyeOff } from 'lucide-vue-next';
 import { useUserStore } from '@/stores/user.store';
 import { useToast } from '@/composables/useToast';
 import PageTitle from '@/components/common/PageTitle.vue';
-import { clearAllUserRelatedCaches } from '@/stores/index.store';
+import { onUserLogout } from '@/utils/app-initializer';
 
 // 初始化路由、状态管理和 toast
 const router = useRouter();
@@ -139,7 +139,7 @@ const deleteAccount = async () => {
         await userStore.deleteAccount(password.value);
         
         // 清除所有用户相关的缓存
-        clearAllUserRelatedCaches();
+        onUserLogout();
         
         // 显示成功提示
         toast.success('Your account has been deleted');

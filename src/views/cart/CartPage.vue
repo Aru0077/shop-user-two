@@ -34,16 +34,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useCartStore } from '@/stores/cart.store';
+import { useUserStore } from '@/stores/user.store';
+import { useTempOrderStore } from '@/stores/temp-order.store';
 import { useToast } from '@/composables/useToast';
 import PageTitle from '@/components/common/PageTitle.vue';
 import CartItem from '@/components/cart/CartItem.vue';
 import CartSummary from '@/components/cart/CartSummary.vue';
 import EmptyCart from '@/components/cart/EmptyCart.vue';
-import { useUserStore } from '@/stores/user.store';
-import { useTempOrderStore } from '@/stores/temp-order.store'
 
 // 初始化
 const router = useRouter();
@@ -160,7 +160,7 @@ const batchRemove = async () => {
     }
 };
 
-// 去结算 
+// 去结算 创建临时订单
 const checkout = async () => {
     if (selectedItems.value.length === 0) {
         toast.error('请选择要结算的商品');
@@ -169,6 +169,7 @@ const checkout = async () => {
 
     // 检查用户是否登录
     if (!userStore.isLoggedIn) {
+        toast.info('请先登录');
         router.push({
             path: '/login',
             query: { redirect: '/cart' }
@@ -180,11 +181,19 @@ const checkout = async () => {
     try {
         // 1. 创建临时订单
         const tempOrderStore = useTempOrderStore();
+        
+        // 确保临时订单store已初始化
+        if (!tempOrderStore.isInitialized && !tempOrderStore.isInitializing) {
+            await tempOrderStore.init();
+        }
+        
         const tempOrder = await tempOrderStore.createTempOrder({
             mode: 'cart',
             cartItemIds: selectedItems.value
         });
 
+        toast.success('创建订单成功');
+        
         // 2. 跳转到结账页面，带上临时订单ID
         router.push({
             path: '/checkout',
@@ -192,8 +201,8 @@ const checkout = async () => {
                 tempOrderId: tempOrder.id
             }
         });
-    } catch (error) {
-        toast.error('创建订单失败，请重试');
+    } catch (error: any) {
+        toast.error(error.message || '创建订单失败，请重试');
         console.error('创建临时订单失败:', error);
     } finally {
         loading.value = false;
@@ -213,12 +222,14 @@ watch(cartItems, (newItems) => {
     );
 }, { deep: true });
 
-// 组件挂载时获取购物车数据
 // 组件挂载时获取购物车数据 
 onMounted(async () => {
-    // 确保购物车数据已加载
-    if (!cartStore.isInitialized) {
-        if (cartStore.isInitializing) {
+    loading.value = true;
+    try {
+        // 确保购物车已初始化
+        if (!cartStore.isInitialized && !cartStore.isInitializing) {
+            await cartStore.initCart();
+        } else if (cartStore.isInitializing) {
             // 等待初始化完成
             await new Promise<void>(resolve => {
                 const unwatch = watch(() => cartStore.isInitializing, (isInitializing) => {
@@ -228,18 +239,33 @@ onMounted(async () => {
                     }
                 });
             });
-        } else {
-            // 手动初始化
-            await cartStore.initCart();
         }
-    }
-
-    // 初始化完成后，选择可购买商品
-    if (cartItems.value.length > 0) {
-        // 默认全选可购买的商品
-        selectedItems.value = cartItems.value
-            .filter(item => item.isAvailable)
-            .map(item => item.id);
+        
+        // 刷新购物车数据（如果需要）
+        await cartStore.refreshCartIfNeeded();
+        
+        // 初始化完成后，选择可购买商品
+        if (cartItems.value.length > 0) {
+            // 默认全选可购买的商品
+            selectedItems.value = cartItems.value
+                .filter(item => item.isAvailable)
+                .map(item => item.id);
+        }
+    } catch (error) {
+        toast.error('加载购物车失败，请刷新页面重试');
+        console.error('初始化购物车失败:', error);
+    } finally {
+        loading.value = false;
     }
 });
+
+// 添加组件销毁时清理资源
+onBeforeUnmount(() => {
+    // 清理资源
+    if (cartStore.dispose) {
+        cartStore.dispose();
+    }
+});
+
+
 </script>

@@ -94,11 +94,11 @@ const loading = computed(() => addressStore.loading);
 
 // 在组件挂载时获取地址数据，如果尚未初始化
 onMounted(async () => {
-    // 如果地址数据未初始化，则获取数据
+    // 使用store的初始化方法
     if (!addressStore.isInitialized && !addressStore.isInitializing) {
-        await addressStore.fetchAddresses();
+        await addressStore.init();
     } else {
-        // 如果已初始化，则刷新地址数据（可选）
+        // 如果已初始化，则检查是否需要刷新
         await addressStore.refreshAddressesIfNeeded();
     }
 });

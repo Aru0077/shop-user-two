@@ -72,6 +72,10 @@ import { ref, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { User, Lock, Eye, EyeOff, Loader } from 'lucide-vue-next';
 import { useUserStore } from '@/stores/user.store';
+import { onUserLogin } from '@/utils/app-initializer';
+import { useToast } from '@/composables/useToast';
+
+const toast = useToast();
 
 // Router
 const router = useRouter();
@@ -94,16 +98,20 @@ const handleLogin = async () => {
     }
 
     try {
-        await userStore.login({
-            username: username.value,
-            password: password.value
-        });
+        await userStore.login(username.value, password.value);
 
-        // Redirect to the redirect URL or to home page
+        // 登录后初始化用户相关服务和Store（新增）
+        await onUserLogin();
+
+        // 显示成功提示（新增）
+        toast.success('登录成功');
+
+        // 重定向到重定向URL或主页
         const redirectPath = route.query.redirect as string || '/home';
         router.replace(redirectPath);
-    } catch (err) {
-        console.error('Login failed:', err);
+    } catch (err: any) {
+        console.error('登录失败:', err);
+        toast.error(err.message || '登录失败'); // 新增错误提示
     }
 };
 </script>

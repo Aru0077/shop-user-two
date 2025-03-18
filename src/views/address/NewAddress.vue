@@ -142,11 +142,14 @@ const addressId = computed(() => route.query.id ? parseInt(route.query.id as str
 // 组件挂载时，如果是编辑模式，则获取地址数据
 onMounted(async () => {
     if (isEdit.value && addressId.value) {
-        // 确保地址列表已加载
-        if (addressStore.addresses.length === 0 && !addressStore.isInitializing) {
+        // 确保地址store已初始化
+        if (!addressStore.isInitialized && !addressStore.isInitializing) {
+            await addressStore.init();
+        } else if (addressStore.addresses.length === 0) {
+            // 如果已初始化但地址列表为空，则获取地址列表
             await addressStore.fetchAddresses();
         }
-
+        
         // 查找当前编辑的地址
         const address = addressStore.addresses.find(addr => addr.id === addressId.value);
         if (address) {

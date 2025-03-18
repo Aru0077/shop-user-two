@@ -109,4 +109,14 @@ const formatSpecs = (specs: Array<{ spec: { name: string }, specValue: { value: 
 const updateQuantity = (quantity: number) => {
     emit('update-quantity', props.item.id, quantity);
 };
+// const updateQuantity = async (quantity: number) => {
+//     if (props.disabled || props.isUpdating) return;
+    
+//     try {
+//         emit('update:quantity', quantity);
+//     } catch (error: any) {
+//         console.error('更新数量失败:', error);
+//         // 这里可以考虑添加本地错误处理逻辑
+//     }
+// };
 </script>

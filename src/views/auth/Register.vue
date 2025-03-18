@@ -94,8 +94,10 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { User, Lock, Eye, EyeOff, Loader } from 'lucide-vue-next';
 import { useUserStore } from '@/stores/user.store';
-import { onUserLogin } from '@/stores/index.store';
+import { onUserLogin } from '@/utils/app-initializer';
+import { useToast } from '@/composables/useToast';
 
+const toast = useToast();
 // Router
 const router = useRouter();
 
@@ -139,19 +141,14 @@ const handleRegister = async () => {
             password: password.value
         });
 
-        // Then login automatically
-        await userStore.login({
-            username: username.value,
-            password: password.value
-        });
 
-        // Initialize user-related stores after login
         await onUserLogin();
+        toast.success('注册成功');
 
-        // Redirect to home page after successful registration and login
         router.replace('/home');
-    } catch (err) {
-        console.error('Registration failed:', err);
+    } catch (err: any) {
+        console.error('注册失败:', err);
+        toast.error(err.message || '注册失败'); // 新增错误提示
     }
 };
 </script>
