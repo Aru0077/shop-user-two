@@ -3,6 +3,7 @@ import { ref, computed, readonly } from 'vue';
 import { storage, STORAGE_KEYS, STORAGE_EXPIRY } from '@/utils/storage';
 import type { User } from '@/types/user.type';
 import { userApi } from '@/api/user.api';
+import { onUserLogin, onUserLogout } from '@/utils/app-initializer';
 
 // 状态变化回调类型
 type AuthStateChangeCallback = (isLoggedIn: boolean) => void;
@@ -56,6 +57,20 @@ class AuthService {
             } finally {
                   this._isInitializing.value = false;
             }
+      }
+
+      // 类构造函数中添加
+      constructor() {
+            // 添加登录/登出事件处理
+            this.onLogin(() => {
+                  // 用户登录时调用统一的用户登录初始化
+                  onUserLogin();
+            });
+
+            this.onLogout(() => {
+                  // 用户登出时调用统一的用户登出清理
+                  onUserLogout();
+            });
       }
 
       /**
