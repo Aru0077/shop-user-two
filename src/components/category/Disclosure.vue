@@ -46,31 +46,57 @@ import { useRouter } from 'vue-router';
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue';
 import { ChevronUpIcon } from 'lucide-vue-next';
 import { useProductStore } from '@/stores/product.store';
+import { useToast } from '@/composables/useToast';
 
 // 获取商品 store
 const productStore = useProductStore();
 const router = useRouter();
+const toast = useToast();
 
 // 计算属性，方便访问 store 状态
 const categories = computed(() => productStore.categories);
 const loading = computed(() => productStore.loading);
 const error = computed(() => productStore.error);
 
-// 组件挂载时获取分类数据 
-onMounted(async () => {
-    // 检查分类数据是否已初始化
-    if (categories.value.length > 0) return;
-
-    // 如果正在初始化中，不需要做任何事
-    if (productStore.isInitializing) return;
-
-    // 如果未初始化且没有分类数据，则获取数据
-    if (!productStore.isInitialized && categories.value.length === 0) {
-        try {
-            await productStore.fetchCategoryTree();
-        } catch (err) {
-            console.error('获取分类数据失败:', err);
+// 初始化分类数据
+const initCategories = async () => {
+    loading.value = true;
+    try {
+        // 确保 productStore 已初始化
+        if (!productStore.isInitialized && !productStore.isInitializing) {
+            await productStore.init();
+        } else if (productStore.isInitializing) {
+            // 等待初始化完成
+            await new Promise((resolve) => {
+                const unwatch = watch(() => productStore.isInitializing, (isInitializing) => {
+                    if (!isInitializing) {
+                        unwatch();
+                        resolve();
+                    }
+                });
+            });
         }
+
+        // 根据需要刷新分类数据
+        await productStore.refreshCategoriesIfNeeded();
+    } catch (error) {
+        console.error('初始化分类数据失败:', error);
+        toast.error('加载分类失败，请刷新页面重试');
+    } finally {
+        loading.value = false;
+    }
+};
+
+// 组件挂载时初始化数据
+onMounted(() => {
+    initCategories();
+});
+
+// 组件卸载时清理资源
+onBeforeUnmount(() => {
+    if (productStore.dispose) {
+        productStore.dispose();
     }
 });
+
 </script>

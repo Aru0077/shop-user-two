@@ -123,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { AlertCircle } from 'lucide-vue-next';
 import { useTempOrderStore } from '@/stores/temp-order.store';
@@ -183,6 +183,21 @@ const loadTempOrder = async () => {
             return;
         }
 
+        // 确保 tempOrderStore 已初始化
+        if (!tempOrderStore.isInitialized && !tempOrderStore.isInitializing) {
+            await tempOrderStore.init();
+        } else if (tempOrderStore.isInitializing) {
+            // 等待初始化完成
+            await new Promise<void>((resolve) => {
+                const unwatch = watch(() => tempOrderStore.isInitializing, (isInitializing) => {
+                    if (!isInitializing) {
+                        unwatch();
+                        resolve();
+                    }
+                });
+            });
+        }
+
         // 获取临时订单
         await tempOrderStore.getTempOrder(tempOrderId);
 
@@ -192,9 +207,27 @@ const loadTempOrder = async () => {
             return;
         }
 
+        // 确保 addressStore 已初始化
+        if (!addressStore.isInitialized && !addressStore.isInitializing) {
+            await addressStore.init();
+        } else if (addressStore.isInitializing) {
+            // 等待初始化完成
+            await new Promise<void>((resolve) => {
+                const unwatch = watch(() => addressStore.isInitializing, (isInitializing) => {
+                    if (!isInitializing) {
+                        unwatch();
+                        resolve();
+                    }
+                });
+            });
+        }
+
         // 确保地址信息已加载
         if (addressStore.addresses.length === 0) {
             await addressStore.fetchAddresses();
+        } else {
+            // 如有必要刷新地址数据
+            await addressStore.refreshAddressesIfNeeded();
         }
 
         // 启动倒计时更新
@@ -295,6 +328,15 @@ onMounted(() => {
 onUnmounted(() => {
     if (countdownTimer.value) {
         clearInterval(countdownTimer.value);
+    }
+
+    // 清理资源
+    if (tempOrderStore.dispose) {
+        tempOrderStore.dispose();
+    }
+
+    if (addressStore.dispose) {
+        addressStore.dispose();
     }
 });
 </script>

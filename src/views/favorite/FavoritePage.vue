@@ -85,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Heart, ShoppingCart, Trash2 } from 'lucide-vue-next';
 import { useFavoriteStore } from '@/stores/favorite.store';
@@ -211,6 +211,7 @@ const batchRemoveFavorites = async () => {
 const fetchFavorites = async (page = 1) => {
     loading.value = true;
     try {
+        await favoriteStore.refreshFavoritesIfNeeded(true); // 使用新的刷新方法
         await favoriteStore.fetchFavorites(page, pageSize.value);
     } catch (error) {
         toast.error((error as Error).message || '加载收藏失败');
@@ -221,19 +222,28 @@ const fetchFavorites = async (page = 1) => {
 
 // 组件挂载时获取收藏列表
 onMounted(async () => {
-    // 利用Store的初始化状态
     if (favoriteStore.isInitialized) {
         loading.value = favorites.value.length === 0;
         await fetchFavorites();
-    } else if (!favoriteStore.isInitializing) {
+    } else if (favoriteStore.isInitializing) {
+        loading.value = true;
+        // 使用 watch 等待初始化完成
+        const unwatch = watch(() => favoriteStore.isInitializing, (isInitializing) => {
+            if (!isInitializing) {
+                unwatch();
+                fetchFavorites();
+            }
+        });
+    } else {
         await favoriteStore.init();
         await fetchFavorites();
-    } else {
-        loading.value = true;
-        setTimeout(async () => {
-            await fetchFavorites();
-            loading.value = false;
-        }, 500);
+    }
+});
+
+// 添加 onBeforeUnmount 钩子清理资源
+onBeforeUnmount(() => {
+    if (favoriteStore.dispose) {
+        favoriteStore.dispose();
     }
 });
 </script>

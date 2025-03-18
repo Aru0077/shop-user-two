@@ -39,7 +39,7 @@ import ProductTabbar from '@/components/product/ProductTabbar.vue';
 import SkuSelector from '@/components/product/SkuSelector.vue';
 
 // 引入方法和API
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useUserStore } from '@/stores/user.store';
 import { useProductStore } from '@/stores/product.store';
@@ -100,7 +100,22 @@ const fetchProductData = async () => {
     error.value = null;
 
     try {
-        // 使用Store方法获取商品详情
+        // 确保 productStore 已初始化
+        if (!productStore.isInitialized && !productStore.isInitializing) {
+            await productStore.init();
+        } else if (productStore.isInitializing) {
+            // 等待初始化完成
+            await new Promise<void>((resolve) => {
+                const unwatch = watch(() => productStore.isInitializing, (isInitializing) => {
+                    if (!isInitializing) {
+                        unwatch();
+                        resolve();
+                    }
+                });
+            });
+        }
+        
+        // 使用 Store 方法获取商品详情
         await productStore.fetchProductFullDetail(productId.value);
     } catch (err) {
         error.value = (err as ApiError).message || '获取商品信息失败';
@@ -121,5 +136,19 @@ onMounted(async () => {
     }
 
     fetchProductData();
+});
+
+onBeforeUnmount(() => {
+    if (productStore.dispose) {
+        productStore.dispose();
+    }
+    
+    // 如果已登录，清理收藏 store 资源
+    if (userStore.isLoggedIn) {
+        const favoriteStore = useFavoriteStore();
+        if (favoriteStore.dispose) {
+            favoriteStore.dispose();
+        }
+    }
 });
 </script>

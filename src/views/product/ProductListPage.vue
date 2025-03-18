@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Package, Home } from 'lucide-vue-next';
 import { useProductStore } from '@/stores/product.store';
@@ -102,6 +102,21 @@ const loadProducts = async () => {
     error.value = null;
 
     try {
+        // 确保 productStore 已初始化
+        if (!productStore.isInitialized && !productStore.isInitializing) {
+            await productStore.init();
+        } else if (productStore.isInitializing) {
+            // 等待初始化完成
+            await new Promise<void>((resolve) => {
+                const unwatch = watch(() => productStore.isInitializing, (isInitializing) => {
+                    if (!isInitializing) {
+                        unwatch();
+                        resolve();
+                    }
+                });
+            });
+        }
+        
         let response: PaginatedResponse<Product> | null = null;
 
         // 根据不同的类型调用不同的API
@@ -113,6 +128,8 @@ const loadProducts = async () => {
             response = await productStore.fetchPromotionProducts(currentPage.value, pageSize);
         } else if (listType.value.startsWith('category-')) {
             const categoryId = Number(listType.value.split('-')[1]);
+            // 确保分类数据已更新
+            await productStore.refreshCategoriesIfNeeded();
             response = await productStore.fetchCategoryProducts(
                 categoryId,
                 currentPage.value,
@@ -173,6 +190,10 @@ onMounted(async () => {
     resetAndLoadData();
 });
 
-// 确保在初始化定义后再引入watch
-import { watch } from 'vue';
+// 添加 onBeforeUnmount 钩子清理资源
+onBeforeUnmount(() => {
+    if (productStore.dispose) {
+        productStore.dispose();
+    }
+});
 </script>

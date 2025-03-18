@@ -37,13 +37,20 @@
 
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { useToast } from '@/composables/useToast';
 import { useProductStore } from '@/stores/product.store';
 
 import PageTitle from '@/components/common/PageTitle.vue';
 import SearchInput from '@/components/home/SearchInput.vue';
 import Banner from '@/components/home/Banner.vue';
 import Recommend from '@/components/home/Recommend.vue';
+
+
+// 添加 toast 实例
+const toast = useToast();
+const error = ref(null);
+
 
 const productStore = useProductStore();
 const loading = ref(true);
@@ -61,15 +68,43 @@ const latestProducts = computed(() => productStore.latestProducts || []);
 const topSellingProducts = computed(() => productStore.topSellingProducts || []);
 
 // 简化后的 onMounted 方法 - 移除所有数据初始化代码
-onMounted(() => {
-    // 只管理 UI 加载状态
+onMounted(async () => {
     loading.value = true;
-
-    nextTick(() => {
-        // 完成加载
+    
+    try {
+        // 确保商品 store 已初始化
+        if (!productStore.isInitialized && !productStore.isInitializing) {
+            await productStore.init();
+        } else if (productStore.isInitializing) {
+            // 等待初始化完成
+            await new Promise((resolve) => {
+                const unwatch = watch(() => productStore.isInitializing, (isInitializing) => {
+                    if (!isInitializing) {
+                        unwatch();
+                        resolve();
+                    }
+                });
+            });
+        }
+        
+        // 刷新首页数据（如果需要）
+        await productStore.refreshHomeDataIfNeeded();
+    } catch (err) {
+        console.error('加载首页数据失败:', err);
+        error.value = err.message || '加载数据失败';
+        toast.error('加载首页数据失败，请刷新页面重试');
+    } finally {
         loading.value = false;
-    });
+    }
 });
+
+// 添加 onBeforeUnmount 钩子清理资源
+onBeforeUnmount(() => {
+    if (productStore.dispose) {
+        productStore.dispose();
+    }
+});
+
 </script>
 
 <style>

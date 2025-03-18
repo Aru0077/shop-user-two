@@ -42,11 +42,14 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router'
 import logoImg from '@/assets/logo.png'
 import PageTitle from '@/components/common/PageTitle.vue';
 import { useUserStore } from '@/stores/user.store';
+
+// 添加 loading 状态
+const loading = ref(false);
 
 // 获取用户存储实例
 const userStore = useUserStore();
@@ -129,4 +132,41 @@ const icons = {
     UserX,
     LogOut
 }
+// 添加初始化方法
+const initUserStore = async () => {
+    loading.value = true;
+    try {
+        if (!userStore.isInitialized && !userStore.isInitializing) {
+            await userStore.init();
+        } else if (userStore.isInitializing) {
+            // 等待初始化完成
+            await new Promise((resolve) => {
+                const unwatch = watch(() => userStore.isInitializing, (isInitializing) => {
+                    if (!isInitializing) {
+                        unwatch();
+                        resolve();
+                    }
+                });
+            });
+        }
+    } catch (err) {
+        console.error('初始化用户数据失败:', err);
+    } finally {
+        loading.value = false;
+    }
+};
+
+// 添加 onMounted 钩子
+onMounted(() => {
+    initUserStore();
+});
+
+// 添加 onBeforeUnmount 钩子清理资源
+onBeforeUnmount(() => {
+    // userStore 不需要 dispose，但为了保持一致性可以添加此检查
+    if (userStore.dispose) {
+        userStore.dispose();
+    }
+});
+
 </script>
