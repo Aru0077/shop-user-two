@@ -1,9 +1,7 @@
 // src/stores/product.store.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { productApi } from '@/api/product.api';
-import { storage } from '@/utils/storage';
-import { eventBus } from '@/utils/eventBus'
+import { productService } from '@/services/product.service';
 import type {
       Category,
       Product,
@@ -11,20 +9,6 @@ import type {
       SearchProductsParams,
       HomePageData
 } from '@/types/product.type';
-import type { ApiError } from '@/types/common.type';
-
-// 缓存键
-const CATEGORIES_KEY = 'product_categories';
-const HOME_DATA_KEY = 'home_page_data';
-const RECENT_PRODUCTS_KEY = 'recent_viewed_products';
-const PRODUCT_DETAIL_PREFIX = 'product_detail_';
-
-// 缓存时间
-const CATEGORIES_EXPIRY = 24 * 60 * 60 * 1000; // 24小时
-const HOME_DATA_EXPIRY = 4 * 60 * 60 * 1000;   // 4小时
-const PRODUCT_DETAIL_EXPIRY = 30 * 60 * 1000;  // 30分钟
-const RECENT_PRODUCTS_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7天
-const CATEGORY_PRODUCTS_EXPIRY = 10 * 60 * 1000; // 10分钟
 
 export const useProductStore = defineStore('product', () => {
       // 状态
@@ -36,49 +20,64 @@ export const useProductStore = defineStore('product', () => {
       const loading = ref<boolean>(false);
       const searchLoading = ref<boolean>(false);
       const error = ref<string | null>(null);
+      const isInitialized = ref<boolean>(false);
+      const isInitializing = ref<boolean>(false);
 
-      const isInitialized = ref(false);
-      const isInitializing = ref(false);
+      // 注册商品服务状态变化监听
+      let unsubscribeCategoriesChange: (() => void) | null = null;
+      let unsubscribeHomeDataChange: (() => void) | null = null;
+      let unsubscribeProductDetailChange: (() => void) | null = null;
+      let unsubscribeRecentProductsChange: (() => void) | null = null;
 
       // 计算属性
       const latestProducts = computed(() => homeData.value?.latestProducts || []);
       const topSellingProducts = computed(() => homeData.value?.topSellingProducts || []);
 
-      // 初始化 
+      // 初始化商品Store
       async function init(options = { loadHomeDataOnly: false }) {
             // 避免重复初始化
             if (isInitialized.value || isInitializing.value) return;
-
             isInitializing.value = true;
             error.value = null;
 
             try {
-                  // 优先加载首页和缓存数据
-                  const cachedHomeData = storage.get<HomePageData>(HOME_DATA_KEY, null);
-                  if (cachedHomeData) {
-                        homeData.value = cachedHomeData;
-                  } else {
-                        await fetchHomeData();
+                  // 监听商品服务的状态变化
+                  if (!unsubscribeCategoriesChange) {
+                        unsubscribeCategoriesChange = productService.onCategoriesChange((newCategories) => {
+                              categories.value = newCategories;
+                        });
                   }
 
-                  // 如果不是只加载首页数据，则加载其他数据
-                  if (!options.loadHomeDataOnly) {
-                        const cachedCategories = storage.get<Category[]>(CATEGORIES_KEY, null);
-                        if (!cachedCategories || cachedCategories.length === 0) {
-                              await fetchCategoryTree();
-                        } else {
-                              categories.value = cachedCategories;
-                        }
+                  if (!unsubscribeHomeDataChange) {
+                        unsubscribeHomeDataChange = productService.onHomeDataChange((newHomeData) => {
+                              homeData.value = newHomeData;
+                        });
                   }
+
+                  if (!unsubscribeProductDetailChange) {
+                        unsubscribeProductDetailChange = productService.onProductDetailChange((newProduct) => {
+                              currentProduct.value = newProduct;
+                        });
+                  }
+
+                  if (!unsubscribeRecentProductsChange) {
+                        unsubscribeRecentProductsChange = productService.onRecentProductsChange((newRecentProducts) => {
+                              recentProducts.value = newRecentProducts;
+                        });
+                  }
+
+                  // 初始化商品服务
+                  await productService.init(options);
+
+                  // 加载最近浏览商品
+                  recentProducts.value = productService.getRecentProducts();
 
                   isInitialized.value = true;
-
-                  // Add this line to emit initialization event
-                  eventBus.emit('product:initialized', true);
-
-            } catch (err) {
-                  error.value = (err as ApiError).message || '初始化产品数据失败';
+                  return true;
+            } catch (err: any) {
+                  error.value = err.message || '初始化产品数据失败';
                   console.error('初始化产品数据失败:', err);
+                  return false;
             } finally {
                   isInitializing.value = false;
             }
@@ -86,27 +85,11 @@ export const useProductStore = defineStore('product', () => {
 
       // 获取分类树
       async function fetchCategoryTree(forceRefresh = false) {
-            // 如果已有数据且不强制刷新，直接返回
-            if (categories.value.length > 0 && !forceRefresh) {
-                  return categories.value;
-            }
-
-            // 尝试从缓存获取
-            if (!forceRefresh) {
-                  const cachedData = storage.get<Category[]>(CATEGORIES_KEY, null);
-                  if (cachedData && cachedData.length > 0) {
-                        categories.value = cachedData;
-                        return cachedData;
-                  }
-            }
-
             loading.value = true;
             error.value = null;
 
             try {
-                  const response = await productApi.getCategoryTree();
-                  categories.value = response;
-                  storage.set(CATEGORIES_KEY, categories.value, CATEGORIES_EXPIRY);
+                  const response = await productService.getCategoryTree(forceRefresh);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '获取分类失败';
@@ -119,27 +102,11 @@ export const useProductStore = defineStore('product', () => {
 
       // 获取首页数据
       async function fetchHomeData(forceRefresh = false) {
-            // 如果已有数据且不强制刷新，直接返回
-            if (homeData.value && !forceRefresh) {
-                  return homeData.value;
-            }
-
-            // 尝试从缓存获取
-            if (!forceRefresh) {
-                  const cachedData = storage.get<HomePageData>(HOME_DATA_KEY, null);
-                  if (cachedData) {
-                        homeData.value = cachedData;
-                        return cachedData;
-                  }
-            }
-
             loading.value = true;
             error.value = null;
 
             try {
-                  const response = await productApi.getHomePageData();
-                  homeData.value = response;
-                  storage.set(HOME_DATA_KEY, homeData.value, HOME_DATA_EXPIRY);
+                  const response = await productService.getHomePageData(forceRefresh);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '获取首页数据失败';
@@ -152,37 +119,11 @@ export const useProductStore = defineStore('product', () => {
 
       // 获取商品详情
       async function fetchProductDetail(id: number, forceRefresh = false) {
-            const cacheKey = `${PRODUCT_DETAIL_PREFIX}${id}`;
-
-            // 如果当前正在查看的商品就是请求的商品且不强制刷新，直接返回
-            if (currentProduct.value && currentProduct.value.id === id && !forceRefresh) {
-                  addToRecentProducts(currentProduct.value);
-                  return currentProduct.value;
-            }
-
-            // 尝试从缓存获取
-            if (!forceRefresh) {
-                  const cachedProduct = storage.get<ProductDetail>(cacheKey, null);
-                  if (cachedProduct) {
-                        currentProduct.value = cachedProduct;
-                        addToRecentProducts(cachedProduct);
-                        return cachedProduct;
-                  }
-            }
-
             loading.value = true;
             error.value = null;
 
             try {
-                  const response = await productApi.getProductDetail(id);
-                  currentProduct.value = response;
-
-                  // 缓存商品详情
-                  storage.set(cacheKey, response, PRODUCT_DETAIL_EXPIRY);
-
-                  // 添加到最近浏览
-                  addToRecentProducts(response);
-
+                  const response = await productService.getProductDetail(id, forceRefresh);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '获取商品详情失败';
@@ -192,44 +133,13 @@ export const useProductStore = defineStore('product', () => {
             }
       }
 
-      // 获取完整商品详情（包含基础信息和SKU）
+      // 获取完整商品详情
       async function fetchProductFullDetail(id: number, forceRefresh = false) {
-            const cacheKey = `${PRODUCT_DETAIL_PREFIX}${id}`;
-
-            // 如果当前正在查看的商品就是请求的商品且不强制刷新，直接返回
-            if (currentProduct.value && currentProduct.value.id === id && !forceRefresh) {
-                  addToRecentProducts(currentProduct.value);
-                  return currentProduct.value;
-            }
-
-            // 尝试从缓存获取
-            if (!forceRefresh) {
-                  const cachedProduct = storage.get<ProductDetail>(cacheKey, null);
-                  if (cachedProduct) {
-                        currentProduct.value = cachedProduct;
-                        addToRecentProducts(cachedProduct);
-                        return cachedProduct;
-                  }
-            }
-
             loading.value = true;
             error.value = null;
 
             try {
-                  const response = await productApi.getProductFullDetail(id);
-                  currentProduct.value = response;
-
-                  // 标记SKU已加载完成
-                  if (currentProduct.value) {
-                        currentProduct.value.loadingSkus = false;
-                  }
-
-                  // 缓存商品详情
-                  storage.set(cacheKey, response, PRODUCT_DETAIL_EXPIRY);
-
-                  // 添加到最近浏览
-                  addToRecentProducts(response);
-
+                  const response = await productService.getProductFullDetail(id, forceRefresh);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '获取商品详情失败';
@@ -245,19 +155,7 @@ export const useProductStore = defineStore('product', () => {
             error.value = null;
 
             try {
-                  const response = await productApi.getProductSkus(id);
-
-                  // 如果当前有商品详情，将SKU信息合并到当前商品中
-                  if (currentProduct.value && currentProduct.value.id === id) {
-                        currentProduct.value = {
-                              ...currentProduct.value,
-                              skus: response.skus,
-                              specs: response.specs,
-                              validSpecCombinations: response.validSpecCombinations,
-                              loadingSkus: false
-                        };
-                  }
-
+                  const response = await productService.getProductSkus(id);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '获取商品SKU信息失败';
@@ -274,7 +172,7 @@ export const useProductStore = defineStore('product', () => {
             error.value = null;
 
             try {
-                  const response = await productApi.getPromotionProducts(page, limit);
+                  const response = await productService.getPromotionProducts(page, limit);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '获取促销商品失败';
@@ -285,13 +183,13 @@ export const useProductStore = defineStore('product', () => {
             }
       }
 
-      // 获取最新商品（不使用HomeData中的数据）
+      // 获取最新商品
       async function fetchLatestProducts(page: number = 1, limit: number = 10) {
             loading.value = true;
             error.value = null;
 
             try {
-                  const response = await productApi.getLatestProducts(page, limit);
+                  const response = await productService.getLatestProducts(page, limit);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '获取最新商品失败';
@@ -302,13 +200,13 @@ export const useProductStore = defineStore('product', () => {
             }
       }
 
-      // 获取热销商品（不使用HomeData中的数据）
+      // 获取热销商品
       async function fetchTopSellingProducts(page: number = 1, limit: number = 10) {
             loading.value = true;
             error.value = null;
 
             try {
-                  const response = await productApi.getTopSellingProducts(page, limit);
+                  const response = await productService.getTopSellingProducts(page, limit);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '获取热销商品失败';
@@ -319,30 +217,13 @@ export const useProductStore = defineStore('product', () => {
             }
       }
 
-      // 添加到最近浏览商品
-      function addToRecentProducts(product: ProductDetail) {
-            // 删除已存在的相同商品
-            recentProducts.value = recentProducts.value.filter(p => p.id !== product.id);
-
-            // 添加到最前面
-            recentProducts.value.unshift(product);
-
-            // 限制数量
-            if (recentProducts.value.length > 10) {
-                  recentProducts.value = recentProducts.value.slice(0, 10);
-            }
-
-            // 更新缓存
-            storage.set(RECENT_PRODUCTS_KEY, recentProducts.value, RECENT_PRODUCTS_EXPIRY);
-      }
-
       // 搜索商品
       async function searchProducts(params: SearchProductsParams) {
             searchLoading.value = true;
             error.value = null;
 
             try {
-                  const response = await productApi.searchProducts(params);
+                  const response = await productService.searchProducts(params);
                   searchResults.value = response.data;
                   return response;
             } catch (err: any) {
@@ -360,25 +241,11 @@ export const useProductStore = defineStore('product', () => {
             limit: number = 10,
             sort: 'newest' | 'price-asc' | 'price-desc' | 'sales' = 'newest'
       ) {
-            // 对分类商品结果进行缓存
-            const cacheKey = `category_products_${categoryId}_${page}_${limit}_${sort}`;
-            const cachedData = storage.get(cacheKey, null);
-
-            if (cachedData) {
-                  return cachedData;
-            }
-
             loading.value = true;
             error.value = null;
 
             try {
-                  const response = await productApi.getCategoryProducts(categoryId, page, limit, sort);
-
-                  // 只缓存第一页和少量数据，避免缓存过多数据
-                  if (page === 1 && response.data.length <= 20) {
-                        storage.set(cacheKey, response, CATEGORY_PRODUCTS_EXPIRY);
-                  }
-
+                  const response = await productService.getCategoryProducts(categoryId, page, limit, sort);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '获取分类商品失败';
@@ -390,24 +257,50 @@ export const useProductStore = defineStore('product', () => {
 
       // 清除商品缓存
       function clearProductCache() {
-            // 清除首页数据缓存
-            storage.remove(HOME_DATA_KEY);
-            homeData.value = null;
-
-            // 保留分类和最近浏览数据
+            productService.clearProductCache();
       }
 
       // 清除所有商品相关缓存
       function clearAllProductCache() {
-            storage.remove(CATEGORIES_KEY);
-            storage.remove(HOME_DATA_KEY);
-            // 清除所有商品详情缓存需要遍历localStorage，这里简化处理
-
-            categories.value = [];
-            homeData.value = null;
+            productService.clearAllProductCache();
       }
 
+      // 在一定时间后刷新分类
+      async function refreshCategoriesIfNeeded(forceRefresh = false) {
+            if (productService.shouldRefreshCategories(forceRefresh)) {
+                  await fetchCategoryTree(true);
+            }
+      }
 
+      // 在一定时间后刷新首页数据
+      async function refreshHomeDataIfNeeded(forceRefresh = false) {
+            if (productService.shouldRefreshHomeData(forceRefresh)) {
+                  await fetchHomeData(true);
+            }
+      }
+
+      // 清理资源（适用于组件销毁时）
+      function dispose() {
+            if (unsubscribeCategoriesChange) {
+                  unsubscribeCategoriesChange();
+                  unsubscribeCategoriesChange = null;
+            }
+
+            if (unsubscribeHomeDataChange) {
+                  unsubscribeHomeDataChange();
+                  unsubscribeHomeDataChange = null;
+            }
+
+            if (unsubscribeProductDetailChange) {
+                  unsubscribeProductDetailChange();
+                  unsubscribeProductDetailChange = null;
+            }
+
+            if (unsubscribeRecentProductsChange) {
+                  unsubscribeRecentProductsChange();
+                  unsubscribeRecentProductsChange = null;
+            }
+      }
 
       return {
             // 状态
@@ -419,6 +312,8 @@ export const useProductStore = defineStore('product', () => {
             loading,
             searchLoading,
             error,
+            isInitialized,
+            isInitializing,
 
             // 计算属性
             latestProducts,
@@ -438,6 +333,8 @@ export const useProductStore = defineStore('product', () => {
             fetchPromotionProducts,
             fetchLatestProducts,
             fetchTopSellingProducts,
-
+            refreshCategoriesIfNeeded,
+            refreshHomeDataIfNeeded,
+            dispose
       };
 });

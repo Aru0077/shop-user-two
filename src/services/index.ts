@@ -5,6 +5,7 @@ import { addressService } from './address.service';
 import { cartService } from './cart.service';
 import { favoriteService } from './favorite.service';
 import { checkoutService } from './checkout.service';
+import { tempOrderService } from './temp-order.service';
 import { toast } from '@/utils/toast.service';
 
 // 添加其他服务的导入，如购物车、收藏等
@@ -51,6 +52,7 @@ export async function initializeServices(): Promise<boolean> {
                   initPromises.push(cartService.init());
                   initPromises.push(favoriteService.init());
                   initPromises.push(checkoutService.init());
+                  initPromises.push(tempOrderService.init());
             } else {
                   // 用户未登录，只初始化购物车
                   initPromises.push(cartService.init());
@@ -102,7 +104,8 @@ export async function initializeUserServices(): Promise<void> {
             await Promise.allSettled([
                   addressService.init(),
                   favoriteService.init(),
-                  checkoutService.init()
+                  checkoutService.init(),
+                  tempOrderService.init(),
                   // cartService.init(),
                   // favoriteService.init(),
                   // orderService.init()
@@ -124,6 +127,7 @@ export function clearUserServicesState(): void {
       addressService.clearAddressCache();
       favoriteService.clearFavoriteCache();
       checkoutService.clearCheckoutCache();
+      tempOrderService.clearTempOrderCache();
       // cartService.clearCartCache();
       // favoriteService.clearFavoriteCache();
       // orderService.clearOrderCache();
@@ -147,8 +151,7 @@ export {
       cartService,
       favoriteService,
       checkoutService,
-      // cartService,
-      // favoriteService,
+      tempOrderService
       // orderService,
       // productService
 };

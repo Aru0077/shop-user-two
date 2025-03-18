@@ -1,25 +1,15 @@
 // src/stores/order.store.ts
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
-import { orderApi } from '@/api/order.api';
-import { storage } from '@/utils/storage'; 
-import { eventBus } from '@/utils/eventBus'
+import { ref, computed } from 'vue';
+import { orderService } from '@/services/order.service';
+import { authService } from '@/services/auth.service';
 import type {
       OrderBasic,
       OrderDetail,
       CreateOrderParams,
       QuickBuyParams,
-      PayOrderParams
+      PayOrderParams,
 } from '@/types/order.type';
-
-// 缓存键
-const ORDER_LIST_KEY = 'order_list';
-const ORDER_DETAIL_PREFIX = 'order_detail_';
-// 缓存时间
-const ORDER_LIST_EXPIRY = 5 * 60 * 1000;  // 5分钟
-const ORDER_DETAIL_EXPIRY = 10 * 60 * 1000; // 10分钟
-// 数据版本
-const ORDER_DATA_VERSION = '1.0.0';
 
 export const useOrderStore = defineStore('order', () => {
       // 状态
@@ -32,103 +22,68 @@ export const useOrderStore = defineStore('order', () => {
             limit: 10,
             total: 0
       });
+
       // 添加初始化状态跟踪变量
       const isInitialized = ref<boolean>(false);
       const isInitializing = ref<boolean>(false);
 
-      // 添加用户登录状态的本地引用
-      const isUserLoggedIn = ref<boolean>(false);
+      // 注册订单变化监听，在组件销毁时取消订阅
+      let unsubscribeOrdersChange: (() => void) | null = null;
+      let unsubscribeOrderDetailChange: (() => void) | null = null;
 
-      // 添加事件监听
-      eventBus.on('user:login', () => {
-            isUserLoggedIn.value = true;
-            if (!isInitialized.value) {
-                  init();
-            }
-      });
+      // 计算属性
+      const isUserLoggedIn = computed(() => authService.isLoggedIn.value);
 
-      eventBus.on('user:logout', () => {
-            isUserLoggedIn.value = false;
-            clearAllOrderCache();
-      });
-
-      eventBus.on('user:initialized', (isLoggedIn) => {
-            isUserLoggedIn.value = isLoggedIn;
-      });
-
-      // 添加init方法
+      // 初始化方法
       async function init() {
-            if (!isUserLoggedIn.value) return;
-
             // 避免重复初始化
             if (isInitialized.value || isInitializing.value) return;
             isInitializing.value = true;
 
             try {
-                  // 获取首页订单列表，例如第一页10条待付款订单
-                  await fetchOrders(1, 10);
-                  isInitialized.value = true;
+                  // 监听订单服务的状态变化
+                  if (!unsubscribeOrdersChange) {
+                        unsubscribeOrdersChange = orderService.onOrdersChange((newOrders) => {
+                              orders.value = newOrders;
+                        });
+                  }
 
-                  // Add this line to emit initialization event
-                  eventBus.emit('order:initialized', true);
+                  if (!unsubscribeOrderDetailChange) {
+                        unsubscribeOrderDetailChange = orderService.onOrderDetailChange((newDetail) => {
+                              currentOrder.value = newDetail;
+                        });
+                  }
+
+                  // 如果已登录，获取订单列表
+                  if (isUserLoggedIn.value) {
+                        await fetchOrders(1, 10);
+                  }
+
+                  isInitialized.value = true;
+                  return true;
             } catch (err) {
-                  console.error('订单初始化失败:', err);
+                  console.error('订单存储初始化失败:', err);
+                  return false;
             } finally {
                   isInitializing.value = false;
             }
       }
- 
 
       // 获取订单列表
       async function fetchOrders(page: number = 1, limit: number = 10, status?: number, forceRefresh = false) {
             if (!isUserLoggedIn.value) return null;
 
-            // 缓存键包含分页和状态信息
-            const cacheKey = `${ORDER_LIST_KEY}_page${page}_limit${limit}${status !== undefined ? '_status' + status : ''}`;
-
-            // 如果不强制刷新，尝试从缓存获取
-            if (!forceRefresh) {
-                  const cachedOrders = storage.get<{
-                        version: string,
-                        orders: OrderBasic[],
-                        pagination: typeof pagination.value,
-                        timestamp: number
-                  }>(cacheKey, null);
-
-                  if (cachedOrders && cachedOrders.version === ORDER_DATA_VERSION) {
-                        orders.value = cachedOrders.orders;
-                        pagination.value = cachedOrders.pagination;
-
-                        return {
-                              data: cachedOrders.orders,
-                              total: cachedOrders.pagination.total,
-                              page: cachedOrders.pagination.page,
-                              limit: cachedOrders.pagination.limit
-                        };
-                  }
-            }
-
             loading.value = true;
             error.value = null;
 
             try {
-                  const response = await orderApi.getOrderList(page, limit, status);
+                  const response = await orderService.getOrderList(page, limit, status, forceRefresh);
 
-                  orders.value = response.data;
                   pagination.value = {
                         page,
                         limit,
                         total: response.total
                   };
-
-                  // 缓存订单列表
-                  const orderListData = {
-                        version: ORDER_DATA_VERSION,
-                        orders: response.data,
-                        pagination: pagination.value,
-                        timestamp: Date.now()
-                  };
-                  storage.set(cacheKey, orderListData, ORDER_LIST_EXPIRY);
 
                   return response;
             } catch (err: any) {
@@ -149,37 +104,11 @@ export const useOrderStore = defineStore('order', () => {
                   return currentOrder.value;
             }
 
-            const cacheKey = `${ORDER_DETAIL_PREFIX}${id}`;
-
-            // 如果不强制刷新，尝试从缓存获取
-            if (!forceRefresh) {
-                  const cachedOrder = storage.get<{
-                        version: string,
-                        order: OrderDetail,
-                        timestamp: number
-                  }>(cacheKey, null);
-
-                  if (cachedOrder && cachedOrder.version === ORDER_DATA_VERSION) {
-                        currentOrder.value = cachedOrder.order;
-                        return cachedOrder.order;
-                  }
-            }
-
             loading.value = true;
             error.value = null;
 
             try {
-                  const response = await orderApi.getOrderDetail(id);
-                  currentOrder.value = response;
-
-                  // 缓存订单详情
-                  const orderDetailData = {
-                        version: ORDER_DATA_VERSION,
-                        order: response,
-                        timestamp: Date.now()
-                  };
-                  storage.set(cacheKey, orderDetailData, ORDER_DETAIL_EXPIRY);
-
+                  const response = await orderService.getOrderDetail(id, forceRefresh);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '获取订单详情失败';
@@ -197,11 +126,7 @@ export const useOrderStore = defineStore('order', () => {
             error.value = null;
 
             try {
-                  const response = await orderApi.createOrder(params);
-
-                  // 清除订单列表缓存，下次将重新获取
-                  clearOrderListCache();
-
+                  const response = await orderService.createOrder(params);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '创建订单失败';
@@ -219,11 +144,7 @@ export const useOrderStore = defineStore('order', () => {
             error.value = null;
 
             try {
-                  const response = await orderApi.quickBuy(params);
-
-                  // 清除订单列表缓存，下次将重新获取
-                  clearOrderListCache();
-
+                  const response = await orderService.quickBuy(params);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '快速购买失败';
@@ -241,15 +162,7 @@ export const useOrderStore = defineStore('order', () => {
             error.value = null;
 
             try {
-                  const response = await orderApi.payOrder(id, params);
-
-                  // 清除订单列表和订单详情缓存
-                  clearOrderListCache();
-                  storage.remove(`${ORDER_DETAIL_PREFIX}${id}`);
-
-                  // 刷新订单详情
-                  await fetchOrderDetail(id, true);
-
+                  const response = await orderService.payOrder(id, params);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '支付订单失败';
@@ -267,15 +180,7 @@ export const useOrderStore = defineStore('order', () => {
             error.value = null;
 
             try {
-                  const response = await orderApi.cancelOrder(id);
-
-                  // 清除订单列表和订单详情缓存
-                  clearOrderListCache();
-                  storage.remove(`${ORDER_DETAIL_PREFIX}${id}`);
-
-                  // 刷新订单详情
-                  await fetchOrderDetail(id, true);
-
+                  const response = await orderService.cancelOrder(id);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '取消订单失败';
@@ -293,15 +198,7 @@ export const useOrderStore = defineStore('order', () => {
             error.value = null;
 
             try {
-                  const response = await orderApi.confirmReceipt(id);
-
-                  // 清除订单列表和订单详情缓存
-                  clearOrderListCache();
-                  storage.remove(`${ORDER_DETAIL_PREFIX}${id}`);
-
-                  // 刷新订单详情
-                  await fetchOrderDetail(id, true);
-
+                  const response = await orderService.confirmReceipt(id);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '确认收货失败';
@@ -313,29 +210,42 @@ export const useOrderStore = defineStore('order', () => {
 
       // 清除订单列表缓存
       function clearOrderListCache() {
-            // 获取所有订单列表相关的缓存键
-            for (let i = 0; i < localStorage.length; i++) {
-                  const key = localStorage.key(i);
-                  if (key && key.includes(ORDER_LIST_KEY)) {
-                        storage.remove(key.replace(storage['options'].prefix!, ''));
-                  }
-            }
+            orderService.clearOrderListCache();
       }
 
       // 清除所有订单缓存
       function clearAllOrderCache() {
-            clearOrderListCache();
+            orderService.clearOrderCache();
+      }
 
-            // 获取所有订单详情相关的缓存键
-            for (let i = 0; i < localStorage.length; i++) {
-                  const key = localStorage.key(i);
-                  if (key && key.includes(ORDER_DETAIL_PREFIX)) {
-                        storage.remove(key.replace(storage['options'].prefix!, ''));
-                  }
+      // 在一定时间后刷新订单
+      async function refreshOrdersIfNeeded(forceRefresh = false) {
+            if (!isUserLoggedIn.value) return;
+
+            if (orderService.shouldRefreshOrders(forceRefresh)) {
+                  await fetchOrders(pagination.value.page, pagination.value.limit, undefined, true);
             }
+      }
 
+      // 重置store状态（用于处理用户登出等情况）
+      function reset() {
             orders.value = [];
             currentOrder.value = null;
+            error.value = null;
+            loading.value = false;
+      }
+
+      // 清理store资源（适用于组件销毁时）
+      function dispose() {
+            if (unsubscribeOrdersChange) {
+                  unsubscribeOrdersChange();
+                  unsubscribeOrdersChange = null;
+            }
+
+            if (unsubscribeOrderDetailChange) {
+                  unsubscribeOrderDetailChange();
+                  unsubscribeOrderDetailChange = null;
+            }
       }
 
       return {
@@ -348,6 +258,9 @@ export const useOrderStore = defineStore('order', () => {
             error,
             pagination,
 
+            // 计算属性
+            isUserLoggedIn,
+
             // 动作
             init,
             fetchOrders,
@@ -358,6 +271,9 @@ export const useOrderStore = defineStore('order', () => {
             cancelOrder,
             confirmReceipt,
             clearOrderListCache,
-            clearAllOrderCache
+            clearAllOrderCache,
+            refreshOrdersIfNeeded,
+            reset,
+            dispose
       };
 });
