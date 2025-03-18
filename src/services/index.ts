@@ -2,6 +2,9 @@
 import { ref } from 'vue';
 import { authService } from './auth.service';
 import { addressService } from './address.service';
+import { cartService } from './cart.service';
+import { favoriteService } from './favorite.service';
+import { checkoutService } from './checkout.service';
 import { toast } from '@/utils/toast.service';
 
 // 添加其他服务的导入，如购物车、收藏等
@@ -45,9 +48,12 @@ export async function initializeServices(): Promise<boolean> {
             if (authService.isLoggedIn.value) {
                   // 用户已登录，初始化用户相关服务
                   initPromises.push(addressService.init());
-                  // initPromises.push(cartService.init());
-                  // initPromises.push(favoriteService.init());
-                  // initPromises.push(orderService.init());
+                  initPromises.push(cartService.init());
+                  initPromises.push(favoriteService.init());
+                  initPromises.push(checkoutService.init());
+            } else {
+                  // 用户未登录，只初始化购物车
+                  initPromises.push(cartService.init());
             }
 
             // 无论登录状态，都初始化的公共服务
@@ -89,9 +95,14 @@ export async function initializeUserServices(): Promise<void> {
       console.log('初始化用户相关服务...');
 
       try {
+             // 显式调用购物车同步方法
+             await cartService.mergeLocalCartToServer();
+
             // 并行初始化用户相关服务
             await Promise.allSettled([
                   addressService.init(),
+                  favoriteService.init(),
+                  checkoutService.init()
                   // cartService.init(),
                   // favoriteService.init(),
                   // orderService.init()
@@ -111,6 +122,8 @@ export function clearUserServicesState(): void {
 
       // 清理各个服务的用户相关数据
       addressService.clearAddressCache();
+      favoriteService.clearFavoriteCache();
+      checkoutService.clearCheckoutCache();
       // cartService.clearCartCache();
       // favoriteService.clearFavoriteCache();
       // orderService.clearOrderCache();
@@ -131,6 +144,9 @@ authService.onLogout(() => {
 export {
       authService,
       addressService,
+      cartService,
+      favoriteService,
+      checkoutService,
       // cartService,
       // favoriteService,
       // orderService,
