@@ -1,86 +1,58 @@
 // src/utils/app-initializer.ts
-import { initializeServices } from '@/services';
-import {
-      useUserStore, useProductStore, useCartStore,
-      useOrderStore, useFavoriteStore, useAddressStore,
-      useCheckoutStore, useTempOrderStore, usePromotionStore
-} from '@/stores/index.store';
-import { toast } from '@/utils/toast.service';
-import { eventBus, AppEvents } from '@/utils/event-bus';
-import { systemInitializer } from '@/utils/system-initializer';
+import { eventBus, AppEvents } from './event-bus';
+import { toast } from './toast.service';
 
-// 初始化阶段枚举
-enum InitPhase {
-      NONE = 0,
-      SYSTEM_EVENTS = 1,
-      SERVICES = 2,
-      CORE_STORES = 3,
-      USER_STORES = 4,
-      COMPLETE = 5
-}
+// 导入核心服务
+import { authService } from '@/services/auth.service';
+import { productService } from '@/services/product.service';
 
-// 初始化状态
-let currentPhase = InitPhase.NONE;
+// 延迟导入用户相关服务的类型，避免过早加载
+type LazyServices = {
+      cartService?: any;
+      favoriteService?: any;
+      addressService?: any;
+      orderService?: any;
+};
+
+// 用于追踪初始化状态
+let isInitialized = false;
 let isInitializing = false;
+let userServicesInitialized = false;
 
 /**
- * 应用初始化主函数 - 统一的入口点
+ * 应用初始化函数 - 简化版
+ * 只初始化核心服务，用户相关服务按需加载
  */
 export async function initializeApp(): Promise<boolean> {
       // 避免重复初始化
       if (isInitializing) return false;
-      if (currentPhase === InitPhase.COMPLETE) return true;
+      if (isInitialized) return true;
 
       isInitializing = true;
+      console.log('正在初始化应用...');
 
       try {
-            // 第一阶段：初始化系统事件
-            if (currentPhase < InitPhase.SYSTEM_EVENTS) {
-                  console.log('正在初始化系统事件...');
-                  systemInitializer.initialize();
-                  currentPhase = InitPhase.SYSTEM_EVENTS;
-            }
-            
-            // 第二阶段：初始化核心服务
-            if (currentPhase < InitPhase.SERVICES) {
-                  console.log('正在初始化核心服务...');
-                  await initializeServices();
-                  currentPhase = InitPhase.SERVICES;
+            // 并行初始化核心服务
+            await Promise.all([
+                  initializeAuthService(),
+                  initializeProductService()
+            ]);
+
+            // 如果用户已登录，初始化用户相关服务
+            if (authService.isLoggedIn.value) {
+                  await initializeUserServices();
             }
 
-            // 第三阶段：初始化核心Store（仅包含用户和产品）
-            if (currentPhase < InitPhase.CORE_STORES) {
-                  console.log('正在初始化核心Store...');
-                  const userStore = useUserStore();
-                  const productStore = useProductStore();
-
-                  // 确保用户状态已初始化
-                  await userStore.init();
-
-                  // 初始化产品Store
-                  await productStore.init({ loadHomeDataOnly: true });
-
-                  currentPhase = InitPhase.CORE_STORES;
-            }
-
-            // 第四阶段：如果用户已登录，初始化用户相关Store
-            const userStore = useUserStore();
-            if (currentPhase < InitPhase.USER_STORES && userStore.isLoggedIn) {
-                  console.log('正在初始化用户相关Store...');
-                  await initializeUserStores();
-                  currentPhase = InitPhase.USER_STORES;
-            }
-
-            currentPhase = InitPhase.COMPLETE;
+            isInitialized = true;
             console.log('应用初始化完成');
-            
-            // 触发应用初始化完成事件
-            eventBus.emit(AppEvents.APP_INITIALIZED);
-            
+
+            // 触发应用就绪事件
+            eventBus.emit(AppEvents.APP_READY);
+
             return true;
       } catch (error) {
             console.error('应用初始化失败:', error);
-            toast.error('应用初始化失败，请刷新页面重试');
+            toast.error('应用加载失败，请刷新页面重试');
             return false;
       } finally {
             isInitializing = false;
@@ -88,102 +60,130 @@ export async function initializeApp(): Promise<boolean> {
 }
 
 /**
- * 初始化用户相关的Store
+ * 初始化认证服务
  */
-export async function initializeUserStores(): Promise<boolean> {
-      const userStore = useUserStore();
+async function initializeAuthService(): Promise<void> {
+      console.log('初始化认证服务...');
 
-      if (!userStore.isLoggedIn) {
-            console.warn('用户未登录，无法初始化用户相关Store');
+      try {
+            // 初始化认证服务
+            authService.init();
+
+            // 设置登录/登出事件监听
+            eventBus.on(AppEvents.LOGIN, async (userId: string) => {
+                  console.log(`用户 ${userId} 已登录`);
+
+                  // 用户登录后初始化用户相关服务
+                  if (!userServicesInitialized) {
+                        await initializeUserServices();
+                  }
+            });
+
+            eventBus.on(AppEvents.LOGOUT, () => {
+                  console.log('用户已登出');
+                  // 用户登出时重置用户服务初始化状态
+                  userServicesInitialized = false;
+            });
+
+      } catch (error) {
+            console.error('认证服务初始化失败:', error);
+            throw error;
+      }
+}
+
+/**
+ * 初始化产品服务（核心服务）
+ */
+async function initializeProductService(): Promise<void> {
+      console.log('初始化产品服务...');
+
+      try {
+            // 只加载首页必要数据
+            await productService.init({ loadHomeDataOnly: true });
+      } catch (error) {
+            console.error('产品服务初始化失败:', error);
+            // 产品服务失败不阻止应用启动，但记录错误
+            eventBus.emit(AppEvents.UI_ERROR, '产品数据加载失败，部分功能可能不可用');
+      }
+}
+
+/**
+ * 初始化用户相关服务（懒加载）
+ */
+export async function initializeUserServices(): Promise<boolean> {
+      if (!authService.isLoggedIn.value) {
+            console.warn('用户未登录，无法初始化用户服务');
             return false;
       }
 
-      try {
-            const favoriteStore = useFavoriteStore();
-            const addressStore = useAddressStore();
-            const checkoutStore = useCheckoutStore();
-            const orderStore = useOrderStore();
-            const tempOrderStore = useTempOrderStore();
-            const promotionStore = usePromotionStore();
-            const cartStore = useCartStore(); // 购物车移到用户相关Store
+      if (userServicesInitialized) {
+            return true;
+      }
 
-            // 并行初始化各模块，包括购物车
-            await Promise.all([
-                  favoriteStore.init(),
-                  addressStore.init(),
-                  orderStore.init(),
-                  checkoutStore.initCheckout(),
-                  tempOrderStore.init(),
-                  promotionStore.init(),
-                  cartStore.initCart() // 添加购物车初始化
+      console.log('初始化用户相关服务...');
+
+      try {
+            // 动态导入用户相关服务，避免首次加载时加载这些模块
+            const lazyServices: LazyServices = {};
+
+            // 并行动态导入
+            const [
+                  { cartService },
+                  { favoriteService },
+                  { addressService },
+                  { orderService }
+            ] = await Promise.all([
+                  import('@/services/cart.service'),
+                  import('@/services/favorite.service'),
+                  import('@/services/address.service'),
+                  import('@/services/order.service')
             ]);
 
-            console.log('用户Store初始化完成');
+            lazyServices.cartService = cartService;
+            lazyServices.favoriteService = favoriteService;
+            lazyServices.addressService = addressService;
+            lazyServices.orderService = orderService;
+
+            // 并行初始化用户服务
+            await Promise.all([
+                  lazyServices.cartService.init(),
+                  lazyServices.favoriteService.init(),
+                  lazyServices.addressService.init(),
+                  lazyServices.orderService.init()
+            ]);
+
+            userServicesInitialized = true;
+            console.log('用户服务初始化完成');
             return true;
       } catch (error) {
-            console.error('用户Store初始化失败:', error);
+            console.error('用户服务初始化失败:', error);
+            toast.error('部分功能加载失败，请刷新页面重试');
             return false;
       }
 }
 
 /**
- * 用户登录后调用，初始化用户相关服务和Store
+ * 用户登录后调用
  */
 export async function onUserLogin(): Promise<void> {
-      try {
-            // 触发登录后初始化事件
-            eventBus.emit('app:user-login-initialize');
-            
-            // 初始化用户相关Store（包括购物车）
-            await initializeUserStores();
-            currentPhase = InitPhase.USER_STORES;
-      } catch (error) {
-            console.error('登录后初始化失败:', error);
-            // 发出错误事件
-            eventBus.emit('app:initialization-error', {
-                  phase: 'user-login',
-                  error
-            });
+      eventBus.emit(AppEvents.LOGIN, authService.currentUser.value?.id);
+
+      // 登录后加载用户服务
+      if (!userServicesInitialized) {
+            await initializeUserServices();
       }
 }
 
 /**
- * 用户登出后调用，清理用户相关状态
+ * 用户登出后调用
  */
 export function onUserLogout(): void {
-      // 触发登出初始化事件
-      eventBus.emit('app:user-logout-cleanup');
-      
-      const userStore = useUserStore();
-      const favoriteStore = useFavoriteStore();
-      const addressStore = useAddressStore();
-      const orderStore = useOrderStore();
-      const checkoutStore = useCheckoutStore();
-      const tempOrderStore = useTempOrderStore();
-      const promotionStore = usePromotionStore();
-      const cartStore = useCartStore();
+      eventBus.emit(AppEvents.LOGOUT);
+      userServicesInitialized = false;
 
-      // 清除用户状态
-      userStore.clearUserState();
-
-      // 重置各Store状态并释放资源
-      favoriteStore.reset();
-      addressStore.reset();
-      orderStore.reset();
-      checkoutStore.reset();
-      tempOrderStore.reset();
-      promotionStore.reset();
-      cartStore.reset(); // 购物车也需重置
-
-      // 释放资源
-      favoriteStore.dispose();
-      addressStore.dispose();
-      orderStore.dispose();
-      checkoutStore.dispose();
-      tempOrderStore.dispose();
-      promotionStore.dispose();
-      cartStore.dispose();
-
-      // 重置初始化阶段
-      currentPhase = InitPhase.CORE_STORES;
+      // 这里不再直接清理各个store的状态
+      // 而是由各个store监听登出事件自行清理
 }
+
+// 为了向后兼容，保留这些导出
+export { isInitialized, isInitializing };

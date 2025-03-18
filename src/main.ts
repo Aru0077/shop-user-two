@@ -4,7 +4,7 @@ import { createPinia } from 'pinia'
 import './index.css'
 import App from './App.vue'
 import router from './router'
-import { authService } from '@/services';
+import { authService } from '@/services/index.service';
 import ToastPlugin from './plugins/toast'
 import { initializeApp as initializeApplication } from '@/utils/app-initializer' // 导入新的初始化方法
 
