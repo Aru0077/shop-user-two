@@ -100,6 +100,7 @@ const fetchProductData = async () => {
     error.value = null;
 
     try {
+        // 使用Store方法获取商品详情
         await productStore.fetchProductFullDetail(productId.value);
     } catch (err) {
         error.value = (err as ApiError).message || '获取商品信息失败';
@@ -111,7 +112,7 @@ const fetchProductData = async () => {
 
 // 组件挂载时获取商品数据
 onMounted(async () => {
-    // 如果用户已登录，确保收藏状态已初始化
+    // 确保收藏状态已初始化
     if (userStore.isLoggedIn) {
         const favoriteStore = useFavoriteStore();
         if (!favoriteStore.isInitialized) {

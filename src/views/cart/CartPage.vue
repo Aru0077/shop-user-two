@@ -119,8 +119,8 @@ const updateItemQuantity = async (id: number, quantity: number) => {
     try {
         // 使用乐观更新方法
         await cartStore.optimisticUpdateCartItem(id, quantity);
-    } catch (error: any) {
-        toast.error(error.message || '更新数量失败');
+    } catch (error) {
+        toast.error((error as Error).message || '更新数量失败');
     }
 };
 
@@ -214,7 +214,7 @@ watch(cartItems, (newItems) => {
 }, { deep: true });
 
 // 组件挂载时获取购物车数据
-// 组件挂载时获取购物车数据
+// 组件挂载时获取购物车数据 
 onMounted(async () => {
     // 确保购物车数据已加载
     if (!cartStore.isInitialized) {
