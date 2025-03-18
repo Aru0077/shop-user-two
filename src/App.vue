@@ -54,7 +54,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { initializeStores } from '@/stores/index.store';
+import { initializeApp } from '@/utils/app-initializer';
+
 import { useRoute } from 'vue-router';
 import { useUiStore } from '@/stores/ui.store';
 import NavBar from './components/common/NavBar.vue';
@@ -82,7 +83,7 @@ onMounted(async () => {
     uiStore.initializeScreenSize();
     window.addEventListener('resize', uiStore.handleResize);
     try {
-        await initializeStores();
+        await initializeApp();
     } finally {
         // 不管成功失败，1.5秒后关闭启动页
         setTimeout(() => {
