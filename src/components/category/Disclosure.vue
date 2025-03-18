@@ -41,7 +41,7 @@
 </template>
 
 <script setup>
-import { onMounted, computed } from 'vue';
+import { onMounted, computed, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue';
 import { ChevronUpIcon } from 'lucide-vue-next';

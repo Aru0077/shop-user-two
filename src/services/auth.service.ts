@@ -4,8 +4,9 @@ import { storage, STORAGE_KEYS, STORAGE_EXPIRY } from '@/utils/storage';
 import type { User } from '@/types/user.type';
 import { userApi } from '@/api/user.api';
 import { onUserLogin, onUserLogout } from '@/utils/app-initializer';
+import { eventBus, AppEvents } from '@/utils/event-bus';
 
-// 状态变化回调类型
+// 保留原有回调类型定义（向后兼容）
 type AuthStateChangeCallback = (isLoggedIn: boolean) => void;
 type LoginCallback = (userId: string) => void;
 type LogoutCallback = () => void;
@@ -29,7 +30,7 @@ class AuthService {
       // 计算属性：登录状态
       public isLoggedIn = computed(() => !!this._token.value && this.checkTokenValidity());
 
-      // 状态变化回调
+      // 状态变化回调（保留向后兼容性）
       private loginCallbacks: Set<LoginCallback> = new Set();
       private logoutCallbacks: Set<LogoutCallback> = new Set();
       private stateChangeCallbacks: Set<AuthStateChangeCallback> = new Set();
@@ -47,8 +48,11 @@ class AuthService {
                   const isValid = this.checkTokenValidity();
                   this._isInitialized.value = true;
 
-                  // 通知状态变化
+                  // 通知状态变化（同时使用回调和事件总线）
                   this.notifyStateChange(isValid);
+
+                  // 使用事件总线通知状态变化
+                  eventBus.emit(AppEvents.AUTH_STATE_CHANGED, isValid);
 
                   return isValid;
             } catch (err) {
@@ -59,9 +63,8 @@ class AuthService {
             }
       }
 
-      // 类构造函数中添加
       constructor() {
-            // 添加登录/登出事件处理
+            // 添加登录/登出事件处理（保留原有逻辑向后兼容）
             this.onLogin(() => {
                   // 用户登录时调用统一的用户登录初始化
                   onUserLogin();
@@ -95,7 +98,14 @@ class AuthService {
        * 检查 token 是否过期
        */
       public checkTokenExpiry(): boolean {
-            return this.checkTokenValidity();
+            const isValid = this.checkTokenValidity();
+
+            // 如果token无效，触发会话过期事件
+            if (!isValid && this._token.value) {
+                  eventBus.emit(AppEvents.AUTH_SESSION_EXPIRED);
+            }
+
+            return isValid;
       }
 
       /**
@@ -153,15 +163,21 @@ class AuthService {
             storage.set(STORAGE_KEYS.TOKEN_EXPIRY, expiryTime, STORAGE_EXPIRY.AUTH);
             storage.saveUserInfo(user);
 
-            // 通知状态变化
+            // 使用回调和事件总线通知状态变化
             this.notifyLogin(user.id);
             this.notifyStateChange(true);
+
+            // 使用事件总线触发登录事件
+            eventBus.emit(AppEvents.AUTH_LOGIN, user.id);
+            eventBus.emit(AppEvents.AUTH_STATE_CHANGED, true);
       }
 
       /**
        * 清除登录状态
        */
       public clearLoginState(): void {
+            const wasLoggedIn = !!this._token.value;
+
             this._token.value = null;
             this._currentUser.value = null;
 
@@ -169,10 +185,19 @@ class AuthService {
             storage.remove(STORAGE_KEYS.TOKEN_EXPIRY);
             storage.remove(STORAGE_KEYS.USER_INFO);
 
-            // 通知状态变化
-            this.notifyLogout();
-            this.notifyStateChange(false);
+            // 只有在先前登录状态下才触发登出事件
+            if (wasLoggedIn) {
+                  // 使用原有回调（向后兼容）
+                  this.notifyLogout();
+                  this.notifyStateChange(false);
+
+                  // 使用事件总线触发登出事件
+                  eventBus.emit(AppEvents.AUTH_LOGOUT);
+                  eventBus.emit(AppEvents.AUTH_STATE_CHANGED, false);
+            }
       }
+
+      // ========= 以下方法保留原有回调机制，提供向后兼容性 =========
 
       /**
        * 添加登录事件监听器
@@ -181,7 +206,14 @@ class AuthService {
        */
       public onLogin(callback: LoginCallback): () => void {
             this.loginCallbacks.add(callback);
-            return () => this.loginCallbacks.delete(callback);
+
+            // 同时使用事件总线（可以在迁移期使用两种机制）
+            eventBus.on(AppEvents.AUTH_LOGIN, callback);
+
+            return () => {
+                  this.loginCallbacks.delete(callback);
+                  eventBus.off(AppEvents.AUTH_LOGIN, callback);
+            };
       }
 
       /**
@@ -191,7 +223,14 @@ class AuthService {
        */
       public onLogout(callback: LogoutCallback): () => void {
             this.logoutCallbacks.add(callback);
-            return () => this.logoutCallbacks.delete(callback);
+
+            // 同时使用事件总线
+            eventBus.on(AppEvents.AUTH_LOGOUT, callback);
+
+            return () => {
+                  this.logoutCallbacks.delete(callback);
+                  eventBus.off(AppEvents.AUTH_LOGOUT, callback);
+            };
       }
 
       /**
@@ -207,7 +246,13 @@ class AuthService {
                   callback(this.isLoggedIn.value);
             }
 
-            return () => this.stateChangeCallbacks.delete(callback);
+            // 同时使用事件总线
+            eventBus.on(AppEvents.AUTH_STATE_CHANGED, callback);
+
+            return () => {
+                  this.stateChangeCallbacks.delete(callback);
+                  eventBus.off(AppEvents.AUTH_STATE_CHANGED, callback);
+            };
       }
 
       /**

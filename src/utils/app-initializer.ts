@@ -6,14 +6,17 @@ import {
       useCheckoutStore, useTempOrderStore, usePromotionStore
 } from '@/stores/index.store';
 import { toast } from '@/utils/toast.service';
+import { eventBus, AppEvents } from '@/utils/event-bus';
+import { systemInitializer } from '@/utils/system-initializer';
 
 // 初始化阶段枚举
 enum InitPhase {
       NONE = 0,
-      SERVICES = 1,
-      CORE_STORES = 2,
-      USER_STORES = 3,
-      COMPLETE = 4
+      SYSTEM_EVENTS = 1,
+      SERVICES = 2,
+      CORE_STORES = 3,
+      USER_STORES = 4,
+      COMPLETE = 5
 }
 
 // 初始化状态
@@ -31,14 +34,21 @@ export async function initializeApp(): Promise<boolean> {
       isInitializing = true;
 
       try {
-            // 第一阶段：初始化核心服务
+            // 第一阶段：初始化系统事件
+            if (currentPhase < InitPhase.SYSTEM_EVENTS) {
+                  console.log('正在初始化系统事件...');
+                  systemInitializer.initialize();
+                  currentPhase = InitPhase.SYSTEM_EVENTS;
+            }
+            
+            // 第二阶段：初始化核心服务
             if (currentPhase < InitPhase.SERVICES) {
                   console.log('正在初始化核心服务...');
                   await initializeServices();
                   currentPhase = InitPhase.SERVICES;
             }
 
-            // 第二阶段：初始化核心Store（仅包含用户和产品）
+            // 第三阶段：初始化核心Store（仅包含用户和产品）
             if (currentPhase < InitPhase.CORE_STORES) {
                   console.log('正在初始化核心Store...');
                   const userStore = useUserStore();
@@ -53,7 +63,7 @@ export async function initializeApp(): Promise<boolean> {
                   currentPhase = InitPhase.CORE_STORES;
             }
 
-            // 第三阶段：如果用户已登录，初始化用户相关Store
+            // 第四阶段：如果用户已登录，初始化用户相关Store
             const userStore = useUserStore();
             if (currentPhase < InitPhase.USER_STORES && userStore.isLoggedIn) {
                   console.log('正在初始化用户相关Store...');
@@ -63,6 +73,10 @@ export async function initializeApp(): Promise<boolean> {
 
             currentPhase = InitPhase.COMPLETE;
             console.log('应用初始化完成');
+            
+            // 触发应用初始化完成事件
+            eventBus.emit(AppEvents.APP_INITIALIZED);
+            
             return true;
       } catch (error) {
             console.error('应用初始化失败:', error);
@@ -117,11 +131,19 @@ export async function initializeUserStores(): Promise<boolean> {
  */
 export async function onUserLogin(): Promise<void> {
       try {
+            // 触发登录后初始化事件
+            eventBus.emit('app:user-login-initialize');
+            
             // 初始化用户相关Store（包括购物车）
             await initializeUserStores();
             currentPhase = InitPhase.USER_STORES;
       } catch (error) {
             console.error('登录后初始化失败:', error);
+            // 发出错误事件
+            eventBus.emit('app:initialization-error', {
+                  phase: 'user-login',
+                  error
+            });
       }
 }
 
@@ -129,6 +151,9 @@ export async function onUserLogin(): Promise<void> {
  * 用户登出后调用，清理用户相关状态
  */
 export function onUserLogout(): void {
+      // 触发登出初始化事件
+      eventBus.emit('app:user-logout-cleanup');
+      
       const userStore = useUserStore();
       const favoriteStore = useFavoriteStore();
       const addressStore = useAddressStore();
