@@ -1,30 +1,96 @@
+// src/main.ts
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import './index.css'
 import App from './App.vue'
 import router from './router'
-import { setupStoreEvents } from '@/utils/setupStoreEvents';
-import { useUserStore } from '@/stores/user.store';
+import { initializeServices, authService } from '@/services'; 
 import ToastPlugin from './plugins/toast'
 
-// 创建Pinia实例
-const pinia = createPinia()
-
 // 创建Vue应用实例
-const app = createApp(App)
+const app = createApp(App);
 
+// 创建Pinia实例
+const pinia = createPinia();
 
-app.use(pinia)   // 使用Pinia实例
-app.use(router)  // 使用路由
-app.use(ToastPlugin) // 使用Toast插件
+// 使用必要的插件
+app.use(pinia);
+app.use(router);
+app.use(ToastPlugin);
 
-// 设置全局事件监听
-setupStoreEvents();
+// 应用启动函数
+async function bootstrap() {
+    // 显示加载状态
+    const appLoader = document.getElementById('app-loader');
+    if (appLoader) {
+        appLoader.style.display = 'flex';
+    }
 
-// 初始化用户状态
-const userStore = useUserStore();
-userStore.init();
+    try {
+        // 初始化全局服务
+        await initializeServices();
+        
+        // 处理路由守卫和权限控制
+        setupRouterGuards();
+        
+        // 注册全局错误处理
+        setupErrorHandling();
+        
+        // 挂载Vue实例
+        app.mount('#app');
+        console.log('应用初始化成功');
+    } catch (error) {
+        console.error('应用初始化失败:', error);
+        // 显示错误信息给用户
+        const errorElement = document.getElementById('app-error');
+        if (errorElement) {
+            errorElement.style.display = 'block';
+            errorElement.textContent = '应用加载失败，请刷新页面重试';
+        }
+    } finally {
+        // 隐藏加载状态
+        if (appLoader) {
+            appLoader.style.display = 'none';
+        }
+    }
+}
 
+/**
+ * 设置路由守卫
+ */
+function setupRouterGuards() {
+    // 从services中导入authService 
 
-// 挂载Vue实例
-app.mount('#app')
+    router.beforeEach((to, _from, next) => {
+        // 检查路由是否需要认证
+        if (to.meta.requiresAuth && !authService.isLoggedIn.value) {
+            // 未登录，重定向到登录页
+            next({
+                path: '/login',
+                query: { redirect: to.fullPath }
+            });
+        } else {
+            // 正常导航
+            next();
+        }
+    });
+}
+
+/**
+ * 设置全局错误处理
+ */
+function setupErrorHandling() {
+    // 全局错误处理
+    app.config.errorHandler = (err, _instance, info) => {
+        console.error('全局错误:', err, info);
+        // 可以集成错误上报服务
+    };
+
+    // 处理未捕获的Promise异常
+    window.addEventListener('unhandledrejection', (event) => {
+        console.error('未处理的Promise异常:', event.reason);
+    });
+}
+
+// 启动应用
+bootstrap();

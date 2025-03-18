@@ -2,13 +2,8 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { userApi } from '@/api/user.api';
-import { storage } from '@/utils/storage';
-import { eventBus } from '@/utils/eventBus';
+import type { RegisterParams, DeleteAccountParams } from '@/types/user.type';
 import { authService } from '@/services/auth.service';
-import type { LoginParams, RegisterParams, DeleteAccountParams } from '@/types/user.type';
-
-// 缓存键 
-const TOKEN_EXPIRY_KEY = 'user_token_expiry'; 
 
 export const useUserStore = defineStore('user', () => {
       // 状态 
@@ -17,12 +12,12 @@ export const useUserStore = defineStore('user', () => {
       const isInitialized = ref<boolean>(false);
       const isInitializing = ref<boolean>(false);
 
-      // 计算属性现在委托给 authService
+      // 计算属性委托给 authService
       const isLoggedIn = computed(() => authService.isLoggedIn.value);
       const token = computed(() => authService.token.value);
       const currentUser = computed(() => authService.currentUser.value);
 
-      // 添加init方法
+      // 初始化方法
       function init() {
             if (isInitialized.value || isInitializing.value) return;
             isInitializing.value = true;
@@ -31,62 +26,36 @@ export const useUserStore = defineStore('user', () => {
                   // 使用 authService 初始化
                   const isValid = authService.init();
                   isInitialized.value = true;
-
-                  // 发布初始化完成事件
-                  eventBus.emit('user:initialized', isValid);
-
                   return isValid;
             } catch (err) {
                   console.error('用户状态初始化失败:', err);
-                  eventBus.emit('app:error', { code: 1001, message: '用户状态初始化失败' });
             } finally {
                   isInitializing.value = false;
             }
       }
 
-
       // 登录
-      async function login(params: LoginParams) {
+      async function login(username: string, password: string) {
             loading.value = true;
-            authService.setLoading(true);
             error.value = null;
-            authService.setError(null);
 
             try {
-                  const response = await userApi.login(params);
-
-                  // 使用 authService 设置登录状态
-                  authService.setLoginState(response.token, response.user);
-
-                  // 发布登录成功事件
-                  eventBus.emit('user:login', { userId: response.user.id });
-
-                  return response;
+                  const user = await authService.login(username, password);
+                  return user;
             } catch (err: any) {
                   error.value = err.message || '登录失败';
-                  authService.setError(err.message || '登录失败');
-                  eventBus.emit('app:error', { code: 1002, message: err.message || '登录失败' });
                   throw err;
             } finally {
                   loading.value = false;
-                  authService.setLoading(false);
             }
       }
 
       // 注销
       async function logout() {
             try {
-                  if (authService.token.value) {
-                        await userApi.logout();
-                  }
+                  await authService.logout();
             } catch (err) {
                   console.error('退出登录时出错:', err);
-            } finally {
-                  // 使用 authService 清除登录状态
-                  authService.clearLoginState();
-
-                  // 发布登出事件
-                  eventBus.emit('user:logout');
             }
       }
 
@@ -128,22 +97,6 @@ export const useUserStore = defineStore('user', () => {
             }
       }
 
-      // 检查token是否过期
-      function checkTokenExpiry() {
-            if (!token.value) return false;
-
-            // 获取过期时间
-            const expiryTime = storage.get<number>(TOKEN_EXPIRY_KEY, 0);
-
-            // 如果没有过期时间或已过期
-            if (!expiryTime || Date.now() >= expiryTime) {
-                  clearUserState();
-                  return false;
-            }
-
-            return true;
-      }
-
       // 刷新用户信息
       async function refreshUserInfo() {
             // 这里可以添加获取最新用户信息的API调用
@@ -169,7 +122,6 @@ export const useUserStore = defineStore('user', () => {
             register,
             deleteAccount,
             clearUserState,
-            checkTokenExpiry,
             refreshUserInfo
       };
 });

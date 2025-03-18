@@ -2,7 +2,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { addressService } from '@/services/address.service';
-import { eventBus } from '@/utils/eventBus';
 import { authService } from '@/services/auth.service';
 import type { UserAddress, CreateAddressParams, UpdateAddressParams } from '@/types/address.type';
 
@@ -16,16 +15,8 @@ export const useAddressStore = defineStore('address', () => {
       const isInitialized = ref<boolean>(false);
       const isInitializing = ref<boolean>(false);
 
-      // 监听登录和登出事件
-      const unsubscribeLogin = authService.on('login', () => {
-            if (isInitialized.value) {
-                  fetchAddresses(true);
-            }
-      });
-
-      const unsubscribeLogout = authService.on('logout', () => {
-            clearAddressCache();
-      });
+      // 注册地址变化监听，在组件销毁时取消订阅
+      let unsubscribeAddressChange: (() => void) | null = null;
 
       // 计算属性
       const defaultAddress = computed(() => {
@@ -39,15 +30,23 @@ export const useAddressStore = defineStore('address', () => {
             isInitializing.value = true;
 
             try {
+                  // 监听地址服务的状态变化
+                  if (!unsubscribeAddressChange) {
+                        unsubscribeAddressChange = addressService.onAddressChange((newAddresses) => {
+                              addresses.value = newAddresses;
+                        });
+                  }
+
                   // 如果已登录，获取地址列表
                   if (authService.isLoggedIn.value) {
                         await fetchAddresses();
                   }
-                  isInitialized.value = true;
 
-                  eventBus.emit('address:initialized', true);
+                  isInitialized.value = true;
+                  return true;
             } catch (err) {
-                  console.error('地址初始化失败:', err);
+                  console.error('地址存储初始化失败:', err);
+                  return false;
             } finally {
                   isInitializing.value = false;
             }
@@ -80,7 +79,6 @@ export const useAddressStore = defineStore('address', () => {
 
             try {
                   const response = await addressService.createAddress(params);
-                  await fetchAddresses(true);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '创建地址失败';
@@ -97,7 +95,6 @@ export const useAddressStore = defineStore('address', () => {
 
             try {
                   const response = await addressService.updateAddress(id, params);
-                  await fetchAddresses(true);
                   return response;
             } catch (err: any) {
                   error.value = err.message || '更新地址失败';
@@ -114,7 +111,6 @@ export const useAddressStore = defineStore('address', () => {
 
             try {
                   await addressService.deleteAddress(id);
-                  await fetchAddresses(true);
             } catch (err: any) {
                   error.value = err.message || '删除地址失败';
                   throw err;
@@ -130,7 +126,6 @@ export const useAddressStore = defineStore('address', () => {
 
             try {
                   await addressService.setDefaultAddress(id);
-                  await fetchAddresses(true);
             } catch (err: any) {
                   error.value = err.message || '设置默认地址失败';
                   throw err;
@@ -154,6 +149,21 @@ export const useAddressStore = defineStore('address', () => {
             }
       }
 
+      // 重置store状态（用于处理用户登出等情况）
+      function reset() {
+            addresses.value = [];
+            error.value = null;
+            loading.value = false;
+      }
+
+      // 清理store资源（适用于组件销毁时）
+      function dispose() {
+            if (unsubscribeAddressChange) {
+                  unsubscribeAddressChange();
+                  unsubscribeAddressChange = null;
+            }
+      }
+
       return {
             // 状态
             isInitialized,
@@ -173,6 +183,8 @@ export const useAddressStore = defineStore('address', () => {
             deleteAddress,
             setDefaultAddress,
             clearAddressCache,
-            refreshAddressesIfNeeded
+            refreshAddressesIfNeeded,
+            reset,
+            dispose
       };
 });
