@@ -11,12 +11,16 @@ import type { Promotion } from '@/types/promotion.type';
 import type { ApiError } from '@/types/common.type';
 import { useUserStore } from '@/stores/user.store';
 import { useAddressStore } from '@/stores/address.store';
+import { createInitializeHelper } from '@/utils/store-helpers';
 
 /**
  * 结算状态存储与服务
  * 集成状态管理和业务逻辑
  */
 export const useCheckoutStore = defineStore('checkout', () => {
+    // 创建初始化
+    const initHelper = createInitializeHelper('CheckoutStore');
+
     // ==================== 状态 ====================
     const checkoutInfo = ref<CheckoutInfo | null>(null);
     const loading = ref<boolean>(false);
@@ -134,6 +138,10 @@ export const useCheckoutStore = defineStore('checkout', () => {
         if (!userStore.isLoggedIn) {
             return null;
         }
+        
+        if (loading.value) {
+            return checkoutInfo.value;
+        }
 
         setLoading(true);
 
@@ -187,14 +195,27 @@ export const useCheckoutStore = defineStore('checkout', () => {
      * 初始化结算模块
      */
     async function init(): Promise<void> {
-        const userStore = useUserStore();
-        if (userStore.isLoggedIn) {
-            // 初始化地址Store
-            const addressStore = useAddressStore();
-            await addressStore.init();
+        if (!initHelper.canInitialize()) {
+            return;
+        }
 
-            // 获取结算信息
-            await getCheckoutInfo();
+        initHelper.startInitialization();
+
+        try {
+            const userStore = useUserStore();
+            if (userStore.isLoggedIn) {
+                // 初始化地址Store
+                const addressStore = useAddressStore();
+                await addressStore.init();
+
+                // 获取结算信息
+                await getCheckoutInfo();
+            }
+            // 初始化成功
+            initHelper.completeInitialization();
+        } catch (error) {
+            initHelper.failInitialization(error);
+            throw error;
         }
     }
 
@@ -228,6 +249,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
         refreshCheckoutInfo,
         prepareCheckoutData,
         clearCheckoutData,
-        init
+        init,
+        isInitialized: initHelper.isInitialized
     };
 });

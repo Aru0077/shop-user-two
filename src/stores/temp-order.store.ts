@@ -9,12 +9,16 @@ import type { TempOrder, CreateTempOrderParams } from '@/types/temp-order.type';
 import type { CreateOrderResponse } from '@/types/order.type';
 import type { ApiError } from '@/types/common.type';
 import { useUserStore } from '@/stores/user.store';
+import { createInitializeHelper } from '@/utils/store-helpers';
 
 /**
  * 临时订单状态存储与服务
  * 集成状态管理和业务逻辑
  */
 export const useTempOrderStore = defineStore('tempOrder', () => {
+     // 创建初始化助手
+     const initHelper = createInitializeHelper('TempOrderStore');
+
     // ==================== 状态 ====================
     const tempOrder = ref<TempOrder | null>(null);
     const loading = ref<boolean>(false);
@@ -173,6 +177,9 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
      * @param id 临时订单ID
      */
     async function getTempOrder(id: string): Promise<TempOrder | null> {
+        if (loading.value) {
+            return tempOrder.value;
+        }
         setLoading(true);
 
         try {
@@ -255,8 +262,21 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
     /**
      * 初始化临时订单模块
      */
-    async function init(): Promise<void> {
-        restoreTempOrderFromStorage();
+   async function init(): Promise<void> {
+        if (!initHelper.canInitialize()) {
+            return;
+        }
+
+        initHelper.startInitialization();
+
+        try {
+            restoreTempOrderFromStorage();
+            // 初始化成功
+            initHelper.completeInitialization();
+        } catch (error) {
+            initHelper.failInitialization(error);
+            throw error;
+        }
     }
 
     // 立即初始化事件监听
@@ -289,6 +309,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
         refreshTempOrder,
         restoreTempOrderFromStorage,
         checkTempOrderExpiration,
-        init
+        init,
+        isInitialized: initHelper.isInitialized
     };
 });

@@ -8,12 +8,16 @@ import { toast } from '@/utils/toast.service';
 import type { CartItem, AddToCartParams, UpdateCartItemParams, PreviewOrderParams, OrderAmountPreview } from '@/types/cart.type';
 import type { ApiError, PaginatedResponse } from '@/types/common.type';
 import { useUserStore } from '@/stores/user.store';
+import { createInitializeHelper } from '@/utils/store-helpers';
 
 /**
  * 购物车状态存储与服务
  * 集成状态管理和业务逻辑
  */
 export const useCartStore = defineStore('cart', () => {
+    // 创建初始化助手
+    const initHelper = createInitializeHelper('CartStore');
+
     // ==================== 状态 ====================
     const cartItems = ref<CartItem[]>([]);
     const loading = ref<boolean>(false);
@@ -64,6 +68,8 @@ export const useCartStore = defineStore('cart', () => {
         eventBus.on(EVENT_NAMES.USER_LOGOUT, () => {
             // 用户登出后清除购物车数据
             clearCartData();
+            // 重置初始化状态
+            initHelper.resetInitialization();
         });
     }
 
@@ -154,6 +160,10 @@ export const useCartStore = defineStore('cart', () => {
         const userStore = useUserStore();
         if (!userStore.isLoggedIn) {
             return [];
+        }
+
+        if (loading.value) {
+            return cartItems.value;
         }
 
         setLoading(true);
@@ -355,9 +365,22 @@ export const useCartStore = defineStore('cart', () => {
      * 初始化购物车模块
      */
     async function init(): Promise<void> {
-        const userStore = useUserStore();
-        if (userStore.isLoggedIn) {
-            await getCartList();
+        if (!initHelper.canInitialize()) {
+            return;
+        }
+
+        initHelper.startInitialization();
+
+        try {
+            const userStore = useUserStore();
+            if (userStore.isLoggedIn) {
+                await getCartList();
+            }
+            // 初始化成功
+            initHelper.completeInitialization();
+        } catch (error) {
+            initHelper.failInitialization(error);
+            throw error;
         }
     }
 
@@ -391,6 +414,7 @@ export const useCartStore = defineStore('cart', () => {
         deleteItem,
         clearCart,
         previewOrderAmount,
-        init
+        init,
+        isInitialized: initHelper.isInitialized
     };
 });

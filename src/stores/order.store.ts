@@ -5,10 +5,10 @@ import { api } from '@/api/index.api';
 import { storage } from '@/utils/storage';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import { toast } from '@/utils/toast.service';
-import type { 
-    OrderBasic, 
-    OrderDetail, 
-    CreateOrderParams, 
+import type {
+    OrderBasic,
+    OrderDetail,
+    CreateOrderParams,
     CreateOrderResponse,
     QuickBuyParams,
     PayOrderParams,
@@ -16,12 +16,16 @@ import type {
 } from '@/types/order.type';
 import type { ApiError, PaginatedResponse } from '@/types/common.type';
 import { useUserStore } from '@/stores/user.store';
+import { createInitializeHelper } from '@/utils/store-helpers';
 
 /**
  * 订单状态存储与服务
  * 集成状态管理和业务逻辑
  */
 export const useOrderStore = defineStore('order', () => {
+    // 创建初始化助手
+    const initHelper = createInitializeHelper('OrderStore');
+
     // ==================== 状态 ====================
     const orders = ref<OrderBasic[]>([]);
     const currentOrder = ref<OrderDetail | null>(null);
@@ -34,9 +38,9 @@ export const useOrderStore = defineStore('order', () => {
     // ==================== Getters ====================
     const orderCount = computed(() => orders.value.length);
     const hasMoreOrders = computed(() => total.value > orders.value.length);
-    const isOrderPending = computed(() => 
-        currentOrder.value && 
-        currentOrder.value.orderStatus === 1 && 
+    const isOrderPending = computed(() =>
+        currentOrder.value &&
+        currentOrder.value.orderStatus === 1 &&
         currentOrder.value.paymentStatus === 0
     );
 
@@ -146,8 +150,8 @@ export const useOrderStore = defineStore('order', () => {
      * @param status 订单状态
      */
     async function getOrderList(
-        currentPage: number = 1, 
-        pageLimit: number = 10, 
+        currentPage: number = 1,
+        pageLimit: number = 10,
         status?: number
     ): Promise<OrderBasic[]> {
         const userStore = useUserStore();
@@ -155,13 +159,17 @@ export const useOrderStore = defineStore('order', () => {
             return [];
         }
 
+        if (loading.value) {
+            return orders.value;
+        }
+        
         setLoading(true);
 
         try {
             // 尝试从缓存获取
             const cachedOrders = storage.getOrderList<PaginatedResponse<OrderBasic>>(
-                currentPage, 
-                pageLimit, 
+                currentPage,
+                pageLimit,
                 status
             );
             if (cachedOrders) {
@@ -200,6 +208,10 @@ export const useOrderStore = defineStore('order', () => {
         const userStore = useUserStore();
         if (!userStore.isLoggedIn) {
             return null;
+        }
+
+        if (loading.value) {
+            return currentOrder.value;
         }
 
         setLoading(true);
@@ -417,9 +429,22 @@ export const useOrderStore = defineStore('order', () => {
      * 初始化订单模块
      */
     async function init(): Promise<void> {
-        const userStore = useUserStore();
-        if (userStore.isLoggedIn) {
-            await getOrderList();
+        if (!initHelper.canInitialize()) {
+            return;
+        }
+
+        initHelper.startInitialization();
+
+        try {
+            const userStore = useUserStore();
+            if (userStore.isLoggedIn) {
+                await getOrderList();
+            }
+            // 初始化成功
+            initHelper.completeInitialization();
+        } catch (error) {
+            initHelper.failInitialization(error);
+            throw error;
         }
     }
 
@@ -461,6 +486,7 @@ export const useOrderStore = defineStore('order', () => {
         confirmReceipt,
         loadMoreOrders,
         refreshCurrentOrder,
-        init
+        init,
+        isInitialized: initHelper.isInitialized
     };
 });

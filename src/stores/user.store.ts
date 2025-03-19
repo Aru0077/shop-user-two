@@ -7,12 +7,16 @@ import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import { toast } from '@/utils/toast.service';
 import type { User, RegisterParams, LoginParams, DeleteAccountParams, LoginResponse } from '@/types/user.type';
 import type { ApiError } from '@/types/common.type';
+import { createInitializeHelper } from '@/utils/store-helpers';
 
 /**
  * 用户状态存储与服务
  * 集成状态管理和业务逻辑
  */
 export const useUserStore = defineStore('user', () => {
+      // 创建初始化助手
+      const initHelper = createInitializeHelper('UserStore');
+
       // ==================== 状态 ====================
       const user = ref<User | null>(null);
       const token = ref<string | null>(null);
@@ -126,6 +130,9 @@ export const useUserStore = defineStore('user', () => {
        * @param params 登录参数
        */
       async function login(params: LoginParams): Promise<LoginResponse | null> {
+            if (loading.value) {
+                  return null; // 登录操作不应重复，直接返回null
+              }
             setLoading(true);
 
             try {
@@ -207,8 +214,22 @@ export const useUserStore = defineStore('user', () => {
        * 初始化用户模块
        */
       async function init(): Promise<void> {
-            await restoreUserSession();
+            if (!initHelper.canInitialize()) {
+                  return;
+            }
+
+            initHelper.startInitialization();
+
+            try {
+                  await restoreUserSession();
+                  // 初始化成功
+                  initHelper.completeInitialization();
+            } catch (error) {
+                  initHelper.failInitialization(error);
+                  throw error;
+            }
       }
+
 
       // 立即初始化存储和事件监听
       setupEventListeners();
@@ -235,6 +256,7 @@ export const useUserStore = defineStore('user', () => {
             logout,
             deleteAccount,
             restoreUserSession,
-            init
+            init,
+            isInitialized: initHelper.isInitialized
       };
 });

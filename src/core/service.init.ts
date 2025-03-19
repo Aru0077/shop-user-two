@@ -39,24 +39,24 @@ export class ServiceInitializer {
                   await userStore.init();
 
                   // 2. 初始化基础数据模块
-                  const addressStore = useAddressStore();
-                  await addressStore.init();
+                  const stores = [
+                        useAddressStore(),
+                        useProductStore(),
+                        usePromotionStore()
+                  ];
 
-                  const productStore = useProductStore();
-                  await productStore.init();
-
-                  const promotionStore = usePromotionStore();
-                  await promotionStore.init();
+                  // 并行初始化基础模块
+                  await Promise.all(stores.map(store => store.init()));
 
                   // 3. 初始化用户关联数据模块
-                  const cartStore = useCartStore();
-                  await cartStore.init();
+                  const userDataStores = [
+                        useCartStore(),
+                        useFavoriteStore(),
+                        useTempOrderStore()
+                  ];
 
-                  const favoriteStore = useFavoriteStore();
-                  await favoriteStore.init();
-
-                  const tempOrderStore = useTempOrderStore();
-                  await tempOrderStore.init();
+                  // 并行初始化用户数据模块
+                  await Promise.all(userDataStores.map(store => store.init()));
 
                   // 发布核心服务初始化完成事件
                   eventBus.emit(EVENT_NAMES.CORE_SERVICES_READY);

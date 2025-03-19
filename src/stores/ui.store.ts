@@ -1,6 +1,6 @@
 // src/stores/ui.store.ts
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed } from 'vue'; 
 
 // 定义屏幕尺寸断点
 const SCREEN_SM = 640;
@@ -8,7 +8,7 @@ const SCREEN_MD = 768;
 const SCREEN_LG = 1024;
 const SCREEN_XL = 1280;
 
-export const useUiStore = defineStore('ui', () => {
+export const useUiStore = defineStore('ui', () => { 
       // 状态
       const screenWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 0);
       const screenHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 0);

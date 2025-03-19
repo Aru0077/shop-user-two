@@ -8,12 +8,16 @@ import { toast } from '@/utils/toast.service';
 import type { Favorite, AddFavoriteParams, BatchRemoveFavoritesParams, FavoritesResponse, FavoriteIdsResponse } from '@/types/favorite.type';
 import type { ApiError } from '@/types/common.type';
 import { useUserStore } from '@/stores/user.store';
+import { createInitializeHelper } from '@/utils/store-helpers';
 
 /**
  * 收藏状态存储与服务
  * 集成状态管理和业务逻辑
  */
 export const useFavoriteStore = defineStore('favorite', () => {
+      // 创建初始化助手
+      const initHelper = createInitializeHelper('FavoriteStore');
+
       // ==================== 状态 ====================
       const favorites = ref<Favorite[]>([]);
       const favoriteIds = ref<number[]>([]);
@@ -136,6 +140,10 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   return [];
             }
 
+            if (loading.value) {
+                  return favorites.value;
+            }
+
             setLoading(true);
 
             try {
@@ -180,7 +188,10 @@ export const useFavoriteStore = defineStore('favorite', () => {
             if (!userStore.isLoggedIn) {
                   return [];
             }
-
+            // 添加这两行
+            if (loading.value) {
+                  return favoriteIds.value;
+            }
             setLoading(true);
 
             try {
@@ -333,9 +344,22 @@ export const useFavoriteStore = defineStore('favorite', () => {
        * 初始化收藏模块
        */
       async function init(): Promise<void> {
-            const userStore = useUserStore();
-            if (userStore.isLoggedIn) {
-                  await getFavoriteIds();
+            if (!initHelper.canInitialize()) {
+                  return;
+            }
+
+            initHelper.startInitialization();
+
+            try {
+                  const userStore = useUserStore();
+                  if (userStore.isLoggedIn) {
+                        await getFavoriteIds();
+                  }
+                  // 初始化成功
+                  initHelper.completeInitialization();
+            } catch (error) {
+                  initHelper.failInitialization(error);
+                  throw error;
             }
       }
 
@@ -368,6 +392,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
             removeFavorite,
             batchRemoveFavorites,
             toggleFavorite,
-            init
+            init,
+            isInitialized: initHelper.isInitialized
       };
 });

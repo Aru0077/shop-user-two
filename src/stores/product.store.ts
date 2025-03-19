@@ -5,21 +5,25 @@ import { api } from '@/api/index.api';
 import { storage } from '@/utils/storage';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import { toast } from '@/utils/toast.service';
-import type { 
+import type {
     Category,
     Product,
     ProductDetail,
     SearchProductsParams,
     SearchProductsResponse,
-    HomePageData, 
+    HomePageData,
 } from '@/types/product.type';
 import type { ApiError, PaginatedResponse } from '@/types/common.type';
+import { createInitializeHelper } from '@/utils/store-helpers';
 
 /**
  * 商品状态存储与服务
  * 集成状态管理和业务逻辑
  */
 export const useProductStore = defineStore('product', () => {
+    // 创建初始化助手
+    const initHelper = createInitializeHelper('ProductStore');
+
     // ==================== 状态 ====================
     const categories = ref<Category[]>([]);
     const currentProduct = ref<ProductDetail | null>(null);
@@ -62,7 +66,7 @@ export const useProductStore = defineStore('product', () => {
         eventBus.on(EVENT_NAMES.APP_INIT, () => {
             // 初始化分类
             getCategoryTree();
-            
+
             // 初始化首页数据
             getHomePageData();
         });
@@ -81,7 +85,7 @@ export const useProductStore = defineStore('product', () => {
      */
     function setCurrentProduct(product: ProductDetail | null) {
         currentProduct.value = product;
-        
+
         // 如果设置了有效商品，添加到最近浏览
         if (product) {
             addToRecentlyViewed(product);
@@ -150,15 +154,15 @@ export const useProductStore = defineStore('product', () => {
     function addToRecentlyViewed(product: Product | ProductDetail) {
         // 先移除已存在的相同商品
         recentlyViewed.value = recentlyViewed.value.filter(p => p.id !== product.id);
-        
+
         // 添加到最前面
         recentlyViewed.value.unshift(product);
-        
+
         // 限制最多保存10个
         if (recentlyViewed.value.length > 10) {
             recentlyViewed.value = recentlyViewed.value.slice(0, 10);
         }
-        
+
         // 保存到本地存储
         storage.set(storage.STORAGE_KEYS.RECENT_PRODUCTS, recentlyViewed.value, storage.STORAGE_EXPIRY.RECENT_PRODUCTS);
     }
@@ -192,17 +196,22 @@ export const useProductStore = defineStore('product', () => {
             return cachedCategories;
         }
 
+        // 添加这两行
+        if (loading.value) {
+            return categories.value;
+        }
+
         setLoading(true);
 
         try {
             const categoryTree = await api.productApi.getCategoryTree();
-            
+
             // 缓存分类树
             storage.saveCategories(categoryTree);
-            
+
             // 更新状态
             setCategories(categoryTree);
-            
+
             return categoryTree;
         } catch (error: any) {
             handleError(error, '获取商品分类失败');
@@ -218,14 +227,17 @@ export const useProductStore = defineStore('product', () => {
      * @param limit 每页数量
      */
     async function getLatestProducts(page: number = 1, limit: number = 10): Promise<Product[]> {
+        if (loading.value) {
+            return latestProducts.value;
+        }
         setLoading(true);
 
         try {
             const response = await api.productApi.getLatestProducts(page, limit);
-            
+
             // 更新状态
             setLatestProducts(response.data);
-            
+
             return response.data;
         } catch (error: any) {
             handleError(error, '获取最新商品失败');
@@ -241,14 +253,17 @@ export const useProductStore = defineStore('product', () => {
      * @param limit 每页数量
      */
     async function getTopSellingProducts(page: number = 1, limit: number = 10): Promise<Product[]> {
+        if (loading.value) {
+            return topSellingProducts.value;
+        }
         setLoading(true);
 
         try {
             const response = await api.productApi.getTopSellingProducts(page, limit);
-            
+
             // 更新状态
             setTopSellingProducts(response.data);
-            
+
             return response.data;
         } catch (error: any) {
             handleError(error, '获取热销商品失败');
@@ -264,14 +279,17 @@ export const useProductStore = defineStore('product', () => {
      * @param limit 每页数量
      */
     async function getPromotionProducts(page: number = 1, limit: number = 10): Promise<Product[]> {
+        if (loading.value) {
+            return promotionProducts.value;
+        }
         setLoading(true);
 
         try {
             const response = await api.productApi.getPromotionProducts(page, limit);
-            
+
             // 更新状态
             setPromotionProducts(response.data);
-            
+
             return response.data;
         } catch (error: any) {
             handleError(error, '获取促销商品失败');
@@ -296,7 +314,7 @@ export const useProductStore = defineStore('product', () => {
     ): Promise<Product[]> {
         // 生成缓存键
         const cacheKey = `${storage.STORAGE_KEYS.CATEGORY_PRODUCTS_PREFIX}${categoryId}_${page}_${limit}_${sort}`;
-        
+
         // 尝试从缓存获取
         const cachedProducts = storage.get<PaginatedResponse<Product>>(cacheKey);
         if (cachedProducts) {
@@ -304,17 +322,22 @@ export const useProductStore = defineStore('product', () => {
             return cachedProducts.data;
         }
 
+        // 添加这两行
+        if (loading.value) {
+            return categoryProducts.value.get(categoryId) || [];
+        }
+
         setLoading(true);
 
         try {
             const response = await api.productApi.getCategoryProducts(categoryId, page, limit, sort);
-            
+
             // 缓存结果
             storage.set(cacheKey, response, storage.STORAGE_EXPIRY.CATEGORY_PRODUCTS);
-            
+
             // 更新状态
             setCategoryProducts(categoryId, response.data);
-            
+
             return response.data;
         } catch (error: any) {
             handleError(error, '获取分类商品失败');
@@ -339,23 +362,28 @@ export const useProductStore = defineStore('product', () => {
             }
         }
 
+        // 添加这两行
+        if (loading.value) {
+            return currentProduct.value;
+        }
+
         setLoading(true);
 
         try {
             // 先获取基本详情
             const productDetail = await api.productApi.getProductDetail(id);
-            
+
             // 设置加载SKU标志
             const productWithLoadingFlag = {
                 ...productDetail,
                 loadingSkus: true
             };
             setCurrentProduct(productWithLoadingFlag);
-            
+
             // 然后获取SKU信息
             try {
                 const skusData = await api.productApi.getProductSkus(id);
-                
+
                 // 合并SKU信息到商品详情
                 const fullProductDetail: ProductDetail = {
                     ...productDetail,
@@ -364,13 +392,13 @@ export const useProductStore = defineStore('product', () => {
                     validSpecCombinations: skusData.validSpecCombinations,
                     loadingSkus: false
                 };
-                
+
                 // 缓存完整商品详情
                 storage.saveProductDetail(id, fullProductDetail);
-                
+
                 // 更新状态
                 setCurrentProduct(fullProductDetail);
-                
+
                 return fullProductDetail;
             } catch (skuError) {
                 // SKU加载失败，但基本信息已加载
@@ -380,7 +408,7 @@ export const useProductStore = defineStore('product', () => {
                     validSpecCombinations: {},
                     loadingSkus: false
                 };
-                
+
                 setCurrentProduct(basicProductDetail);
                 return basicProductDetail;
             }
@@ -398,18 +426,23 @@ export const useProductStore = defineStore('product', () => {
      * @param append 是否追加到现有结果
      */
     async function searchProducts(params: SearchProductsParams, append: boolean = false): Promise<SearchProductsResponse | null> {
+        // 添加这两行 - 注意这里不返回现有结果，因为搜索参数可能变化
+        if (loading.value) {
+            return null;
+        }
+
         setLoading(true);
 
         try {
             const response = await api.productApi.searchProducts(params);
-            
+
             // 更新状态
             if (append) {
                 appendSearchResults(response.data, response.total, params.page || 1);
             } else {
                 setSearchResults(response.data, response.total, params.page || 1, params.limit || 10);
             }
-            
+
             return response;
         } catch (error: any) {
             handleError(error, '搜索商品失败');
@@ -455,17 +488,22 @@ export const useProductStore = defineStore('product', () => {
             return cachedHomeData;
         }
 
+        // 添加这两行
+        if (loading.value) {
+            return homeData.value;
+        }
+
         setLoading(true);
 
         try {
             const data = await api.productApi.getHomePageData();
-            
+
             // 缓存首页数据
             storage.saveHomeData(data);
-            
+
             // 更新状态
             setHomeData(data);
-            
+
             return data;
         } catch (error: any) {
             handleError(error, '获取首页数据失败');
@@ -487,17 +525,31 @@ export const useProductStore = defineStore('product', () => {
      * 初始化商品模块
      */
     async function init(): Promise<void> {
-        // 恢复最近浏览记录
-        restoreRecentlyViewed();
-        
-        // 获取分类树
-        if (!categoriesLoaded.value) {
-            await getCategoryTree();
+        if (!initHelper.canInitialize()) {
+            return;
         }
-        
-        // 获取首页数据
-        if (!homeDataLoaded.value) {
-            await getHomePageData();
+
+        initHelper.startInitialization();
+
+        try {
+            // 恢复最近浏览记录
+            restoreRecentlyViewed();
+
+            // 获取分类树
+            if (!categoriesLoaded.value) {
+                await getCategoryTree();
+            }
+
+            // 获取首页数据
+            if (!homeDataLoaded.value) {
+                await getHomePageData();
+            }
+
+            // 初始化成功
+            initHelper.completeInitialization();
+        } catch (error) {
+            initHelper.failInitialization(error);
+            throw error;
         }
     }
 
@@ -519,12 +571,12 @@ export const useProductStore = defineStore('product', () => {
         searchPage,
         searchLimit,
         recentlyViewed,
-        
+
         // Getters
         categoriesLoaded,
         homeDataLoaded,
         hasMoreSearchResults,
-        
+
         // 状态管理方法
         setCategories,
         setCurrentProduct,
@@ -535,7 +587,7 @@ export const useProductStore = defineStore('product', () => {
         setSearchResults,
         setLoading,
         clearProductData,
-        
+
         // 业务逻辑方法
         getCategoryTree,
         getLatestProducts,
@@ -547,6 +599,7 @@ export const useProductStore = defineStore('product', () => {
         loadMoreSearchResults,
         getHomePageData,
         restoreRecentlyViewed,
-        init
+        init,
+        isInitialized: initHelper.isInitialized
     };
 });

@@ -8,12 +8,16 @@ import { toast } from '@/utils/toast.service';
 import type { UserAddress, CreateAddressParams, UpdateAddressParams } from '@/types/address.type';
 import type { ApiError } from '@/types/common.type';
 import { useUserStore } from '@/stores/user.store';
+import { createInitializeHelper } from '@/utils/store-helpers';
 
 /**
  * 地址状态存储与服务
  * 集成状态管理和业务逻辑
  */
 export const useAddressStore = defineStore('address', () => {
+      // 创建初始化助手
+      const initHelper = createInitializeHelper('AddressStore');
+
       // ==================== 状态 ====================
       const addresses = ref<UserAddress[]>([]);
       const loading = ref<boolean>(false);
@@ -53,6 +57,8 @@ export const useAddressStore = defineStore('address', () => {
             eventBus.on(EVENT_NAMES.USER_LOGOUT, () => {
                   // 用户登出后清除地址数据
                   clearAddresses();
+                  // 重置初始化状态
+                  initHelper.resetInitialization();
             });
       }
 
@@ -113,6 +119,12 @@ export const useAddressStore = defineStore('address', () => {
                   return [];
             }
 
+            // 如果正在加载，则返回当前数据
+            if (loading.value) {
+                  return addresses.value;
+            }
+
+            
             setLoading(true);
 
             try {
@@ -272,9 +284,25 @@ export const useAddressStore = defineStore('address', () => {
        * 初始化地址模块
        */
       async function init(): Promise<void> {
-            const userStore = useUserStore();
-            if (userStore.isLoggedIn) {
-                  await getAddresses();
+            // 使用初始化助手防止重复初始化
+            if (!initHelper.canInitialize()) {
+                  return;
+            }
+
+            initHelper.startInitialization();
+
+            try {
+                  const userStore = useUserStore();
+                  if (userStore.isLoggedIn) {
+                        await getAddresses();
+                  }
+
+                  // 初始化成功
+                  initHelper.completeInitialization();
+            } catch (error) {
+                  // 初始化失败
+                  initHelper.failInitialization(error);
+                  throw error;
             }
       }
 
@@ -304,6 +332,8 @@ export const useAddressStore = defineStore('address', () => {
             deleteAddress,
             setDefaultAddress,
             clearAddresses,
-            init
+            init,
+            // 导出初始化状态检查方法
+            isInitialized: initHelper.isInitialized
       };
 });

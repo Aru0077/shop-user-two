@@ -6,12 +6,16 @@ import { storage } from '@/utils/storage';
 import { toast } from '@/utils/toast.service';
 import type { Promotion, EligiblePromotionResponse } from '@/types/promotion.type';
 import type { ApiError } from '@/types/common.type';
+import { createInitializeHelper } from '@/utils/store-helpers';
 
 /**
  * 促销规则状态存储与服务
  * 集成状态管理和业务逻辑
  */
 export const usePromotionStore = defineStore('promotion', () => {
+    // 创建初始化助手
+    const initHelper = createInitializeHelper('PromotionStore');
+
     // ==================== 状态 ====================
     const promotions = ref<Promotion[]>([]);
     const loading = ref<boolean>(false);
@@ -70,6 +74,10 @@ export const usePromotionStore = defineStore('promotion', () => {
      * 获取可用促销规则
      */
     async function getAvailablePromotions(): Promise<Promotion[]> {
+        if (loading.value) {
+            return promotions.value;
+        }
+
         setLoading(true);
 
         try {
@@ -103,6 +111,9 @@ export const usePromotionStore = defineStore('promotion', () => {
      * @param amount 订单金额
      */
     async function checkEligiblePromotion(amount: number): Promise<EligiblePromotionResponse | null> {
+        if (loading.value) {
+            return null; // 这里返回null，因为这个方法没有保存中间结果
+        }
         setLoading(true);
 
         try {
@@ -120,7 +131,20 @@ export const usePromotionStore = defineStore('promotion', () => {
      * 初始化促销模块
      */
     async function init(): Promise<void> {
-        await getAvailablePromotions();
+        if (!initHelper.canInitialize()) {
+            return;
+        }
+
+        initHelper.startInitialization();
+
+        try {
+            await getAvailablePromotions();
+            // 初始化成功
+            initHelper.completeInitialization();
+        } catch (error) {
+            initHelper.failInitialization(error);
+            throw error;
+        }
     }
 
     // 立即初始化事件监听
@@ -142,6 +166,7 @@ export const usePromotionStore = defineStore('promotion', () => {
         // 业务逻辑方法
         getAvailablePromotions,
         checkEligiblePromotion,
-        init
+        init,
+        isInitialized: initHelper.isInitialized
     };
 });
