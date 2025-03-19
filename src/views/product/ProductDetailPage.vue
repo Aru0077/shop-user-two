@@ -78,18 +78,19 @@ const openSkuSelector = (mode: 'cart' | 'buy') => {
 // 获取商品详情
 const fetchProductDetail = async () => {
     if (!productId.value) return;
-    
+
     loading.value = true;
-    
+
+    // 关键修改：在请求新商品之前，先将当前商品重置为空商品
+    product.value = emptyProduct;
+
     try {
         const productDetail = await productStore.getProductDetail(productId.value);
         if (productDetail) {
             product.value = productDetail;
         }
-        // 如果productDetail为null，保持emptyProduct不变
     } catch (err) {
         console.error('获取商品详情失败:', err);
-        // 出错时product仍然是emptyProduct
     } finally {
         loading.value = false;
     }
@@ -109,12 +110,12 @@ onMounted(async () => {
         productStore.init(),
         userStore.init()
     ]);
-    
+
     // 如果用户已登录，初始化收藏store
     if (userStore.isLoggedIn) {
         await favoriteStore.init();
     }
-    
+
     // 获取商品详情
     fetchProductDetail();
 });

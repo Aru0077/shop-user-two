@@ -25,6 +25,9 @@ export const useProductStore = defineStore('product', () => {
     const initHelper = createInitializeHelper('ProductStore');
 
     // ==================== 状态 ====================
+    const cachedProducts = ref<ProductDetail[]>([]);
+    const MAX_CACHED_PRODUCTS = 20; // 最大缓存商品数量
+
     const categories = ref<Category[]>([]);
     const currentProduct = ref<ProductDetail | null>(null);
     const latestProducts = ref<Product[]>([]);
@@ -185,6 +188,24 @@ export const useProductStore = defineStore('product', () => {
     }
 
     // ==================== 业务逻辑方法 ====================
+    // 添加缓存管理方法
+    function addToCachedProducts(product: ProductDetail) {
+        // 移除已存在的相同商品
+        const index = cachedProducts.value.findIndex(p => p.id === product.id);
+        if (index !== -1) {
+            cachedProducts.value.splice(index, 1);
+        }
+
+        // 添加到数组开头（最近访问的在前面）
+        cachedProducts.value.unshift(product);
+
+        // 如果超出最大缓存数量，移除最后一项
+        if (cachedProducts.value.length > MAX_CACHED_PRODUCTS) {
+            cachedProducts.value.pop();
+        }
+    }
+
+
     /**
      * 获取分类树
      */
@@ -353,18 +374,27 @@ export const useProductStore = defineStore('product', () => {
      * @param forceRefresh 是否强制刷新
      */
     async function getProductDetail(id: number, forceRefresh: boolean = false): Promise<ProductDetail | null> {
-        // 如果不强制刷新，检查是否有缓存
+        // 如果不强制刷新，先检查缓存
         if (!forceRefresh) {
+            // 先检查内存缓存数组
+            const cached = cachedProducts.value.find(p => p.id === id);
+            if (cached) {
+                setCurrentProduct(cached);
+                return cached;
+            }
+
+            // 再检查localStorage缓存
             const cachedProduct = storage.getProductDetail<ProductDetail>(id);
             if (cachedProduct) {
+                addToCachedProducts(cachedProduct);
                 setCurrentProduct(cachedProduct);
                 return cachedProduct;
             }
         }
 
-        // 添加这两行
-        if (loading.value) {
-            return currentProduct.value;
+        // 防止重复请求，正在加载中且请求的不是当前商品时，返回null
+        if (loading.value && currentProduct.value?.id !== id) {
+            return null;
         }
 
         setLoading(true);
@@ -396,6 +426,9 @@ export const useProductStore = defineStore('product', () => {
                 // 缓存完整商品详情
                 storage.saveProductDetail(id, fullProductDetail);
 
+                // 添加到内存缓存数组
+                addToCachedProducts(fullProductDetail);
+
                 // 更新状态
                 setCurrentProduct(fullProductDetail);
 
@@ -408,6 +441,9 @@ export const useProductStore = defineStore('product', () => {
                     validSpecCombinations: {},
                     loadingSkus: false
                 };
+
+                // 添加到内存缓存数组
+                addToCachedProducts(basicProductDetail);
 
                 setCurrentProduct(basicProductDetail);
                 return basicProductDetail;
@@ -571,6 +607,8 @@ export const useProductStore = defineStore('product', () => {
         searchPage,
         searchLimit,
         recentlyViewed,
+        cachedProducts,
+       
 
         // Getters
         categoriesLoaded,
@@ -587,6 +625,7 @@ export const useProductStore = defineStore('product', () => {
         setSearchResults,
         setLoading,
         clearProductData,
+        addToCachedProducts,
 
         // 业务逻辑方法
         getCategoryTree,
