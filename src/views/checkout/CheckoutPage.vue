@@ -15,84 +15,87 @@
             <!-- 地址选择 -->
             <AddressSelector v-model:value="selectedAddressId" />
 
-            <!-- 商品列表 -->
-            <div class="bg-white rounded-xl p-4 mb-4 shadow-sm">
-                <h3 class="text-[16px] font-bold mb-3">商品信息</h3>
-                <div v-for="item in tempOrder.items" :key="`${item.productId}-${item.skuId}`"
-                    class="flex mb-3 pb-3 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
-                    <!-- 商品图片 -->
-                    <div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border border-gray-100">
-                        <img :src="item.mainImage" :alt="item.productName" class="w-full h-full object-cover">
-                    </div>
-
-                    <!-- 商品信息 -->
-                    <div class="ml-3 flex-1 min-w-0">
-                        <div class="text-sm font-medium line-clamp-2">{{ item.productName }}</div>
-
-                        <!-- 规格信息 -->
-                        <div v-if="item.skuSpecs && item.skuSpecs.length > 0"
-                            class="text-xs text-gray-500 mt-1 line-clamp-1">
-                            {{item.skuSpecs.map(spec => `${spec.specName}: ${spec.specValue}`).join(', ')}}
+            <div class="p-2">
+                <!-- 商品列表 -->
+                <div class="bg-white rounded-xl mb-4 shadow-sm">
+                    <h3 class="text-[16px] font-bold mb-3">商品信息</h3>
+                    <div v-for="item in tempOrder.items" :key="`${item.productId}-${item.skuId}`"
+                        class="flex mb-3 pb-3 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
+                        <!-- 商品图片 -->
+                        <div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border border-gray-100">
+                            <img :src="item.mainImage" :alt="item.productName" class="w-full h-full object-cover">
                         </div>
 
-                        <!-- 价格和数量 -->
-                        <div class="flex justify-between items-end mt-2">
-                            <div class="text-red-500 font-bold">{{ formatPrice(item.unitPrice) }}</div>
-                            <div class="text-sm text-gray-500">x{{ item.quantity }}</div>
+                        <!-- 商品信息 -->
+                        <div class="ml-3 flex-1 min-w-0">
+                            <div class="text-sm font-medium line-clamp-2">{{ item.productName }}</div>
+
+                            <!-- 规格信息 -->
+                            <div v-if="item.skuSpecs && item.skuSpecs.length > 0"
+                                class="text-xs text-gray-500 mt-1 line-clamp-1">
+                                {{item.skuSpecs.map(spec => `${spec.specName}: ${spec.specValue}`).join(', ')}}
+                            </div>
+
+                            <!-- 价格和数量 -->
+                            <div class="flex justify-between items-end mt-2">
+                                <div class="text-red-500 font-bold">{{ formatPrice(item.unitPrice) }}</div>
+                                <div class="text-sm text-gray-500">x{{ item.quantity }}</div>
+                            </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 支付方式 -->
+                <div class="bg-white rounded-xl mb-4 shadow-sm">
+                    <h3 class="text-[16px] font-bold mb-3">支付方式</h3>
+                    <div class="flex items-center p-2 border border-black rounded-lg bg-gray-50">
+                        <input type="radio" id="qpay" value="QPAY" v-model="selectedPaymentType"
+                            class="w-4 h-4 accent-black" checked />
+                        <label for="qpay" class="ml-2 flex items-center">
+                            <span class="font-medium">QPAY</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 备注 -->
+                <div class="bg-white rounded-xl mb-4 shadow-sm">
+                    <h3 class="text-[16px] font-bold mb-3">订单备注</h3>
+                    <textarea v-model="orderRemark" placeholder="请输入备注信息（选填）"
+                        class="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:border-black resize-none"
+                        rows="2"></textarea>
+                </div>
+
+                <!-- 金额明细 -->
+                <div class="bg-white rounded-xl mb-4 shadow-sm">
+                    <h3 class="text-[16px] font-bold mb-3">金额明细</h3>
+
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-500">商品金额</span>
+                        <span>{{ formatPrice(tempOrder.totalAmount) }}</span>
+                    </div>
+
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-500">优惠金额</span>
+                        <span class="text-red-500">-{{ formatPrice(tempOrder.discountAmount) }}</span>
+                    </div>
+
+                    <div class="border-t border-gray-100 my-2"></div>
+
+                    <div class="flex justify-between items-center text-[16px] font-bold">
+                        <span>实付金额</span>
+                        <span class="text-red-500">{{ formatPrice(tempOrder.paymentAmount) }}</span>
+                    </div>
+                </div>
+
+                <!-- 订单倒计时 -->
+                <div v-if="timeRemaining > 0" class="bg-white rounded-xl p-4 mb-4 shadow-sm">
+                    <div class="flex justify-between items-center">
+                        <div class="text-gray-500">订单倒计时</div>
+                        <div class="text-red-500 font-medium">{{ formatCountdown(timeRemaining) }}</div>
                     </div>
                 </div>
             </div>
 
-            <!-- 支付方式 -->
-            <div class="bg-white rounded-xl p-4 mb-4 shadow-sm">
-                <h3 class="text-[16px] font-bold mb-3">支付方式</h3>
-                <div class="flex items-center p-2 border border-black rounded-lg bg-gray-50">
-                    <input type="radio" id="qpay" value="QPAY" v-model="selectedPaymentType"
-                        class="w-4 h-4 accent-black" checked />
-                    <label for="qpay" class="ml-2 flex items-center">
-                        <span class="font-medium">QPAY</span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- 备注 -->
-            <div class="bg-white rounded-xl p-4 mb-4 shadow-sm">
-                <h3 class="text-[16px] font-bold mb-3">订单备注</h3>
-                <textarea v-model="orderRemark" placeholder="请输入备注信息（选填）"
-                    class="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:border-black resize-none"
-                    rows="2"></textarea>
-            </div>
-
-            <!-- 金额明细 -->
-            <div class="bg-white rounded-xl p-4 mb-4 shadow-sm">
-                <h3 class="text-[16px] font-bold mb-3">金额明细</h3>
-
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-gray-500">商品金额</span>
-                    <span>{{ formatPrice(tempOrder.totalAmount) }}</span>
-                </div>
-
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-gray-500">优惠金额</span>
-                    <span class="text-red-500">-{{ formatPrice(tempOrder.discountAmount) }}</span>
-                </div>
-
-                <div class="border-t border-gray-100 my-2"></div>
-
-                <div class="flex justify-between items-center text-[16px] font-bold">
-                    <span>实付金额</span>
-                    <span class="text-red-500">{{ formatPrice(tempOrder.paymentAmount) }}</span>
-                </div>
-            </div>
-
-            <!-- 订单倒计时 -->
-            <div v-if="timeRemaining > 0" class="bg-white rounded-xl p-4 mb-4 shadow-sm">
-                <div class="flex justify-between items-center">
-                    <div class="text-gray-500">订单倒计时</div>
-                    <div class="text-red-500 font-medium">{{ formatCountdown(timeRemaining) }}</div>
-                </div>
-            </div>
         </template>
 
         <!-- 错误状态 -->
