@@ -16,8 +16,8 @@ import { createInitializeHelper } from '@/utils/store-helpers';
  * 集成状态管理和业务逻辑
  */
 export const useTempOrderStore = defineStore('tempOrder', () => {
-     // 创建初始化助手
-     const initHelper = createInitializeHelper('TempOrderStore');
+    // 创建初始化助手
+    const initHelper = createInitializeHelper('TempOrderStore');
 
     // ==================== 状态 ====================
     const tempOrder = ref<TempOrder | null>(null);
@@ -46,6 +46,14 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
         toast.error(message);
     }
 
+    // 添加通用初始化检查方法
+    async function ensureInitialized(): Promise<void> {
+        if (!initHelper.isInitialized()) {
+            console.info('[TempOrderStore] 数据未初始化，正在初始化...');
+            await init();
+        }
+    }
+
     /**
      * 设置事件监听
      */
@@ -63,7 +71,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
      */
     function setTempOrder(order: TempOrder | null) {
         tempOrder.value = order;
-        
+
         if (order) {
             // 保存到本地存储
             storage.saveTempOrder(order);
@@ -94,6 +102,9 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
      * @param params 创建临时订单的参数
      */
     async function createTempOrder(params: CreateTempOrderParams): Promise<TempOrder | null> {
+        // 确保初始化
+        await ensureInitialized();
+
         const userStore = useUserStore();
         if (!userStore.isLoggedIn) {
             toast.error('请先登录');
@@ -104,14 +115,15 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
 
         try {
             const order = await api.tempOrderApi.createTempOrder(params);
-            
+
             // 更新状态
             setTempOrder(order);
 
             // 提示信息
             toast.success('临时订单已创建');
-            
-            return order;
+
+            // 获取已创建的订单最新数据
+            return await getTempOrder(order.id);
         } catch (error: any) {
             handleError(error, '创建临时订单失败');
             return null;
@@ -130,15 +142,19 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
         paymentType?: string;
         remark?: string;
     }): Promise<TempOrder | null> {
+        // 确保初始化
+        await ensureInitialized();
+
         setLoading(true);
 
         try {
             const updatedOrder = await api.tempOrderApi.updateTempOrder(id, params);
-            
+
             // 更新状态
             setTempOrder(updatedOrder);
 
-            return updatedOrder;
+            // 获取更新后的订单最新数据
+            return await getTempOrder(id);
         } catch (error: any) {
             handleError(error, '更新临时订单失败');
             return null;
@@ -156,13 +172,13 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
 
         try {
             const response = await api.tempOrderApi.confirmTempOrder(id);
-            
+
             // 创建成功后清除临时订单
             clearTempOrder();
 
             // 提示信息
             toast.success('订单已创建');
-            
+
             return response;
         } catch (error: any) {
             handleError(error, '创建订单失败');
@@ -184,10 +200,10 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
 
         try {
             const order = await api.tempOrderApi.getTempOrder(id);
-            
+
             // 更新状态
             setTempOrder(order);
-            
+
             return order;
         } catch (error: any) {
             handleError(error, '获取临时订单失败');
@@ -206,13 +222,13 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
 
         try {
             const refreshedOrder = await api.tempOrderApi.refreshTempOrder(id);
-            
+
             // 更新状态
             setTempOrder(refreshedOrder);
 
             // 提示信息
             toast.success('临时订单有效期已刷新');
-            
+
             return refreshedOrder;
         } catch (error: any) {
             handleError(error, '刷新临时订单失败');
@@ -227,12 +243,12 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
      */
     function restoreTempOrderFromStorage(): TempOrder | null {
         const storedOrder = storage.getTempOrder<TempOrder>();
-        
+
         if (storedOrder) {
             // 检查是否已过期
             const expireTime = new Date(storedOrder.expireTime).getTime();
             const now = Date.now();
-            
+
             if (expireTime > now) {
                 setTempOrder(storedOrder);
                 return storedOrder;
@@ -241,7 +257,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                 clearTempOrder();
             }
         }
-        
+
         return null;
     }
 
@@ -251,18 +267,18 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
      */
     function checkTempOrderExpiration(): boolean {
         if (!tempOrder.value) return false;
-        
+
         const expireTime = new Date(tempOrder.value.expireTime).getTime();
         const now = Date.now();
         const fiveMinutes = 5 * 60 * 1000;
-        
+
         return (expireTime - now) < fiveMinutes;
     }
 
     /**
      * 初始化临时订单模块
      */
-   async function init(): Promise<void> {
+    async function init(): Promise<void> {
         if (!initHelper.canInitialize()) {
             return;
         }
@@ -310,6 +326,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
         restoreTempOrderFromStorage,
         checkTempOrderExpiration,
         init,
-        isInitialized: initHelper.isInitialized
+        isInitialized: initHelper.isInitialized,
+        ensureInitialized
     };
 });

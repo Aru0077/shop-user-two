@@ -45,6 +45,15 @@ export const useFavoriteStore = defineStore('favorite', () => {
             toast.error(message);
       }
 
+      // 添加通用初始化检查方法
+      async function ensureInitialized(): Promise<void> {
+            if (!initHelper.isInitialized()) {
+                  console.info('[FavoriteStore] 数据未初始化，正在初始化...');
+                  await init();
+            }
+      }
+
+
       /**
        * 设置事件监听
        */
@@ -225,6 +234,9 @@ export const useFavoriteStore = defineStore('favorite', () => {
        * @param params 添加收藏参数
        */
       async function addFavorite(params: AddFavoriteParams): Promise<boolean> {
+            // 确保初始化
+            await ensureInitialized();
+
             setLoading(true);
 
             try {
@@ -256,6 +268,9 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   // 发布事件
                   eventBus.emit(EVENT_NAMES.FAVORITE_ADDED, { productId: params.productId });
 
+                  // 添加: 变更后刷新收藏列表数据
+                  await getFavoriteIds(); // 刷新收藏ID列表
+
                   toast.success('已添加到收藏');
                   return true;
             } catch (error: any) {
@@ -271,6 +286,9 @@ export const useFavoriteStore = defineStore('favorite', () => {
        * @param productId 商品ID
        */
       async function removeFavorite(productId: number): Promise<boolean> {
+            // 确保初始化
+            await ensureInitialized();
+
             setLoading(true);
 
             try {
@@ -297,6 +315,9 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   }
                   // 发布事件
                   eventBus.emit(EVENT_NAMES.FAVORITE_REMOVED, { productId });
+
+                  // 添加: 变更后刷新收藏列表数据
+                  await getFavoriteIds(); // 刷新收藏ID列表
 
                   toast.success('已取消收藏');
                   return true;
@@ -352,6 +373,9 @@ export const useFavoriteStore = defineStore('favorite', () => {
        * @param productId 商品ID
        */
       async function toggleFavorite(productId: number): Promise<boolean> {
+            // 确保初始化
+            await ensureInitialized();
+
             if (isFavorite(productId)) {
                   return removeFavorite(productId);
             } else {
@@ -412,6 +436,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
             batchRemoveFavorites,
             toggleFavorite,
             init,
-            isInitialized: initHelper.isInitialized
+            isInitialized: initHelper.isInitialized,
+            ensureInitialized,
       };
 });

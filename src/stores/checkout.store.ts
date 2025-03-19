@@ -65,6 +65,14 @@ export const useCheckoutStore = defineStore('checkout', () => {
         toast.error(message);
     }
 
+    // 添加通用初始化检查方法
+    async function ensureInitialized(): Promise<void> {
+        if (!initHelper.isInitialized()) {
+            console.info('[CheckoutStore] 数据未初始化，正在初始化...');
+            await init();
+        }
+    }
+
     /**
      * 设置事件监听
      */
@@ -233,7 +241,13 @@ export const useCheckoutStore = defineStore('checkout', () => {
     /**
      * 创建临时订单前准备
      */
-    function prepareCheckoutData() {
+    async function prepareCheckoutData() {
+        // 确保初始化
+        await ensureInitialized();
+
+        // 添加: 变更前刷新结算信息
+        await refreshCheckoutInfo();
+
         return {
             addressId: selectedAddressId.value || defaultAddressId.value,
             paymentType: selectedPaymentType.value || preferredPaymentType.value,
@@ -303,6 +317,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
         prepareCheckoutData,
         clearCheckoutData,
         init,
-        isInitialized: initHelper.isInitialized
+        isInitialized: initHelper.isInitialized,
+        ensureInitialized
     };
 });

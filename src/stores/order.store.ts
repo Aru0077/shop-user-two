@@ -58,6 +58,14 @@ export const useOrderStore = defineStore('order', () => {
         toast.error(message);
     }
 
+    // 添加通用初始化检查方法
+async function ensureInitialized(): Promise<void> {
+    if (!initHelper.isInitialized()) {
+      console.info('[OrderStore] 数据未初始化，正在初始化...');
+      await init();
+    }
+  }
+
     /**
      * 设置事件监听
      */
@@ -249,6 +257,9 @@ export const useOrderStore = defineStore('order', () => {
      * @param params 创建订单参数
      */
     async function createOrder(params: CreateOrderParams): Promise<CreateOrderResponse | null> {
+        // 确保初始化
+  await ensureInitialized();
+
         setLoading(true);
 
         try {
@@ -304,6 +315,9 @@ export const useOrderStore = defineStore('order', () => {
      * @param params 快速购买参数
      */
     async function quickBuy(params: QuickBuyParams): Promise<CreateOrderResponse | null> {
+         // 确保初始化
+  await ensureInitialized();
+
         setLoading(true);
 
         try {
@@ -354,6 +368,9 @@ export const useOrderStore = defineStore('order', () => {
      * @param params 支付订单参数
      */
     async function payOrder(id: string, params: PayOrderParams): Promise<PayOrderResponse | null> {
+         // 确保初始化
+  await ensureInitialized();
+
         setLoading(true);
 
         try {
@@ -541,6 +558,7 @@ export const useOrderStore = defineStore('order', () => {
         loadMoreOrders,
         refreshCurrentOrder,
         init,
-        isInitialized: initHelper.isInitialized
+        isInitialized: initHelper.isInitialized,
+        ensureInitialized
     };
 });

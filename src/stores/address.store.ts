@@ -43,6 +43,14 @@ export const useAddressStore = defineStore('address', () => {
             toast.error(message);
       }
 
+      // 添加通用初始化检查方法
+async function ensureInitialized(): Promise<void> {
+      if (!initHelper.isInitialized()) {
+        console.info('[AddressStore] 数据未初始化，正在初始化...');
+        await init();
+      }
+    }
+
       /**
        * 设置事件监听
        */
@@ -161,6 +169,9 @@ export const useAddressStore = defineStore('address', () => {
        * @param params 创建地址参数
        */
       async function createAddress(params: CreateAddressParams): Promise<UserAddress | null> {
+            // 确保初始化
+  await ensureInitialized();
+
             setLoading(true);
 
             try {
@@ -176,6 +187,9 @@ export const useAddressStore = defineStore('address', () => {
 
                   // 发布事件
                   eventBus.emit(EVENT_NAMES.ADDRESS_CREATED, newAddress);
+
+                   // 添加: 变更后刷新地址列表
+    await getAddresses(); // 刷新地址列表
 
                   toast.success('地址创建成功');
                   return newAddress;
@@ -193,6 +207,9 @@ export const useAddressStore = defineStore('address', () => {
        * @param params 更新地址参数
        */
       async function updateExistingAddress(id: number, params: UpdateAddressParams): Promise<UserAddress | null> {
+             // 确保初始化
+  await ensureInitialized();
+  
             setLoading(true);
 
             try {
@@ -206,6 +223,9 @@ export const useAddressStore = defineStore('address', () => {
 
                   // 发布事件
                   eventBus.emit(EVENT_NAMES.ADDRESS_UPDATED, updatedAddress);
+
+                  // 添加: 变更后刷新地址列表
+    await getAddresses(); // 刷新地址列表
 
                   toast.success('地址更新成功');
                   return updatedAddress;
@@ -222,6 +242,9 @@ export const useAddressStore = defineStore('address', () => {
        * @param id 地址ID
        */
       async function deleteAddress(id: number): Promise<boolean> {
+             // 确保初始化
+  await ensureInitialized();
+  
             setLoading(true);
 
             try {
@@ -235,6 +258,9 @@ export const useAddressStore = defineStore('address', () => {
 
                   // 发布事件
                   eventBus.emit(EVENT_NAMES.ADDRESS_DELETED, { id });
+
+                   // 添加: 变更后刷新地址列表
+    await getAddresses(); // 刷新地址列表
 
                   toast.success('地址删除成功');
                   return true;
@@ -334,6 +360,7 @@ export const useAddressStore = defineStore('address', () => {
             clearAddresses,
             init,
             // 导出初始化状态检查方法
-            isInitialized: initHelper.isInitialized
+            isInitialized: initHelper.isInitialized,
+            ensureInitialized
       };
 });

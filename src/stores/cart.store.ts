@@ -55,6 +55,14 @@ export const useCartStore = defineStore('cart', () => {
         toast.error(message);
     }
 
+    // 添加通用初始化检查方法
+    async function ensureInitialized(): Promise<void> {
+        if (!initHelper.isInitialized()) {
+            console.info('[CartStore] 数据未初始化，正在初始化...');
+            await init();
+        }
+    }
+
     /**
      * 设置事件监听
      */
@@ -214,6 +222,10 @@ export const useCartStore = defineStore('cart', () => {
      * @param tempId 临时ID，如果是乐观更新模式则需要提供
      */
     async function addToCart(params: AddToCartParams, tempId?: number): Promise<boolean> {
+
+        // 确保初始化
+        await ensureInitialized();
+
         // 如果是乐观更新模式且没有提供tempId，直接返回成功
         if (params.optimistic && !tempId) {
             console.warn('乐观更新模式需要提供tempId');
@@ -240,7 +252,7 @@ export const useCartStore = defineStore('cart', () => {
                 product: {
                     id: response.cartItem.product.id,
                     name: response.cartItem.product.name,
-                    
+
                     status: 'ONLINE'
                 },
                 skuData: {
@@ -303,6 +315,11 @@ export const useCartStore = defineStore('cart', () => {
                 toast.warning('该商品库存不足，已添加最大可用数量');
             }
 
+            // 添加: 变更后刷新购物车数据
+            if (!params.optimistic) {
+                await getCartList(); // 刷新购物车列表
+            }
+
             return true;
         } catch (error: any) {
             // 如果是乐观更新且失败，需要回滚本地状态
@@ -342,6 +359,9 @@ export const useCartStore = defineStore('cart', () => {
      * @param params 更新参数
      */
     async function updateItem(id: number, params: UpdateCartItemParams): Promise<boolean> {
+        // 确保初始化
+        await ensureInitialized();
+
         setLoading(true);
 
         try {
@@ -363,6 +383,9 @@ export const useCartStore = defineStore('cart', () => {
                 }
             }
 
+            // 添加: 变更后刷新购物车数据
+            await getCartList(); // 刷新购物车列表
+
             return true;
         } catch (error: any) {
             handleError(error, '更新购物车失败');
@@ -377,6 +400,9 @@ export const useCartStore = defineStore('cart', () => {
      * @param id 购物车项ID
      */
     async function deleteItem(id: number): Promise<boolean> {
+        // 确保初始化
+        await ensureInitialized();
+
         setLoading(true);
 
         try {
@@ -401,6 +427,9 @@ export const useCartStore = defineStore('cart', () => {
                 items: cartItems.value,
                 total: cartItems.value.length
             });
+
+            // 添加: 变更后刷新购物车数据
+            await getCartList(); // 刷新购物车列表
 
             toast.success('商品已从购物车移除');
             return true;
@@ -534,7 +563,7 @@ export const useCartStore = defineStore('cart', () => {
                     id: sku.id,
                     price: sku.price,
                     promotion_price: sku.promotion_price,
-                    stock: sku.stock, 
+                    stock: sku.stock,
                     sku_specs: sku.sku_specs // 添加SKU规格信息
                 };
             }
@@ -593,6 +622,7 @@ export const useCartStore = defineStore('cart', () => {
         previewOrderAmount,
         init,
         optimisticAddToCart,
+        ensureInitialized,
         isInitialized: initHelper.isInitialized
     };
 });
