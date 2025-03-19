@@ -13,6 +13,16 @@ import { useUserStore } from '@/stores/user.store';
 import { useAddressStore } from '@/stores/address.store';
 import { createInitializeHelper } from '@/utils/store-helpers';
 
+// 定义结算选中状态接口
+interface CheckoutSelections {
+    addressId: number | null;
+    paymentType: string | null;
+    remark: string;
+}
+
+// 存储键名
+const CHECKOUT_SELECTIONS = 'checkout_selections';
+
 /**
  * 结算状态存储与服务
  * 集成状态管理和业务逻辑
@@ -91,21 +101,40 @@ export const useCheckoutStore = defineStore('checkout', () => {
     }
 
     /**
+     * 保存所有选中状态到本地缓存
+     */
+    function saveSelectionsToStorage() {
+        const selections: CheckoutSelections = {
+            addressId: selectedAddressId.value,
+            paymentType: selectedPaymentType.value,
+            remark: remark.value
+        };
+        storage.set(
+            CHECKOUT_SELECTIONS,
+            selections,
+            storage.STORAGE_EXPIRY.CHECKOUT_INFO
+        );
+    }
+
+    /**
+     * 从本地缓存恢复选中状态
+     */
+    function restoreSelectionsFromStorage() {
+        const selections = storage.get<CheckoutSelections>(CHECKOUT_SELECTIONS, null);
+        if (selections) {
+            selectedAddressId.value = selections.addressId;
+            selectedPaymentType.value = selections.paymentType;
+            remark.value = selections.remark || '';
+        }
+    }
+
+    /**
      * 设置选中的地址ID
      */
     function setSelectedAddressId(addressId: number | null) {
         selectedAddressId.value = addressId;
         // 更新本地缓存
-        const cachedInfo = storage.getCheckoutInfo<CheckoutInfo>();
-        if (cachedInfo && checkoutInfo.value) {
-            // 因为缓存中没有选中状态字段，可以考虑扩展CheckoutInfo类型
-            // 或创建一个新的存储项专门保存选中状态
-            storage.set(
-                'checkout_selected_address',
-                addressId,
-                storage.STORAGE_EXPIRY.CHECKOUT_INFO
-            );
-        }
+        saveSelectionsToStorage();
     }
 
     /**
@@ -113,16 +142,8 @@ export const useCheckoutStore = defineStore('checkout', () => {
      */
     function setSelectedPaymentType(paymentType: string | null) {
         selectedPaymentType.value = paymentType;
-       // 更新本地缓存
-        const cachedInfo = storage.getCheckoutInfo<CheckoutInfo>();
-        if (cachedInfo && checkoutInfo.value) {
-            // 因为缓存中没有选中状态字段，可以考虑扩展CheckoutInfo类型
-            // 或创建一个新的存储项专门保存选中状态
-            storage.set(
-                'checkout_selected_address', 
-                storage.STORAGE_EXPIRY.CHECKOUT_INFO
-            );
-        }
+        // 更新本地缓存
+        saveSelectionsToStorage();
     }
 
     /**
@@ -131,15 +152,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
     function setRemark(orderRemark: string) {
         remark.value = orderRemark;
         // 更新本地缓存
-        const cachedInfo = storage.getCheckoutInfo<CheckoutInfo>();
-        if (cachedInfo && checkoutInfo.value) {
-            // 因为缓存中没有选中状态字段，可以考虑扩展CheckoutInfo类型
-            // 或创建一个新的存储项专门保存选中状态
-            storage.set(
-                'checkout_selected_address', 
-                storage.STORAGE_EXPIRY.CHECKOUT_INFO
-            );
-        }
+        saveSelectionsToStorage();
     }
 
     /**
@@ -158,6 +171,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
         selectedPaymentType.value = null;
         remark.value = '';
         storage.remove(storage.STORAGE_KEYS.CHECKOUT_INFO);
+        storage.remove(CHECKOUT_SELECTIONS);
     }
 
     // ==================== 业务逻辑方法 ====================
@@ -181,6 +195,8 @@ export const useCheckoutStore = defineStore('checkout', () => {
             const cachedInfo = storage.getCheckoutInfo<CheckoutInfo>();
             if (cachedInfo) {
                 setCheckoutInfo(cachedInfo);
+                // 恢复选中状态
+                restoreSelectionsFromStorage();
                 return cachedInfo;
             }
 
@@ -192,6 +208,9 @@ export const useCheckoutStore = defineStore('checkout', () => {
 
             // 更新状态
             setCheckoutInfo(info);
+
+            // 恢复选中状态
+            restoreSelectionsFromStorage();
 
             return info;
         } catch (error: any) {
@@ -241,6 +260,9 @@ export const useCheckoutStore = defineStore('checkout', () => {
 
                 // 获取结算信息
                 await getCheckoutInfo();
+
+                // 恢复选中状态
+                restoreSelectionsFromStorage();
             }
             // 初始化成功
             initHelper.completeInitialization();

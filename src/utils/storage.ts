@@ -40,6 +40,7 @@ export const STORAGE_KEYS = {
 
       // 临时订单相关
       TEMP_ORDER: 'temp_order',
+      CHECKOUT_SELECTIONS: 'checkout_selections',
 
       // 添加促销相关键
       PROMOTIONS: 'promotions',

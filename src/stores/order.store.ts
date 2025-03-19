@@ -12,7 +12,7 @@ import type {
     CreateOrderResponse,
     QuickBuyParams,
     PayOrderParams,
-    PayOrderResponse
+    PayOrderResponse, 
 } from '@/types/order.type';
 import type { ApiError, PaginatedResponse } from '@/types/common.type';
 import { useUserStore } from '@/stores/user.store';
@@ -260,7 +260,33 @@ export const useOrderStore = defineStore('order', () => {
             // 清除订单预览缓存
             storage.remove(storage.STORAGE_KEYS.ORDER_PREVIEW);
 
-            // 订单创建成功，刷新订单列表
+            // 直接添加新订单到本地状态，提高UI响应速度
+            if (response) {
+                const newOrder: OrderBasic = {
+                    id: response.id,
+                    orderNo: response.orderNo,
+                    orderStatus: response.orderStatus,
+                    paymentStatus: response.paymentStatus,
+                    totalAmount: response.totalAmount,
+                    paymentAmount: response.paymentAmount,
+                    createdAt: response.createdAt,
+                    userId: '',
+                    shippingAddress: {
+                        receiverName: '',
+                        receiverPhone: '',
+                        province: '',
+                        city: '',
+                        detailAddress: ''
+                    },
+                    updatedAt: '',
+                    discountAmount: 0
+                };
+
+                // 添加到订单列表前端显示
+                addOrder(newOrder);
+            }
+
+            // 仍然调用getOrderList以确保完整刷新
             getOrderList();
 
             toast.success('订单创建成功');
@@ -282,6 +308,32 @@ export const useOrderStore = defineStore('order', () => {
 
         try {
             const response = await api.orderApi.quickBuy(params);
+
+            // 直接添加新订单到本地状态，提高UI响应速度
+            if (response) {
+                const newOrder: OrderBasic = {
+                    id: response.id,
+                    orderNo: response.orderNo,
+                    orderStatus: response.orderStatus,
+                    paymentStatus: response.paymentStatus,
+                    totalAmount: response.totalAmount,
+                    paymentAmount: response.paymentAmount,
+                    createdAt: response.createdAt,
+                    userId: '',
+                    shippingAddress: {
+                        receiverName: '',
+                        receiverPhone: '',
+                        province: '',
+                        city: '',
+                        detailAddress: ''
+                    },
+                    updatedAt: '',
+                    discountAmount: 0
+                };
+
+                // 添加到订单列表前端显示
+                addOrder(newOrder);
+            }
 
             // 订单创建成功，刷新订单列表
             getOrderList();
@@ -343,7 +395,7 @@ export const useOrderStore = defineStore('order', () => {
                     orderStatus: 5 // 已取消状态
                 };
                 updateOrder(updatedOrder);
-             
+
             }
 
             toast.success('订单已取消');
