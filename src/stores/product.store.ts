@@ -1,764 +1,552 @@
 // src/stores/product.store.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { productService } from '@/services/product.service';
-import type {
-      Category,
-      Product,
-      ProductDetail,
-      SearchProductsParams,
-      HomePageData
+import { api } from '@/api/index.api';
+import { storage } from '@/utils/storage';
+import { eventBus, EVENT_NAMES } from '@/core/event-bus';
+import { toast } from '@/utils/toast.service';
+import type { 
+    Category,
+    Product,
+    ProductDetail,
+    SearchProductsParams,
+    SearchProductsResponse,
+    HomePageData, 
 } from '@/types/product.type';
+import type { ApiError, PaginatedResponse } from '@/types/common.type';
 
 /**
- * 商品Store - 优化版
- * 支持多商品缓存、批量加载、智能缓存管理
+ * 商品状态存储与服务
+ * 集成状态管理和业务逻辑
  */
 export const useProductStore = defineStore('product', () => {
-      // === 基础状态 ===
-      const categories = ref<Category[]>([]);
-      const homeData = ref<HomePageData | null>(null);
-      const productDetailsMap = ref<Map<number, ProductDetail>>(new Map());
-      const currentProductId = ref<number | null>(null);
-      const searchResults = ref<Product[]>([]);
-      const recentProducts = ref<ProductDetail[]>([]);
+    // ==================== 状态 ====================
+    const categories = ref<Category[]>([]);
+    const currentProduct = ref<ProductDetail | null>(null);
+    const latestProducts = ref<Product[]>([]);
+    const topSellingProducts = ref<Product[]>([]);
+    const promotionProducts = ref<Product[]>([]);
+    const categoryProducts = ref<Map<number, Product[]>>(new Map());
+    const searchResults = ref<Product[]>([]);
+    const homeData = ref<HomePageData | null>(null);
+    const loading = ref<boolean>(false);
+    const searchTotal = ref<number>(0);
+    const searchPage = ref<number>(1);
+    const searchLimit = ref<number>(10);
+    const recentlyViewed = ref<Product[]>([]);
 
-      // === 加载状态 ===
-      const loading = ref<boolean>(false);
-      const searchLoading = ref<boolean>(false);
-      const error = ref<string | null>(null);
-      const isInitialized = ref<boolean>(false);
-      const isInitializing = ref<boolean>(false);
-      const loadingProducts = ref<Map<number, boolean>>(new Map()); // 跟踪每个商品的加载状态
+    // ==================== Getters ====================
+    const categoriesLoaded = computed(() => categories.value.length > 0);
+    const homeDataLoaded = computed(() => !!homeData.value);
+    const hasMoreSearchResults = computed(() => searchTotal.value > searchResults.value.length);
 
-      // === 缓存控制 ===
-      const MAX_CACHED_PRODUCTS = 50; // 最大缓存商品数量
-      const accessTimeMap = ref<Map<number, number>>(new Map()); // 记录每个商品的最后访问时间
+    // ==================== 内部工具方法 ====================
+    /**
+     * 处理API错误
+     * @param error API错误
+     * @param customMessage 自定义错误消息
+     */
+    function handleError(error: ApiError, customMessage?: string): void {
+        console.error(`[ProductStore] Error:`, error);
 
-      // === 事件注册 ===
-      let unsubscribeCategoriesChange: (() => void) | null = null;
-      let unsubscribeHomeDataChange: (() => void) | null = null;
-      let unsubscribeProductDetailChange: (() => void) | null = null;
-      let unsubscribeRecentProductsChange: (() => void) | null = null;
+        // 显示错误提示
+        const message = customMessage || error.message || '发生未知错误';
+        toast.error(message);
+    }
 
-      // === 计算属性 ===
-      const latestProducts = computed(() => homeData.value?.latestProducts || []);
-      const topSellingProducts = computed(() => homeData.value?.topSellingProducts || []);
-      const currentProduct = computed<ProductDetail | null>(() => {
-            if (!currentProductId.value) return null;
-            return productDetailsMap.value.get(currentProductId.value) || null;
-      });
+    /**
+     * 设置事件监听
+     */
+    function setupEventListeners(): void {
+        // 应用初始化事件
+        eventBus.on(EVENT_NAMES.APP_INIT, () => {
+            // 初始化分类
+            getCategoryTree();
+            
+            // 初始化首页数据
+            getHomePageData();
+        });
+    }
 
-      // 获取缓存中的商品数量
-      const cachedProductCount = computed(() => productDetailsMap.value.size);
+    // ==================== 状态管理方法 ====================
+    /**
+     * 设置分类树
+     */
+    function setCategories(categoryTree: Category[]) {
+        categories.value = categoryTree;
+    }
 
-      // === 商品数据操作方法 ===
+    /**
+     * 设置当前商品
+     */
+    function setCurrentProduct(product: ProductDetail | null) {
+        currentProduct.value = product;
+        
+        // 如果设置了有效商品，添加到最近浏览
+        if (product) {
+            addToRecentlyViewed(product);
+        }
+    }
 
-      /**
-       * 更新商品缓存 - 内部方法
-       * @param product 商品详情对象
-       */
-      function updateProductCache(product: ProductDetail): void {
-            if (!product || !product.id) return;
+    /**
+     * 设置最新上架商品列表
+     */
+    function setLatestProducts(products: Product[]) {
+        latestProducts.value = products;
+    }
 
-            // 更新商品缓存
-            productDetailsMap.value.set(product.id, product);
+    /**
+     * 设置销量最高商品列表
+     */
+    function setTopSellingProducts(products: Product[]) {
+        topSellingProducts.value = products;
+    }
 
-            // 更新访问时间
-            accessTimeMap.value.set(product.id, Date.now());
+    /**
+     * 设置促销商品列表
+     */
+    function setPromotionProducts(products: Product[]) {
+        promotionProducts.value = products;
+    }
 
-            // 如果是当前查看的商品，更新当前商品ID
-            if (currentProductId.value === product.id) {
-                  // 只更新ID触发计算属性更新，避免不必要操作
-                  currentProductId.value = product.id;
+    /**
+     * 设置分类商品列表
+     */
+    function setCategoryProducts(categoryId: number, products: Product[]) {
+        categoryProducts.value.set(categoryId, products);
+    }
+
+    /**
+     * 设置搜索结果
+     */
+    function setSearchResults(products: Product[], total: number, page: number, limit: number) {
+        searchResults.value = products;
+        searchTotal.value = total;
+        searchPage.value = page;
+        searchLimit.value = limit;
+    }
+
+    /**
+     * 追加搜索结果
+     */
+    function appendSearchResults(products: Product[], total: number, page: number) {
+        searchResults.value = [...searchResults.value, ...products];
+        searchTotal.value = total;
+        searchPage.value = page;
+    }
+
+    /**
+     * 设置首页数据
+     */
+    function setHomeData(data: HomePageData) {
+        homeData.value = data;
+        setLatestProducts(data.latestProducts);
+        setTopSellingProducts(data.topSellingProducts);
+    }
+
+    /**
+     * 添加到最近浏览
+     */
+    function addToRecentlyViewed(product: Product | ProductDetail) {
+        // 先移除已存在的相同商品
+        recentlyViewed.value = recentlyViewed.value.filter(p => p.id !== product.id);
+        
+        // 添加到最前面
+        recentlyViewed.value.unshift(product);
+        
+        // 限制最多保存10个
+        if (recentlyViewed.value.length > 10) {
+            recentlyViewed.value = recentlyViewed.value.slice(0, 10);
+        }
+        
+        // 保存到本地存储
+        storage.set(storage.STORAGE_KEYS.RECENT_PRODUCTS, recentlyViewed.value, storage.STORAGE_EXPIRY.RECENT_PRODUCTS);
+    }
+
+    /**
+     * 设置加载状态
+     */
+    function setLoading(isLoading: boolean) {
+        loading.value = isLoading;
+    }
+
+    /**
+     * 清除商品数据
+     */
+    function clearProductData() {
+        currentProduct.value = null;
+        searchResults.value = [];
+        searchTotal.value = 0;
+        searchPage.value = 1;
+    }
+
+    // ==================== 业务逻辑方法 ====================
+    /**
+     * 获取分类树
+     */
+    async function getCategoryTree(): Promise<Category[]> {
+        // 先尝试从本地存储获取
+        const cachedCategories = storage.getCategories<Category[]>();
+        if (cachedCategories && cachedCategories.length > 0) {
+            setCategories(cachedCategories);
+            return cachedCategories;
+        }
+
+        setLoading(true);
+
+        try {
+            const categoryTree = await api.productApi.getCategoryTree();
+            
+            // 缓存分类树
+            storage.saveCategories(categoryTree);
+            
+            // 更新状态
+            setCategories(categoryTree);
+            
+            return categoryTree;
+        } catch (error: any) {
+            handleError(error, '获取商品分类失败');
+            return [];
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 获取最新上架商品
+     * @param page 页码
+     * @param limit 每页数量
+     */
+    async function getLatestProducts(page: number = 1, limit: number = 10): Promise<Product[]> {
+        setLoading(true);
+
+        try {
+            const response = await api.productApi.getLatestProducts(page, limit);
+            
+            // 更新状态
+            setLatestProducts(response.data);
+            
+            return response.data;
+        } catch (error: any) {
+            handleError(error, '获取最新商品失败');
+            return [];
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 获取销量最高商品
+     * @param page 页码
+     * @param limit 每页数量
+     */
+    async function getTopSellingProducts(page: number = 1, limit: number = 10): Promise<Product[]> {
+        setLoading(true);
+
+        try {
+            const response = await api.productApi.getTopSellingProducts(page, limit);
+            
+            // 更新状态
+            setTopSellingProducts(response.data);
+            
+            return response.data;
+        } catch (error: any) {
+            handleError(error, '获取热销商品失败');
+            return [];
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 获取促销商品
+     * @param page 页码
+     * @param limit 每页数量
+     */
+    async function getPromotionProducts(page: number = 1, limit: number = 10): Promise<Product[]> {
+        setLoading(true);
+
+        try {
+            const response = await api.productApi.getPromotionProducts(page, limit);
+            
+            // 更新状态
+            setPromotionProducts(response.data);
+            
+            return response.data;
+        } catch (error: any) {
+            handleError(error, '获取促销商品失败');
+            return [];
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 获取分类下的商品
+     * @param categoryId 分类ID
+     * @param page 页码
+     * @param limit 每页数量
+     * @param sort 排序方式
+     */
+    async function getCategoryProducts(
+        categoryId: number,
+        page: number = 1,
+        limit: number = 10,
+        sort: 'newest' | 'price-asc' | 'price-desc' | 'sales' = 'newest'
+    ): Promise<Product[]> {
+        // 生成缓存键
+        const cacheKey = `${storage.STORAGE_KEYS.CATEGORY_PRODUCTS_PREFIX}${categoryId}_${page}_${limit}_${sort}`;
+        
+        // 尝试从缓存获取
+        const cachedProducts = storage.get<PaginatedResponse<Product>>(cacheKey);
+        if (cachedProducts) {
+            setCategoryProducts(categoryId, cachedProducts.data);
+            return cachedProducts.data;
+        }
+
+        setLoading(true);
+
+        try {
+            const response = await api.productApi.getCategoryProducts(categoryId, page, limit, sort);
+            
+            // 缓存结果
+            storage.set(cacheKey, response, storage.STORAGE_EXPIRY.CATEGORY_PRODUCTS);
+            
+            // 更新状态
+            setCategoryProducts(categoryId, response.data);
+            
+            return response.data;
+        } catch (error: any) {
+            handleError(error, '获取分类商品失败');
+            return [];
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 获取商品详情
+     * @param id 商品ID
+     * @param forceRefresh 是否强制刷新
+     */
+    async function getProductDetail(id: number, forceRefresh: boolean = false): Promise<ProductDetail | null> {
+        // 如果不强制刷新，检查是否有缓存
+        if (!forceRefresh) {
+            const cachedProduct = storage.getProductDetail<ProductDetail>(id);
+            if (cachedProduct) {
+                setCurrentProduct(cachedProduct);
+                return cachedProduct;
             }
+        }
 
-            // 如果缓存超出限制，清理最旧的缓存
-            if (productDetailsMap.value.size > MAX_CACHED_PRODUCTS) {
-                  trimCache();
-            }
-      }
+        setLoading(true);
 
-      /**
-       * 清理缓存 - 使用LRU策略清理最近最少使用的商品
-       */
-      function trimCache(): void {
-            if (productDetailsMap.value.size <= MAX_CACHED_PRODUCTS) return;
-
-            // 按访问时间排序，保留较新的记录
-            const sortedIds = Array.from(accessTimeMap.value.entries())
-                  .sort((a, b) => a[1] - b[1]) // 按时间升序排序（旧->新）
-                  .map(entry => entry[0]); // 提取ID
-
-            // 计算需要删除的数量
-            const removeCount = productDetailsMap.value.size - MAX_CACHED_PRODUCTS;
-
-            // 删除最旧的几个商品缓存
-            for (let i = 0; i < removeCount; i++) {
-                  const idToRemove = sortedIds[i];
-
-                  // 不要删除当前正在查看的商品
-                  if (idToRemove === currentProductId.value) continue;
-
-                  productDetailsMap.value.delete(idToRemove);
-                  accessTimeMap.value.delete(idToRemove);
-                  loadingProducts.value.delete(idToRemove);
-            }
-      }
-
-      /**
-       * 批量获取商品详情
-       * @param ids 商品ID数组
-       * @param forceRefresh 是否强制刷新
-       */
-      async function fetchProducts(ids: number[], forceRefresh = false): Promise<Map<number, ProductDetail>> {
-            if (!ids.length) return new Map();
-
-            const result = new Map<number, ProductDetail>();
-            const needFetchIds: number[] = [];
-
-            // 检查哪些ID需要从服务器获取
-            ids.forEach(id => {
-                  // 如果已经在加载中，跳过
-                  if (loadingProducts.value.get(id)) return;
-
-                  // 如果已经有缓存且不需要强制刷新，使用缓存
-                  if (!forceRefresh && productDetailsMap.value.has(id)) {
-                        const product = productDetailsMap.value.get(id)!;
-                        result.set(id, product);
-                        // 更新访问时间
-                        accessTimeMap.value.set(id, Date.now());
-                  } else {
-                        // 需要从服务器获取
-                        needFetchIds.push(id);
-                  }
-            });
-
-            // 如果有需要获取的ID，批量获取
-            if (needFetchIds.length > 0) {
-                  // 标记这些ID为加载中
-                  needFetchIds.forEach(id => loadingProducts.value.set(id, true));
-
-                  try {
-                        // 理想情况下，后端应该提供批量获取API
-                        // 由于当前API不支持，我们使用Promise.all并行获取
-                        const fetchPromises = needFetchIds.map(id =>
-                              productService.getProductDetail(id, forceRefresh)
-                                    .then(product => {
-                                          // 更新缓存
-                                          updateProductCache(product);
-                                          result.set(id, product);
-                                          return product;
-                                    })
-                                    .finally(() => {
-                                          // 无论成功失败，都移除加载状态
-                                          loadingProducts.value.delete(id);
-                                    })
-                        );
-
-                        await Promise.all(fetchPromises);
-                  } catch (err: any) {
-                        error.value = err.message || '批量获取商品详情失败';
-                        console.error('批量获取商品详情失败:', err);
-                  }
-            }
-
-            return result;
-      }
-
-      // === 初始化 ===
-
-      /**
-       * 初始化商品Store
-       */
-      async function init(options = { loadHomeDataOnly: false }) {
-            // 避免重复初始化
-            if (isInitialized.value || isInitializing.value) return true;
-            isInitializing.value = true;
-            error.value = null;
-
+        try {
+            // 先获取基本详情
+            const productDetail = await api.productApi.getProductDetail(id);
+            
+            // 设置加载SKU标志
+            const productWithLoadingFlag = {
+                ...productDetail,
+                loadingSkus: true
+            };
+            setCurrentProduct(productWithLoadingFlag);
+            
+            // 然后获取SKU信息
             try {
-                  // 注册事件监听
-                  registerEventListeners();
-
-                  // 初始化商品服务
-                  await productService.init(options);
-
-                  // 加载最近浏览商品
-                  recentProducts.value = productService.getRecentProducts();
-
-                  // 预加载最近浏览的商品详情到缓存
-                  if (recentProducts.value.length > 0) {
-                        const recentIds = recentProducts.value.map(p => p.id);
-                        // 静默加载，不阻塞初始化流程
-                        fetchProducts(recentIds).catch(e => console.error('预加载最近商品失败:', e));
-                  }
-
-                  isInitialized.value = true;
-                  return true;
-            } catch (err: any) {
-                  error.value = err.message || '初始化产品数据失败';
-                  console.error('初始化产品数据失败:', err);
-                  return false;
-            } finally {
-                  isInitializing.value = false;
+                const skusData = await api.productApi.getProductSkus(id);
+                
+                // 合并SKU信息到商品详情
+                const fullProductDetail: ProductDetail = {
+                    ...productDetail,
+                    skus: skusData.skus,
+                    specs: skusData.specs,
+                    validSpecCombinations: skusData.validSpecCombinations,
+                    loadingSkus: false
+                };
+                
+                // 缓存完整商品详情
+                storage.saveProductDetail(id, fullProductDetail);
+                
+                // 更新状态
+                setCurrentProduct(fullProductDetail);
+                
+                return fullProductDetail;
+            } catch (skuError) {
+                // SKU加载失败，但基本信息已加载
+                const basicProductDetail: ProductDetail = {
+                    ...productDetail,
+                    specs: [],
+                    validSpecCombinations: {},
+                    loadingSkus: false
+                };
+                
+                setCurrentProduct(basicProductDetail);
+                return basicProductDetail;
             }
-      }
-
-      /**
-       * 注册事件监听器
-       */
-      function registerEventListeners() {
-            // 避免重复注册
-            if (unsubscribeCategoriesChange) return;
-
-            // 监听分类变化
-            unsubscribeCategoriesChange = productService.onCategoriesChange((newCategories) => {
-                  categories.value = newCategories;
-            });
-
-            // 监听首页数据变化
-            unsubscribeHomeDataChange = productService.onHomeDataChange((newHomeData) => {
-                  homeData.value = newHomeData;
-            });
-
-            // 监听商品详情变化
-            unsubscribeProductDetailChange = productService.onProductDetailChange((newProduct) => {
-                  if (newProduct) {
-                        // 更新缓存中的商品
-                        updateProductCache(newProduct);
-                  }
-            });
-
-            // 监听最近浏览商品变化
-            unsubscribeRecentProductsChange = productService.onRecentProductsChange((newRecentProducts) => {
-                  recentProducts.value = newRecentProducts;
-            });
-      }
-
-      // === 商品数据获取方法 ===
-
-      /**
-       * 获取分类树
-       */
-      async function fetchCategoryTree(forceRefresh = false) {
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await productService.getCategoryTree(forceRefresh);
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '获取分类失败';
-                  console.error('获取分类失败:', err);
-                  return [];
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      /**
-       * 获取首页数据
-       */
-      async function fetchHomeData(forceRefresh = false) {
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await productService.getHomePageData(forceRefresh);
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '获取首页数据失败';
-                  console.error('获取首页数据失败:', err);
-                  return null;
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      /**
-       * 获取单个商品详情
-       * @param id 商品ID
-       * @param forceRefresh 是否强制刷新
-       */
-      async function fetchProductDetail(id: number, forceRefresh = false): Promise<ProductDetail | null> {
-            if (!id) return null;
-
-            // 标记为当前查看的商品
-            currentProductId.value = id;
-
-            // 如果已在加载中，避免重复请求
-            if (loadingProducts.value.get(id)) {
-                  // 返回一个Promise，等待现有请求完成
-                  return new Promise((resolve) => {
-                        const checkInterval = setInterval(() => {
-                              if (!loadingProducts.value.get(id)) {
-                                    clearInterval(checkInterval);
-                                    resolve(productDetailsMap.value.get(id) || null);
-                              }
-                        }, 50);
-                  });
-            }
-
-            // 检查缓存
-            if (!forceRefresh && productDetailsMap.value.has(id)) {
-                  const cachedProduct = productDetailsMap.value.get(id)!;
-                  // 更新访问时间
-                  accessTimeMap.value.set(id, Date.now());
-                  return cachedProduct;
-            }
-
-            // 标记为加载中
-            loadingProducts.value.set(id, true);
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await productService.getProductDetail(id, forceRefresh);
-                  // 更新缓存
-                  updateProductCache(response);
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '获取商品详情失败';
-                  console.error('获取商品详情失败:', err);
-                  throw err;
-            } finally {
-                  loading.value = false;
-                  loadingProducts.value.delete(id);
-            }
-      }
-
-      /**
-       * 获取完整商品详情（包含SKU信息）
-       */
-      async function fetchProductFullDetail(id: number, forceRefresh = false): Promise<ProductDetail | null> {
-            if (!id) return null;
-
-            // 标记为当前查看的商品
-            currentProductId.value = id;
-
-            // 检查是否已经在加载中
-            if (loadingProducts.value.get(id)) {
-                  // 等待现有请求完成
-                  return new Promise((resolve) => {
-                        const checkInterval = setInterval(() => {
-                              if (!loadingProducts.value.get(id)) {
-                                    clearInterval(checkInterval);
-                                    resolve(productDetailsMap.value.get(id) || null);
-                              }
-                        }, 50);
-                  });
-            }
-
-            // 获取缓存
-            const cachedProduct = !forceRefresh ? productDetailsMap.value.get(id) : null;
-
-            // 如果缓存有完整数据且不强制刷新，直接返回
-            if (cachedProduct && cachedProduct.skus && cachedProduct.skus.length > 0 && !forceRefresh) {
-                  // 更新访问时间
-                  accessTimeMap.value.set(id, Date.now());
-                  return cachedProduct;
-            }
-
-            // 标记为加载中
-            loadingProducts.value.set(id, true);
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  // 如果有缓存基础数据但需要获取SKU，复用缓存
-                  if (cachedProduct && (!cachedProduct.skus || cachedProduct.skus.length === 0)) {
-                        // 标记为正在加载SKU
-                        const updatedProduct = { ...cachedProduct, loadingSkus: true };
-                        updateProductCache(updatedProduct);
-
-                        // 获取SKU数据
-                        const skuData = await productService.getProductSkus(id);
-
-                        // 合并数据
-                        const fullProduct = {
-                              ...updatedProduct,
-                              skus: skuData.skus,
-                              specs: skuData.specs,
-                              validSpecCombinations: skuData.validSpecCombinations,
-                              loadingSkus: false
-                        };
-
-                        // 更新缓存
-                        updateProductCache(fullProduct);
-                        return fullProduct;
-                  } else {
-                        // 完整加载商品详情
-                        const fullProduct = await productService.getProductFullDetail(id, forceRefresh);
-                        // 更新缓存
-                        updateProductCache(fullProduct);
-                        return fullProduct;
-                  }
-            } catch (err: any) {
-                  error.value = err.message || '获取商品完整详情失败';
-                  console.error('获取商品完整详情失败:', err);
-                  throw err;
-            } finally {
-                  loading.value = false;
-                  loadingProducts.value.delete(id);
-            }
-      }
-
-      /**
-       * 获取商品SKU信息
-       */
-      async function fetchProductSkus(id: number) {
-            if (!id) return null;
-
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await productService.getProductSkus(id);
-
-                  // 更新缓存中的商品SKU数据
-                  const cachedProduct = productDetailsMap.value.get(id);
-                  if (cachedProduct) {
-                        const updatedProduct = {
-                              ...cachedProduct,
-                              skus: response.skus,
-                              specs: response.specs,
-                              validSpecCombinations: response.validSpecCombinations,
-                              loadingSkus: false
-                        };
-                        updateProductCache(updatedProduct);
-                  }
-
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '获取商品SKU信息失败';
-                  console.error('获取商品SKU信息失败:', err);
-                  throw err;
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      /**
-       * 预加载分类页商品数据
-       * @param products 商品列表
-       */
-      function prefetchProductDetails(products: Product[]): void {
-            if (!products || products.length === 0) return;
-
-            // 提取前5个商品ID进行预加载
-            const idsToFetch = products
-                  .slice(0, 5)
-                  .map(p => p.id)
-                  .filter(id => !productDetailsMap.value.has(id));
-
-            if (idsToFetch.length > 0) {
-                  // 静默加载，不显示loading状态，不等待结果
-                  fetchProducts(idsToFetch).catch(e => {
-                        console.error('预加载商品失败:', e);
-                  });
-            }
-      }
-
-      /**
-       * 获取促销商品
-       */
-      async function fetchPromotionProducts(page: number = 1, limit: number = 10) {
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await productService.getPromotionProducts(page, limit);
-
-                  // 预加载商品详情
-                  prefetchProductDetails(response.data);
-
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '获取促销商品失败';
-                  console.error('获取促销商品失败:', err);
-                  throw err;
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      /**
-       * 获取最新商品
-       */
-      async function fetchLatestProducts(page: number = 1, limit: number = 10) {
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await productService.getLatestProducts(page, limit);
-
-                  // 预加载商品详情
-                  prefetchProductDetails(response.data);
-
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '获取最新商品失败';
-                  console.error('获取最新商品失败:', err);
-                  throw err;
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      /**
-       * 获取热销商品
-       */
-      async function fetchTopSellingProducts(page: number = 1, limit: number = 10) {
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await productService.getTopSellingProducts(page, limit);
-
-                  // 预加载商品详情
-                  prefetchProductDetails(response.data);
-
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '获取热销商品失败';
-                  console.error('获取热销商品失败:', err);
-                  throw err;
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      /**
-       * 搜索商品
-       */
-      async function searchProducts(params: SearchProductsParams) {
-            searchLoading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await productService.searchProducts(params);
-                  searchResults.value = response.data;
-
-                  // 预加载商品详情
-                  prefetchProductDetails(response.data);
-
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '搜索商品失败';
-                  throw err;
-            } finally {
-                  searchLoading.value = false;
-            }
-      }
-
-      /**
-       * 获取分类商品
-       */
-      async function fetchCategoryProducts(
-            categoryId: number,
-            page: number = 1,
-            limit: number = 10,
-            sort: 'newest' | 'price-asc' | 'price-desc' | 'sales' = 'newest'
-      ) {
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await productService.getCategoryProducts(categoryId, page, limit, sort);
-
-                  // 预加载商品详情
-                  prefetchProductDetails(response.data);
-
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '获取分类商品失败';
-                  throw err;
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      /**
-       * 根据条件查询缓存的商品
-       * @param predicate 查询条件
-       */
-      function queryProductsFromCache(predicate: (product: ProductDetail) => boolean): ProductDetail[] {
-            const result: ProductDetail[] = [];
-
-            productDetailsMap.value.forEach(product => {
-                  if (predicate(product)) {
-                        result.push(product);
-                        // 更新访问时间
-                        accessTimeMap.value.set(product.id, Date.now());
-                  }
-            });
-
-            return result;
-      }
-
-      /**
-       * 根据ID获取缓存中的商品
-       * @param id 商品ID
-       */
-      function getProductFromCache(id: number): ProductDetail | null {
-            const product = productDetailsMap.value.get(id) || null;
-
-            if (product) {
-                  // 更新访问时间
-                  accessTimeMap.value.set(id, Date.now());
-            }
-
-            return product;
-      }
-
-      /**
-       * 检查商品是否在缓存中
-       * @param id 商品ID
-       */
-      function isProductInCache(id: number): boolean {
-            return productDetailsMap.value.has(id);
-      }
-
-      // === 缓存管理方法 ===
-
-      /**
-       * 清除商品缓存
-       * @param id 可选，指定清除的商品ID
-       */
-      function clearProductCache(id?: number) {
-            if (id) {
-                  // 清除指定商品缓存
-                  productDetailsMap.value.delete(id);
-                  accessTimeMap.value.delete(id);
-                  loadingProducts.value.delete(id);
-
-                  if (currentProductId.value === id) {
-                        currentProductId.value = null;
-                  }
+        } catch (error: any) {
+            handleError(error, '获取商品详情失败');
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 搜索商品
+     * @param params 搜索参数
+     * @param append 是否追加到现有结果
+     */
+    async function searchProducts(params: SearchProductsParams, append: boolean = false): Promise<SearchProductsResponse | null> {
+        setLoading(true);
+
+        try {
+            const response = await api.productApi.searchProducts(params);
+            
+            // 更新状态
+            if (append) {
+                appendSearchResults(response.data, response.total, params.page || 1);
             } else {
-                  // 清除所有商品缓存
-                  productDetailsMap.value.clear();
-                  accessTimeMap.value.clear();
-                  loadingProducts.value.clear();
-                  currentProductId.value = null;
+                setSearchResults(response.data, response.total, params.page || 1, params.limit || 10);
             }
+            
+            return response;
+        } catch (error: any) {
+            handleError(error, '搜索商品失败');
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }
 
-            // 调用服务清除缓存
-            productService.clearProductCache();
-      }
+    /**
+     * 加载更多搜索结果
+     * @param params 搜索参数
+     */
+    async function loadMoreSearchResults(params: SearchProductsParams): Promise<boolean> {
+        if (!hasMoreSearchResults.value || loading.value) {
+            return false;
+        }
 
-      /**
-       * 清除所有商品相关缓存
-       */
-      function clearAllProductCache() {
-            productDetailsMap.value.clear();
-            accessTimeMap.value.clear();
-            loadingProducts.value.clear();
-            currentProductId.value = null;
-            productService.clearAllProductCache();
-      }
+        // 设置下一页
+        const nextPage = searchPage.value + 1;
+        const searchParams = {
+            ...params,
+            page: nextPage,
+            limit: searchLimit.value
+        };
 
-      /**
-       * 在一定时间后刷新分类
-       */
-      async function refreshCategoriesIfNeeded(forceRefresh = false) {
-            if (productService.shouldRefreshCategories(forceRefresh)) {
-                  await fetchCategoryTree(true);
-            }
-      }
+        try {
+            await searchProducts(searchParams, true);
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
 
-      /**
-       * 在一定时间后刷新首页数据
-       */
-      async function refreshHomeDataIfNeeded(forceRefresh = false) {
-            if (productService.shouldRefreshHomeData(forceRefresh)) {
-                  await fetchHomeData(true);
-            }
-      }
+    /**
+     * 获取首页数据
+     */
+    async function getHomePageData(): Promise<HomePageData | null> {
+        // 尝试从缓存获取
+        const cachedHomeData = storage.getHomeData<HomePageData>();
+        if (cachedHomeData) {
+            setHomeData(cachedHomeData);
+            return cachedHomeData;
+        }
 
-      /**
-       * 清理资源
-       */
-      function dispose() {
-            // 取消事件订阅
-            if (unsubscribeCategoriesChange) {
-                  unsubscribeCategoriesChange();
-                  unsubscribeCategoriesChange = null;
-            }
+        setLoading(true);
 
-            if (unsubscribeHomeDataChange) {
-                  unsubscribeHomeDataChange();
-                  unsubscribeHomeDataChange = null;
-            }
+        try {
+            const data = await api.productApi.getHomePageData();
+            
+            // 缓存首页数据
+            storage.saveHomeData(data);
+            
+            // 更新状态
+            setHomeData(data);
+            
+            return data;
+        } catch (error: any) {
+            handleError(error, '获取首页数据失败');
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }
 
-            if (unsubscribeProductDetailChange) {
-                  unsubscribeProductDetailChange();
-                  unsubscribeProductDetailChange = null;
-            }
+    /**
+     * 恢复最近浏览商品
+     */
+    function restoreRecentlyViewed(): void {
+        const recentProducts = storage.get<Product[]>(storage.STORAGE_KEYS.RECENT_PRODUCTS, []);
+        recentlyViewed.value = recentProducts || [];
+    }
 
-            if (unsubscribeRecentProductsChange) {
-                  unsubscribeRecentProductsChange();
-                  unsubscribeRecentProductsChange = null;
-            }
+    /**
+     * 初始化商品模块
+     */
+    async function init(): Promise<void> {
+        // 恢复最近浏览记录
+        restoreRecentlyViewed();
+        
+        // 获取分类树
+        if (!categoriesLoaded.value) {
+            await getCategoryTree();
+        }
+        
+        // 获取首页数据
+        if (!homeDataLoaded.value) {
+            await getHomePageData();
+        }
+    }
 
-            // 清理缓存数据
-            productDetailsMap.value.clear();
-            accessTimeMap.value.clear();
-            loadingProducts.value.clear();
-      }
+    // 立即初始化事件监听
+    setupEventListeners();
 
-    
-
-      return {
-            // 状态
-            categories,
-            homeData,
-            currentProduct,
-            currentProductId,
-            searchResults,
-            recentProducts,
-            loading,
-            searchLoading,
-            error,
-            isInitialized,
-            isInitializing,
-            productDetailsMap,
-            cachedProductCount,
-
-            // 计算属性
-            latestProducts,
-            topSellingProducts,
-
-            // 基础方法
-            init,
-            dispose,
-
-            // 数据获取
-            fetchCategoryTree,
-            fetchHomeData,
-            fetchProductDetail,
-            fetchProductFullDetail,
-            fetchProductSkus,
-            fetchProducts,
-            searchProducts,
-            fetchPromotionProducts,
-            fetchLatestProducts,
-            fetchTopSellingProducts,
-            fetchCategoryProducts,
-
-            // 缓存查询与管理
-            getProductFromCache,
-            isProductInCache,
-            queryProductsFromCache,
-            clearProductCache,
-            clearAllProductCache,
-
-            // 自动刷新
-            refreshCategoriesIfNeeded,
-            refreshHomeDataIfNeeded,
-
-            // 预加载
-            prefetchProductDetails
-      };
+    return {
+        // 状态
+        categories,
+        currentProduct,
+        latestProducts,
+        topSellingProducts,
+        promotionProducts,
+        categoryProducts,
+        searchResults,
+        homeData,
+        loading,
+        searchTotal,
+        searchPage,
+        searchLimit,
+        recentlyViewed,
+        
+        // Getters
+        categoriesLoaded,
+        homeDataLoaded,
+        hasMoreSearchResults,
+        
+        // 状态管理方法
+        setCategories,
+        setCurrentProduct,
+        setLatestProducts,
+        setTopSellingProducts,
+        setPromotionProducts,
+        setCategoryProducts,
+        setSearchResults,
+        setLoading,
+        clearProductData,
+        
+        // 业务逻辑方法
+        getCategoryTree,
+        getLatestProducts,
+        getTopSellingProducts,
+        getPromotionProducts,
+        getCategoryProducts,
+        getProductDetail,
+        searchProducts,
+        loadMoreSearchResults,
+        getHomePageData,
+        restoreRecentlyViewed,
+        init
+    };
 });

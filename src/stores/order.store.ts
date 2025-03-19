@@ -1,279 +1,466 @@
 // src/stores/order.store.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { orderService } from '@/services/order.service';
-import { authService } from '@/services/auth.service';
-import type {
-      OrderBasic,
-      OrderDetail,
-      CreateOrderParams,
-      QuickBuyParams,
-      PayOrderParams,
+import { api } from '@/api/index.api';
+import { storage } from '@/utils/storage';
+import { eventBus, EVENT_NAMES } from '@/core/event-bus';
+import { toast } from '@/utils/toast.service';
+import type { 
+    OrderBasic, 
+    OrderDetail, 
+    CreateOrderParams, 
+    CreateOrderResponse,
+    QuickBuyParams,
+    PayOrderParams,
+    PayOrderResponse
 } from '@/types/order.type';
+import type { ApiError, PaginatedResponse } from '@/types/common.type';
+import { useUserStore } from '@/stores/user.store';
 
+/**
+ * 订单状态存储与服务
+ * 集成状态管理和业务逻辑
+ */
 export const useOrderStore = defineStore('order', () => {
-      // 状态
-      const orders = ref<OrderBasic[]>([]);
-      const currentOrder = ref<OrderDetail | null>(null);
-      const loading = ref<boolean>(false);
-      const error = ref<string | null>(null);
-      const pagination = ref({
-            page: 1,
-            limit: 10,
-            total: 0
-      });
+    // ==================== 状态 ====================
+    const orders = ref<OrderBasic[]>([]);
+    const currentOrder = ref<OrderDetail | null>(null);
+    const loading = ref<boolean>(false);
+    const total = ref<number>(0);
+    const page = ref<number>(1);
+    const limit = ref<number>(10);
+    const currentStatus = ref<number | undefined>(undefined);
 
-      // 添加初始化状态跟踪变量
-      const isInitialized = ref<boolean>(false);
-      const isInitializing = ref<boolean>(false);
+    // ==================== Getters ====================
+    const orderCount = computed(() => orders.value.length);
+    const hasMoreOrders = computed(() => total.value > orders.value.length);
+    const isOrderPending = computed(() => 
+        currentOrder.value && 
+        currentOrder.value.orderStatus === 1 && 
+        currentOrder.value.paymentStatus === 0
+    );
 
-      // 注册订单变化监听，在组件销毁时取消订阅
-      let unsubscribeOrdersChange: (() => void) | null = null;
-      let unsubscribeOrderDetailChange: (() => void) | null = null;
+    // ==================== 内部工具方法 ====================
+    /**
+     * 处理API错误
+     * @param error API错误
+     * @param customMessage 自定义错误消息
+     */
+    function handleError(error: ApiError, customMessage?: string): void {
+        console.error(`[OrderStore] Error:`, error);
 
-      // 计算属性
-      const isUserLoggedIn = computed(() => authService.isLoggedIn.value);
+        // 显示错误提示
+        const message = customMessage || error.message || '发生未知错误';
+        toast.error(message);
+    }
 
-      // 初始化方法
-      async function init() {
-            // 避免重复初始化
-            if (isInitialized.value || isInitializing.value) return;
-            isInitializing.value = true;
+    /**
+     * 设置事件监听
+     */
+    function setupEventListeners(): void {
+        // 监听用户登录事件
+        eventBus.on(EVENT_NAMES.USER_LOGIN, () => {
+            // 用户登录后初始化订单列表
+            getOrderList();
+        });
 
-            try {
-                  // 监听订单服务的状态变化
-                  if (!unsubscribeOrdersChange) {
-                        unsubscribeOrdersChange = orderService.onOrdersChange((newOrders) => {
-                              orders.value = newOrders;
-                        });
-                  }
+        // 监听用户登出事件
+        eventBus.on(EVENT_NAMES.USER_LOGOUT, () => {
+            // 用户登出后清除订单数据
+            clearOrderData();
+        });
+    }
 
-                  if (!unsubscribeOrderDetailChange) {
-                        unsubscribeOrderDetailChange = orderService.onOrderDetailChange((newDetail) => {
-                              currentOrder.value = newDetail;
-                        });
-                  }
+    // ==================== 状态管理方法 ====================
+    /**
+     * 设置订单列表
+     */
+    function setOrders(orderList: OrderBasic[]) {
+        orders.value = orderList;
+    }
 
-                  // 如果已登录，获取订单列表
-                  if (isUserLoggedIn.value) {
-                        await fetchOrders(1, 10);
-                  }
+    /**
+     * 设置当前订单
+     */
+    function setCurrentOrder(order: OrderDetail | null) {
+        currentOrder.value = order;
+    }
 
-                  isInitialized.value = true;
-                  return true;
-            } catch (err) {
-                  console.error('订单存储初始化失败:', err);
-                  return false;
-            } finally {
-                  isInitializing.value = false;
-            }
-      }
+    /**
+     * 设置分页信息
+     */
+    function setPagination(totalItems: number, currentPage: number, pageLimit: number) {
+        total.value = totalItems;
+        page.value = currentPage;
+        limit.value = pageLimit;
+    }
 
-      // 获取订单列表
-      async function fetchOrders(page: number = 1, limit: number = 10, status?: number, forceRefresh = false) {
-            if (!isUserLoggedIn.value) return null;
+    /**
+     * 设置当前状态过滤
+     */
+    function setCurrentStatus(status: number | undefined) {
+        currentStatus.value = status;
+    }
 
-            loading.value = true;
-            error.value = null;
+    /**
+     * 添加订单
+     */
+    function addOrder(order: OrderBasic) {
+        orders.value.unshift(order);
+    }
 
-            try {
-                  const response = await orderService.getOrderList(page, limit, status, forceRefresh);
+    /**
+     * 更新订单
+     */
+    function updateOrder(updatedOrder: OrderBasic) {
+        const index = orders.value.findIndex(order => order.id === updatedOrder.id);
+        if (index !== -1) {
+            orders.value[index] = updatedOrder;
+        }
+    }
 
-                  pagination.value = {
-                        page,
-                        limit,
-                        total: response.total
-                  };
+    /**
+     * 设置加载状态
+     */
+    function setLoading(isLoading: boolean) {
+        loading.value = isLoading;
+    }
 
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '获取订单列表失败';
-                  console.error('获取订单列表失败:', err);
-                  return null;
-            } finally {
-                  loading.value = false;
-            }
-      }
+    /**
+     * 清除订单数据
+     */
+    function clearOrderData() {
+        orders.value = [];
+        currentOrder.value = null;
+        total.value = 0;
+        page.value = 1;
+        currentStatus.value = undefined;
+        storage.clearOrderCache();
+    }
 
-      // 获取订单详情
-      async function fetchOrderDetail(id: string, forceRefresh = false) {
-            if (!isUserLoggedIn.value) return null;
+    // ==================== 业务逻辑方法 ====================
+    /**
+     * 获取订单列表
+     * @param currentPage 页码
+     * @param pageLimit 每页数量
+     * @param status 订单状态
+     */
+    async function getOrderList(
+        currentPage: number = 1, 
+        pageLimit: number = 10, 
+        status?: number
+    ): Promise<OrderBasic[]> {
+        const userStore = useUserStore();
+        if (!userStore.isLoggedIn) {
+            return [];
+        }
 
-            // 当前查看的订单就是请求的订单且不强制刷新，直接返回
-            if (currentOrder.value && currentOrder.value.id === id && !forceRefresh) {
-                  return currentOrder.value;
-            }
+        setLoading(true);
 
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await orderService.getOrderDetail(id, forceRefresh);
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '获取订单详情失败';
-                  throw err;
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      // 创建订单
-      async function createOrder(params: CreateOrderParams) {
-            if (!isUserLoggedIn.value) return null;
-
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await orderService.createOrder(params);
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '创建订单失败';
-                  throw err;
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      // 快速购买
-      async function quickBuy(params: QuickBuyParams) {
-            if (!isUserLoggedIn.value) return null;
-
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await orderService.quickBuy(params);
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '快速购买失败';
-                  throw err;
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      // 支付订单
-      async function payOrder(id: string, params: PayOrderParams) {
-            if (!isUserLoggedIn.value) return null;
-
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await orderService.payOrder(id, params);
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '支付订单失败';
-                  throw err;
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      // 取消订单
-      async function cancelOrder(id: string) {
-            if (!isUserLoggedIn.value) return null;
-
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await orderService.cancelOrder(id);
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '取消订单失败';
-                  throw err;
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      // 确认收货
-      async function confirmReceipt(id: string) {
-            if (!isUserLoggedIn.value) return null;
-
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const response = await orderService.confirmReceipt(id);
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '确认收货失败';
-                  throw err;
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      // 清除订单列表缓存
-      function clearOrderListCache() {
-            orderService.clearOrderListCache();
-      }
-
-      // 清除所有订单缓存
-      function clearAllOrderCache() {
-            orderService.clearOrderCache();
-      }
-
-      // 在一定时间后刷新订单
-      async function refreshOrdersIfNeeded(forceRefresh = false) {
-            if (!isUserLoggedIn.value) return;
-
-            if (orderService.shouldRefreshOrders(forceRefresh)) {
-                  await fetchOrders(pagination.value.page, pagination.value.limit, undefined, true);
-            }
-      }
-
-      // 重置store状态（用于处理用户登出等情况）
-      function reset() {
-            orders.value = [];
-            currentOrder.value = null;
-            error.value = null;
-            loading.value = false;
-      }
-
-      // 清理store资源（适用于组件销毁时）
-      function dispose() {
-            if (unsubscribeOrdersChange) {
-                  unsubscribeOrdersChange();
-                  unsubscribeOrdersChange = null;
+        try {
+            // 尝试从缓存获取
+            const cachedOrders = storage.getOrderList<PaginatedResponse<OrderBasic>>(
+                currentPage, 
+                pageLimit, 
+                status
+            );
+            if (cachedOrders) {
+                setOrders(cachedOrders.data);
+                setPagination(cachedOrders.total, cachedOrders.page, cachedOrders.limit);
+                setCurrentStatus(status);
+                return cachedOrders.data;
             }
 
-            if (unsubscribeOrderDetailChange) {
-                  unsubscribeOrderDetailChange();
-                  unsubscribeOrderDetailChange = null;
+            // 从API获取
+            const response = await api.orderApi.getOrderList(currentPage, pageLimit, status);
+
+            // 缓存订单列表
+            storage.saveOrderList(currentPage, pageLimit, status, response);
+
+            // 更新状态
+            setOrders(response.data);
+            setPagination(response.total, response.page, response.limit);
+            setCurrentStatus(status);
+
+            return response.data;
+        } catch (error: any) {
+            handleError(error, '获取订单列表失败');
+            return [];
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 获取订单详情
+     * @param id 订单ID
+     * @param forceRefresh 是否强制刷新
+     */
+    async function getOrderDetail(id: string, forceRefresh: boolean = false): Promise<OrderDetail | null> {
+        const userStore = useUserStore();
+        if (!userStore.isLoggedIn) {
+            return null;
+        }
+
+        setLoading(true);
+
+        try {
+            // 如果不强制刷新，尝试从缓存获取
+            if (!forceRefresh) {
+                const cachedOrder = storage.getOrderDetail<OrderDetail>(id);
+                if (cachedOrder) {
+                    setCurrentOrder(cachedOrder);
+                    return cachedOrder;
+                }
             }
-      }
 
-      return {
-            // 状态
-            isInitialized,
-            isInitializing,
-            orders,
-            currentOrder,
-            loading,
-            error,
-            pagination,
+            // 从API获取
+            const order = await api.orderApi.getOrderDetail(id);
 
-            // 计算属性
-            isUserLoggedIn,
+            // 缓存订单详情
+            storage.saveOrderDetail(id, order);
 
-            // 动作
-            init,
-            fetchOrders,
-            fetchOrderDetail,
-            createOrder,
-            quickBuy,
-            payOrder,
-            cancelOrder,
-            confirmReceipt,
-            clearOrderListCache,
-            clearAllOrderCache,
-            refreshOrdersIfNeeded,
-            reset,
-            dispose
-      };
+            // 更新状态
+            setCurrentOrder(order);
+
+            return order;
+        } catch (error: any) {
+            handleError(error, '获取订单详情失败');
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 创建订单
+     * @param params 创建订单参数
+     */
+    async function createOrder(params: CreateOrderParams): Promise<CreateOrderResponse | null> {
+        setLoading(true);
+
+        try {
+            const response = await api.orderApi.createOrder(params);
+
+            // 清除购物车缓存
+            storage.remove(storage.STORAGE_KEYS.CART_DATA);
+
+            // 清除订单预览缓存
+            storage.remove(storage.STORAGE_KEYS.ORDER_PREVIEW);
+
+            // 订单创建成功，刷新订单列表
+            getOrderList();
+
+            toast.success('订单创建成功');
+            return response;
+        } catch (error: any) {
+            handleError(error, '创建订单失败');
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 快速购买
+     * @param params 快速购买参数
+     */
+    async function quickBuy(params: QuickBuyParams): Promise<CreateOrderResponse | null> {
+        setLoading(true);
+
+        try {
+            const response = await api.orderApi.quickBuy(params);
+
+            // 订单创建成功，刷新订单列表
+            getOrderList();
+
+            toast.success('订单创建成功');
+            return response;
+        } catch (error: any) {
+            handleError(error, '快速购买失败');
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 支付订单
+     * @param id 订单ID
+     * @param params 支付订单参数
+     */
+    async function payOrder(id: string, params: PayOrderParams): Promise<PayOrderResponse | null> {
+        setLoading(true);
+
+        try {
+            const response = await api.orderApi.payOrder(id, params);
+
+            // 支付成功，刷新订单详情
+            await getOrderDetail(id, true);
+
+            // 刷新订单列表
+            getOrderList();
+
+            toast.success('支付成功');
+            return response;
+        } catch (error: any) {
+            handleError(error, '支付订单失败');
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 取消订单
+     * @param id 订单ID
+     */
+    async function cancelOrder(id: string): Promise<boolean> {
+        setLoading(true);
+
+        try {
+            await api.orderApi.cancelOrder(id);
+
+            // 取消成功，刷新订单详情
+            await getOrderDetail(id, true);
+
+            // 更新订单列表中的订单状态
+            if (currentOrder.value) {
+                const updatedOrder: OrderBasic = {
+                    ...currentOrder.value,
+                    orderStatus: 5 // 已取消状态
+                };
+                updateOrder(updatedOrder);
+            }
+
+            toast.success('订单已取消');
+            return true;
+        } catch (error: any) {
+            handleError(error, '取消订单失败');
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 确认收货
+     * @param id 订单ID
+     */
+    async function confirmReceipt(id: string): Promise<boolean> {
+        setLoading(true);
+
+        try {
+            await api.orderApi.confirmReceipt(id);
+
+            // 确认收货成功，刷新订单详情
+            await getOrderDetail(id, true);
+
+            // 更新订单列表中的订单状态
+            if (currentOrder.value) {
+                const updatedOrder: OrderBasic = {
+                    ...currentOrder.value,
+                    orderStatus: 4 // 已完成状态
+                };
+                updateOrder(updatedOrder);
+            }
+
+            toast.success('确认收货成功');
+            return true;
+        } catch (error: any) {
+            handleError(error, '确认收货失败');
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 加载更多订单
+     */
+    async function loadMoreOrders(): Promise<boolean> {
+        if (!hasMoreOrders.value || loading.value) {
+            return false;
+        }
+
+        const nextPage = page.value + 1;
+        setLoading(true);
+
+        try {
+            const response = await api.orderApi.getOrderList(nextPage, limit.value, currentStatus.value);
+
+            // 追加新订单到列表
+            orders.value = [...orders.value, ...response.data];
+            setPagination(response.total, nextPage, limit.value);
+
+            return true;
+        } catch (error: any) {
+            handleError(error, '加载更多订单失败');
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 刷新当前订单详情
+     */
+    async function refreshCurrentOrder(): Promise<OrderDetail | null> {
+        if (!currentOrder.value) {
+            return null;
+        }
+
+        return getOrderDetail(currentOrder.value.id, true);
+    }
+
+    /**
+     * 初始化订单模块
+     */
+    async function init(): Promise<void> {
+        const userStore = useUserStore();
+        if (userStore.isLoggedIn) {
+            await getOrderList();
+        }
+    }
+
+    // 立即初始化事件监听
+    setupEventListeners();
+
+    return {
+        // 状态
+        orders,
+        currentOrder,
+        loading,
+        total,
+        page,
+        limit,
+        currentStatus,
+
+        // Getters
+        orderCount,
+        hasMoreOrders,
+        isOrderPending,
+
+        // 状态管理方法
+        setOrders,
+        setCurrentOrder,
+        setPagination,
+        setCurrentStatus,
+        updateOrder,
+        setLoading,
+        clearOrderData,
+
+        // 业务逻辑方法
+        addOrder,
+        getOrderList,
+        getOrderDetail,
+        createOrder,
+        quickBuy,
+        payOrder,
+        cancelOrder,
+        confirmReceipt,
+        loadMoreOrders,
+        refreshCurrentOrder,
+        init
+    };
 });
