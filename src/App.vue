@@ -53,18 +53,14 @@
 </template>
 
 <script setup lang="ts">
+// App.vue script部分
 import { ref, computed, onMounted } from 'vue'; 
-
 import { useRoute } from 'vue-router';
 import { useUiStore } from '@/stores/ui.store';
 import NavBar from './components/common/NavBar.vue';
 import TabBar from './components/common/TabBar.vue';
-import { initializeApp } from '@/utils/app-initializer';
-
 
 const isAppLoading = ref(true);
-
-// 初始化 store 
 const route = useRoute();
 const uiStore = useUiStore();
 
@@ -74,24 +70,16 @@ const shouldShowNavbar = computed(() => route.meta.showNavbar !== false);
 const isDesktop = computed(() => uiStore.isDesktop);
 const isMobile = computed(() => uiStore.isMobile);
 
-
-
-
-
-// 初始化应用时初始化所有store
-onMounted(async () => {
+// 只初始化UI尺寸和加载状态
+onMounted(() => {
     uiStore.initializeScreenSize();
     window.addEventListener('resize', uiStore.handleResize);
-    try { 
-        await initializeApp();  // 调用初始化函数
-    } finally {
-        // 不管成功失败，1.5秒后关闭启动页
-        setTimeout(() => {
-            isAppLoading.value = false;
-        }, 1500);
-    }
+    
+    // 延迟关闭启动页
+    setTimeout(() => {
+        isAppLoading.value = false;
+    }, 1500);
 });
-
 
 </script>
 

@@ -128,6 +128,7 @@ export const EVENT_NAMES = {
       FAVORITE_REMOVED: 'favorite:removed',
 
       // 全局事件
+      CORE_SERVICES_READY: 'core:services-ready',
       APP_INIT: 'app:init',
       NETWORK_ERROR: 'network:error',
 };

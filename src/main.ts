@@ -6,26 +6,21 @@ import App from './App.vue'
 import router from './router'
 import ToastPlugin from './plugins/toast'
 import { EventBusPlugin } from '@/core/event-bus';
-import { serviceInitializer } from '@/core/service.init';
+import { initializeApp } from '@/utils/app-initializer';
 
-// 创建Vue应用实例
 const app = createApp(App);
-
-// 创建Pinia实例
 const pinia = createPinia();
 
-// 使用必要的插件
 app.use(pinia);
 app.use(router);
 app.use(ToastPlugin);
-// 使用事件总线插件
 app.use(EventBusPlugin);
 
 // 初始化应用
-const initApp = async () => {
+const startApp = async () => {
       try {
-            // 初始化所有服务
-            await serviceInitializer.initialize();
+            // 初始化整个应用
+            await initializeApp();
 
             // 挂载应用
             app.mount('#app');
@@ -34,5 +29,4 @@ const initApp = async () => {
       }
 };
 
-// 启动应用
-initApp();
+startApp();
