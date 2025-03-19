@@ -58,8 +58,7 @@
 
             <!-- 数量调整器 -->
             <QuantityAdjuster :quantity="item.quantity" :maxQuantity="item.skuData?.stock || 99"
-                :disabled="!item.isAvailable" :isUpdating="cartStore.isItemUpdating(item.id)"
-                @update:quantity="updateQuantity" />
+                :disabled="!item.isAvailable" :isUpdating="false" @update:quantity="updateQuantity" />
 
         </div>
     </div>
@@ -69,9 +68,9 @@
 import { Trash2 } from 'lucide-vue-next';
 import type { CartItem } from '@/types/cart.type';
 import QuantityAdjuster from './QuantityAdjuster.vue';
-import { useCartStore } from '@/stores/cart.store';
+// import { useCartStore } from '@/stores/cart.store';
 
-const cartStore = useCartStore();
+// const cartStore = useCartStore();
 
 const props = defineProps({
     item: {
@@ -109,14 +108,4 @@ const formatSpecs = (specs: Array<{ spec: { name: string }, specValue: { value: 
 const updateQuantity = (quantity: number) => {
     emit('update-quantity', props.item.id, quantity);
 };
-// const updateQuantity = async (quantity: number) => {
-//     if (props.disabled || props.isUpdating) return;
-    
-//     try {
-//         emit('update:quantity', quantity);
-//     } catch (error: any) {
-//         console.error('更新数量失败:', error);
-//         // 这里可以考虑添加本地错误处理逻辑
-//     }
-// };
 </script>

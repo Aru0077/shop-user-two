@@ -72,7 +72,6 @@ import { ref, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { User, Lock, Eye, EyeOff, Loader } from 'lucide-vue-next';
 import { useUserStore } from '@/stores/user.store';
-import { onUserLogin } from '@/utils/app-initializer';
 import { useToast } from '@/composables/useToast';
 
 const toast = useToast();
@@ -89,7 +88,7 @@ const username = ref('');
 const password = ref('');
 const showPassword = ref(false);
 const loading = computed(() => userStore.loading);
-const error = computed(() => userStore.error);
+const error = ref(''); // 替换为本地错误状态
 
 // Handle login submission
 const handleLogin = async () => {
@@ -98,20 +97,24 @@ const handleLogin = async () => {
     }
 
     try {
-        await userStore.login(username.value, password.value);
+        // 根据store中的方法签名，login方法接受一个对象参数
+        const response = await userStore.login({
+            username: username.value,
+            password: password.value
+        });
 
-        // 登录后初始化用户相关服务和Store（新增）
-        await onUserLogin();
+        if (response) {
+            // 显示成功提示
+            toast.success('登录成功');
 
-        // 显示成功提示（新增）
-        toast.success('登录成功');
-
-        // 重定向到重定向URL或主页
-        const redirectPath = route.query.redirect as string || '/home';
-        router.replace(redirectPath);
+            // 重定向到重定向URL或主页
+            const redirectPath = route.query.redirect as string || '/home';
+            router.replace(redirectPath);
+        }
     } catch (err: any) {
         console.error('登录失败:', err);
-        toast.error(err.message || '登录失败'); // 新增错误提示
+        error.value = err.message || '登录失败';
+        toast.error(error.value);
     }
 };
 </script>

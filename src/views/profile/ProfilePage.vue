@@ -42,86 +42,71 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router'
 import logoImg from '@/assets/logo.png'
 import PageTitle from '@/components/common/PageTitle.vue';
 import { useUserStore } from '@/stores/user.store';
-
-// 添加 loading 状态
-const loading = ref(false);
-
-// 获取用户存储实例
-const userStore = useUserStore();
-// 获取路由实例
-const router = useRouter();
-
-// 计算属性：检查用户是否已登录
-const isUserLoggedIn = computed(() => userStore.isLoggedIn);
-
-// 用户信息可能是 null，所以添加默认值
-const username = computed(() => userStore.currentUser?.username || '未登录');
-
+import { useToast } from '@/composables/useToast';
 import { ChevronRight, ShoppingBag, ShoppingCart, Heart, MapPin, Shield, FileText, UserX, LogOut } from 'lucide-vue-next';
 
+// 初始化
+const router = useRouter();
+const userStore = useUserStore();
+const toast = useToast();
+
+// 状态
+const loading = ref(false);
+
+// 用户信息
+const isLoggedIn = computed(() => userStore.isLoggedIn);
+const username = computed(() => userStore.user?.username || '未登录');
+
+// 菜单列表
 const menuList = [
     {
-        name: 'My Address',
+        name: '我的地址',
         path: '/address',
         icon: 'MapPin'
     },
     {
-        name: 'My Order',
+        name: '我的订单',
         path: '/order',
         icon: 'ShoppingBag'
     },
     {
-        name: 'My Cart',
+        name: '我的购物车',
         path: '/cart',
         icon: 'ShoppingCart'
     },
     {
-        name: 'My Favorites',
+        name: '我的收藏',
         path: '/favorite',
         icon: 'Heart'
     },
     {
-        name: 'Privacy Policy',
+        name: '隐私政策',
         path: '/privacy-policy',
         icon: 'Shield'
     },
     {
-        name: 'Terms of Service',
+        name: '服务条款',
         path: '/terms-of-service',
         icon: 'FileText'
     },
     {
-        name: 'Delete Account',
+        name: '删除账号',
         path: '/delete-account',
         icon: 'UserX'
     },
     {
-        name: 'Logout',
+        name: '退出登录',
         path: '',
         icon: 'LogOut'
     },
 ];
 
-// 菜单点击处理函数
-const handleMenuClick = (item) => {
-    if (item.name === 'Logout') {
-        // 处理退出逻辑，添加确认弹窗
-        if (confirm('Are you sure you want to logout?')) {
-            userStore.logout();
-            router.push('/login');
-        }
-    } else if (item.path) {
-        // 处理其他菜单项的跳转
-        router.push(item.path);
-    }
-};
-
-// 图标映射对象
+// 图标映射
 const icons = {
     ShoppingBag,
     ShoppingCart,
@@ -131,22 +116,40 @@ const icons = {
     FileText,
     UserX,
     LogOut
-}
-// 添加初始化方法
-const initUserStore = async () => {
+};
+
+// 菜单点击处理
+const handleMenuClick = async (item) => {
+    if (item.name === '退出登录') {
+        try {
+            loading.value = true;
+            const success = await userStore.logout();
+            if (success) {
+                toast.success('已退出登录');
+                router.push('/login');
+            }
+        } catch (err) {
+            toast.error('退出登录失败');
+        } finally {
+            loading.value = false;
+        }
+    } else if (item.path) {
+        router.push(item.path);
+    }
+};
+
+// 初始化用户数据
+const initProfile = async () => {
     loading.value = true;
     try {
-        if (!userStore.isInitialized && !userStore.isInitializing) {
-            await userStore.init();
-        } else if (userStore.isInitializing) {
-            // 等待初始化完成
-            await new Promise((resolve) => {
-                const unwatch = watch(() => userStore.isInitializing, (isInitializing) => {
-                    if (!isInitializing) {
-                        unwatch();
-                        resolve();
-                    }
-                });
+        // 初始化userStore
+        await userStore.init();
+        
+        // 如果未登录，跳转到登录页
+        if (!userStore.isLoggedIn) {
+            router.push({
+                path: '/login',
+                query: { redirect: router.currentRoute.value.fullPath }
             });
         }
     } catch (err) {
@@ -156,17 +159,13 @@ const initUserStore = async () => {
     }
 };
 
-// 添加 onMounted 钩子
+// 组件挂载时初始化
 onMounted(() => {
-    initUserStore();
+    initProfile();
 });
 
-// 添加 onBeforeUnmount 钩子清理资源
-onBeforeUnmount(() => {
-    // userStore 不需要 dispose，但为了保持一致性可以添加此检查
-    if (userStore.dispose) {
-        userStore.dispose();
-    }
+// 组件卸载前清理资源
+onUnmounted(() => {
+    // 清理资源，避免内存泄漏
 });
-
 </script>

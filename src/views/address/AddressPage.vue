@@ -92,15 +92,10 @@ const toast = useToast();
 const addresses = computed(() => addressStore.addresses);
 const loading = computed(() => addressStore.loading);
 
-// 在组件挂载时获取地址数据，如果尚未初始化
+// 在组件挂载时获取地址数据
 onMounted(async () => {
     // 使用store的初始化方法
-    if (!addressStore.isInitialized && !addressStore.isInitializing) {
-        await addressStore.init();
-    } else {
-        // 如果已初始化，则检查是否需要刷新
-        await addressStore.refreshAddressesIfNeeded();
-    }
+    await addressStore.init();
 });
 
 // 格式化时间

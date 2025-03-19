@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Package, Home } from 'lucide-vue-next';
 import { useProductStore } from '@/stores/product.store';
@@ -50,7 +50,6 @@ import { useToast } from '@/composables/useToast';
 import PageTitle from '@/components/common/PageTitle.vue';
 import ProductGrid from '@/components/product/ProductGrid.vue';
 import type { Product } from '@/types/product.type';
-import type { PaginatedResponse } from '@/types/common.type';
 
 // 初始化
 const route = useRoute();
@@ -64,17 +63,15 @@ const loading = ref(true);
 const loadingMore = ref(false);
 const error = ref<string | null>(null);
 const currentPage = ref(1);
+const pageSize = ref(10);
 const hasMore = ref(true);
 
-// 页面配置
-const pageSize = 10; // 每页显示的商品数量
-
-// 类型和标题
+// 列表类型和标题
 const listType = computed(() => route.params.type as string);
 const pageTitle = computed(() => {
-    if (listType.value === 'latest') return 'New Arrivals';
-    if (listType.value === 'topselling') return 'Best Sellers';
-    if (listType.value === 'promotion') return 'Promotional Products';
+    if (listType.value === 'latest') return '最新上架';
+    if (listType.value === 'topselling') return '热销商品';
+    if (listType.value === 'promotion') return '促销商品';
     if (listType.value.startsWith('category-')) {
         const categoryId = Number(listType.value.split('-')[1]);
         const category = productStore.categories.find(c => c.id === categoryId);
@@ -83,75 +80,46 @@ const pageTitle = computed(() => {
     return '商品列表';
 });
 
-// 重置数据并加载
-const resetAndLoadData = () => {
-    products.value = [];
-    currentPage.value = 1;
-    hasMore.value = true;
-    loadProducts();
-};
-
-// 根据类型加载商品
-const loadProducts = async () => {
-    if (loading.value && currentPage.value > 1) {
+// 加载商品列表
+const loadProducts = async (isLoadMore = false) => {
+    if (isLoadMore) {
         loadingMore.value = true;
     } else {
         loading.value = true;
     }
-
     error.value = null;
 
     try {
-        // 确保 productStore 已初始化
-        if (!productStore.isInitialized && !productStore.isInitializing) {
-            await productStore.init();
-        } else if (productStore.isInitializing) {
-            // 等待初始化完成
-            await new Promise<void>((resolve) => {
-                const unwatch = watch(() => productStore.isInitializing, (isInitializing) => {
-                    if (!isInitializing) {
-                        unwatch();
-                        resolve();
-                    }
-                });
-            });
-        }
-        
-        let response: PaginatedResponse<Product> | null = null;
+        let newProducts: Product[] = [];
 
         // 根据不同的类型调用不同的API
         if (listType.value === 'latest') {
-            response = await productStore.fetchLatestProducts(currentPage.value, pageSize);
+            newProducts = await productStore.getLatestProducts(currentPage.value, pageSize.value);
         } else if (listType.value === 'topselling') {
-            response = await productStore.fetchTopSellingProducts(currentPage.value, pageSize);
+            newProducts = await productStore.getTopSellingProducts(currentPage.value, pageSize.value);
         } else if (listType.value === 'promotion') {
-            response = await productStore.fetchPromotionProducts(currentPage.value, pageSize);
+            newProducts = await productStore.getPromotionProducts(currentPage.value, pageSize.value);
         } else if (listType.value.startsWith('category-')) {
             const categoryId = Number(listType.value.split('-')[1]);
-            // 确保分类数据已更新
-            await productStore.refreshCategoriesIfNeeded();
-            response = await productStore.fetchCategoryProducts(
+            newProducts = await productStore.getCategoryProducts(
                 categoryId,
                 currentPage.value,
-                pageSize
+                pageSize.value
             );
         }
 
-        if (response) {
-            if (currentPage.value === 1) {
-                products.value = response.data;
-            } else {
-                products.value = [...products.value, ...response.data];
-            }
-
-            // 检查是否还有更多数据
-            hasMore.value = products.value.length < response.total;
+        // 更新商品列表
+        if (isLoadMore) {
+            products.value = [...products.value, ...newProducts];
+        } else {
+            products.value = newProducts;
         }
+
+        // 判断是否还有更多商品
+        hasMore.value = newProducts.length >= pageSize.value;
     } catch (err: any) {
         error.value = err.message || '加载商品失败';
-        if (error.value) {
-            toast.error(error.value);
-        }
+        toast.error(error.value || '加载商品失败');
     } finally {
         loading.value = false;
         loadingMore.value = false;
@@ -159,11 +127,19 @@ const loadProducts = async () => {
 };
 
 // 加载更多商品
-const loadMore = () => {
+const loadMore = async () => {
     if (hasMore.value && !loadingMore.value) {
         currentPage.value++;
-        loadProducts();
+        await loadProducts(true);
     }
+};
+
+// 重置并加载商品
+const resetAndLoad = () => {
+    products.value = [];
+    currentPage.value = 1;
+    hasMore.value = true;
+    loadProducts();
 };
 
 // 返回首页
@@ -171,29 +147,28 @@ const goToHome = () => {
     router.push('/home');
 };
 
-// 页面加载时初始化数据
+// 页面加载时初始化
 onMounted(async () => {
-    // 确保分类数据已加载（如果是分类页面）
+    // 初始化productStore
+    await productStore.init();
+    
+    // 如果是分类页面且分类数据为空，获取分类树
     if (listType.value.startsWith('category-') && productStore.categories.length === 0) {
-        await productStore.fetchCategoryTree();
+        await productStore.getCategoryTree();
     }
-
-    // 监听路由参数变化
-    watch(
-        () => route.params.type,
-        () => {
-            resetAndLoadData();
-        }
-    );
-
-    // 初始加载数据
-    resetAndLoadData();
+    
+    // 加载商品列表
+    resetAndLoad();
+    
+    // 监听路由变化
+    watch(() => route.params.type, () => {
+        resetAndLoad();
+    });
 });
 
-// 添加 onBeforeUnmount 钩子清理资源
-onBeforeUnmount(() => {
-    if (productStore.dispose) {
-        productStore.dispose();
-    }
+// 组件卸载前清理资源
+onUnmounted(() => {
+    // 清除商品列表，避免内存泄漏
+    products.value = [];
 });
 </script>

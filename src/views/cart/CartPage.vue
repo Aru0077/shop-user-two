@@ -48,19 +48,23 @@ import EmptyCart from '@/components/cart/EmptyCart.vue';
 // 初始化
 const router = useRouter();
 const cartStore = useCartStore();
-const userStore = useUserStore()
+const userStore = useUserStore();
+const tempOrderStore = useTempOrderStore();
 const toast = useToast();
 
 // 状态
 const loading = ref(false);
-watch(() => cartStore.loading, (newLoading) => {
-    loading.value = newLoading;
-});
-const cartItems = computed(() => cartStore.cartItems);
 const isEditMode = ref(false);
 const selectedItems = ref<number[]>([]);
 
+// 监听加载状态
+watch(() => cartStore.loading, (newLoading) => {
+    loading.value = newLoading;
+});
+
 // 计算属性
+const cartItems = computed(() => cartStore.cartItems);
+
 const isAllSelected = computed(() => {
     // 只考虑可购买的商品
     const availableItems = cartItems.value.filter(item => item.isAvailable);
@@ -72,7 +76,7 @@ const totalSelectedAmount = computed(() => {
     return cartItems.value
         .filter(item => selectedItems.value.includes(item.id) && item.isAvailable)
         .reduce((sum, item) => {
-            const price = item.skuData?.promotion_price || item.skuData?.price || 0;
+            const price = item.skuData?.promotion_price ?? item.skuData?.price ?? 0;
             return sum + price * item.quantity;
         }, 0);
 });
@@ -117,25 +121,23 @@ const toggleEditMode = () => {
 // 更新商品数量
 const updateItemQuantity = async (id: number, quantity: number) => {
     try {
-        // 使用乐观更新方法
-        await cartStore.optimisticUpdateCartItem(id, quantity);
-    } catch (error) {
-        toast.error((error as Error).message || '更新数量失败');
+        await cartStore.updateItem(id, { quantity });
+    } catch (error: any) {
+        toast.error(error.message || '更新数量失败');
     }
 };
 
 // 移除单个商品
 const removeItem = async (id: number) => {
     try {
-        await cartStore.removeCartItem(id);
+        await cartStore.deleteItem(id);
         // 从选中列表中移除
         const index = selectedItems.value.indexOf(id);
         if (index !== -1) {
             selectedItems.value.splice(index, 1);
         }
-        toast.success('Product removed');
     } catch (error: any) {
-        toast.error(error.message || 'Failed to delete');
+        toast.error(error.message || '删除失败');
     }
 };
 
@@ -143,20 +145,20 @@ const removeItem = async (id: number) => {
 const batchRemove = async () => {
     if (selectedItems.value.length === 0) return;
 
-    const confirmed = window.confirm(`Confirm deletion of ${selectedItems.value.length} selected items?`);
+    const confirmed = window.confirm(`确认删除选中的 ${selectedItems.value.length} 件商品?`);
     if (!confirmed) return;
 
     try {
         // 一个个删除，因为 API 不支持批量删除
         for (const id of [...selectedItems.value]) {
-            await cartStore.removeCartItem(id);
+            await cartStore.deleteItem(id);
         }
 
         // 清空选中列表
         selectedItems.value = [];
-        toast.success('Selected items removed');
+        toast.success('已删除选中商品');
     } catch (error: any) {
-        toast.error(error.message || 'Failed to delete');
+        toast.error(error.message || '批量删除失败');
     }
 };
 
@@ -179,22 +181,23 @@ const checkout = async () => {
 
     loading.value = true;
     try {
-        // 1. 创建临时订单
-        const tempOrderStore = useTempOrderStore();
-        
         // 确保临时订单store已初始化
-        if (!tempOrderStore.isInitialized && !tempOrderStore.isInitializing) {
+        try {
             await tempOrderStore.init();
+        } catch (error) {
+            console.error('初始化临时订单失败:', error);
         }
-        
+
         const tempOrder = await tempOrderStore.createTempOrder({
             mode: 'cart',
             cartItemIds: selectedItems.value
         });
 
-        toast.success('创建订单成功');
-        
-        // 2. 跳转到结账页面，带上临时订单ID
+        if (!tempOrder) {
+            throw new Error('创建临时订单失败');
+        }
+
+        // 跳转到结账页面
         router.push({
             path: '/checkout',
             query: {
@@ -227,23 +230,18 @@ onMounted(async () => {
     loading.value = true;
     try {
         // 确保购物车已初始化
-        if (!cartStore.isInitialized && !cartStore.isInitializing) {
-            await cartStore.initCart();
-        } else if (cartStore.isInitializing) {
-            // 等待初始化完成
-            await new Promise<void>(resolve => {
-                const unwatch = watch(() => cartStore.isInitializing, (isInitializing) => {
-                    if (!isInitializing) {
-                        unwatch();
-                        resolve();
-                    }
-                });
-            });
+        try {
+            // 直接调用初始化方法，不需要检查 isInitialized
+            await cartStore.init();
+        } catch (error) {
+            console.error('初始化购物车失败:', error);
         }
-        
-        // 刷新购物车数据（如果需要）
-        await cartStore.refreshCartIfNeeded();
-        
+
+        // 刷新购物车数据
+        if (userStore.isLoggedIn) {
+            await cartStore.getCartList();
+        }
+
         // 初始化完成后，选择可购买商品
         if (cartItems.value.length > 0) {
             // 默认全选可购买的商品
@@ -259,13 +257,8 @@ onMounted(async () => {
     }
 });
 
-// 添加组件销毁时清理资源
+// 组件销毁时清理资源
 onBeforeUnmount(() => {
-    // 清理资源
-    if (cartStore.dispose) {
-        cartStore.dispose();
-    }
+    // 任何需要清理的资源（如事件监听器等）可以在这里处理
 });
-
-
 </script>

@@ -41,7 +41,7 @@
 </template>
 
 <script setup>
-import { onMounted, computed, onBeforeUnmount } from 'vue';
+import { onMounted, computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue';
 import { ChevronUpIcon } from 'lucide-vue-next';
@@ -52,10 +52,10 @@ import { useToast } from '@/composables/useToast';
 const productStore = useProductStore();
 const router = useRouter();
 const toast = useToast();
+const loading = ref(false);
 
 // 计算属性，方便访问 store 状态
 const categories = computed(() => productStore.categories);
-const loading = computed(() => productStore.loading);
 const error = computed(() => productStore.error);
 
 // 初始化分类数据
@@ -63,28 +63,26 @@ const initCategories = async () => {
     loading.value = true;
     try {
         // 确保 productStore 已初始化
-        if (!productStore.isInitialized && !productStore.isInitializing) {
+        if (!productStore.categoriesLoaded) {
             await productStore.init();
-        } else if (productStore.isInitializing) {
-            // 等待初始化完成
-            await new Promise((resolve) => {
-                const unwatch = watch(() => productStore.isInitializing, (isInitializing) => {
-                    if (!isInitializing) {
-                        unwatch();
-                        resolve();
-                    }
-                });
-            });
         }
 
         // 根据需要刷新分类数据
-        await productStore.refreshCategoriesIfNeeded();
+        await productStore.getCategoryTree();
     } catch (error) {
         console.error('初始化分类数据失败:', error);
         toast.error('加载分类失败，请刷新页面重试');
     } finally {
         loading.value = false;
     }
+};
+
+// 导航到分类
+const navigateToCategory = (category) => {
+    router.push({
+        path: `/category/${category.id}`,
+        query: { name: category.name }
+    });
 };
 
 // 组件挂载时初始化数据
@@ -94,9 +92,6 @@ onMounted(() => {
 
 // 组件卸载时清理资源
 onBeforeUnmount(() => {
-    if (productStore.dispose) {
-        productStore.dispose();
-    }
+    // 任何需要清理的资源可以在这里处理
 });
-
 </script>

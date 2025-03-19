@@ -94,7 +94,6 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { User, Lock, Eye, EyeOff, Loader } from 'lucide-vue-next';
 import { useUserStore } from '@/stores/user.store';
-import { onUserLogin } from '@/utils/app-initializer';
 import { useToast } from '@/composables/useToast';
 
 const toast = useToast();
@@ -112,7 +111,7 @@ const showPassword = ref(false);
 const showConfirmPassword = ref(false);
 const localError = ref('');
 const loading = computed(() => userStore.loading);
-const error = computed(() => userStore.error);
+const error = ref(''); // 替换为本地错误状态
 
 // Handle register submission
 const handleRegister = async () => {
@@ -135,20 +134,26 @@ const handleRegister = async () => {
     }
 
     try {
-        // First register
-        await userStore.register({
+        // 注册
+        const newUser = await userStore.register({
             username: username.value,
             password: password.value
         });
 
+        if (newUser) {
+            // 注册成功后直接登录
+            await userStore.login({
+                username: username.value,
+                password: password.value
+            });
 
-        await onUserLogin();
-        toast.success('注册成功');
-
-        router.replace('/home');
+            toast.success('注册成功');
+            router.replace('/home');
+        }
     } catch (err: any) {
         console.error('注册失败:', err);
-        toast.error(err.message || '注册失败'); // 新增错误提示
+        localError.value = err.message || '注册失败';
+        toast.error(localError.value);
     }
 };
 </script>

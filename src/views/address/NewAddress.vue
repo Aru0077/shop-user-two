@@ -141,16 +141,11 @@ const addressId = computed(() => route.query.id ? parseInt(route.query.id as str
 
 // 组件挂载时，如果是编辑模式，则获取地址数据
 onMounted(async () => {
+    // 初始化地址数据
+    await addressStore.init();
+    
     if (isEdit.value && addressId.value) {
-        // 确保地址store已初始化
-        if (!addressStore.isInitialized && !addressStore.isInitializing) {
-            await addressStore.init();
-        } else if (addressStore.addresses.length === 0) {
-            // 如果已初始化但地址列表为空，则获取地址列表
-            await addressStore.fetchAddresses();
-        }
-        
-        // 查找当前编辑的地址
+        // 如果是编辑模式且有地址 ID，查找当前编辑的地址
         const address = addressStore.addresses.find(addr => addr.id === addressId.value);
         if (address) {
             fillFormWithAddress(address);
@@ -227,8 +222,8 @@ const handleSubmit = async () => {
         };
 
         if (isEdit.value && addressId.value) {
-            // 编辑地址
-            await addressStore.updateAddress(addressId.value, params);
+            // 编辑地址 - 使用 updateExistingAddress 而不是 updateAddress
+            await addressStore.updateExistingAddress(addressId.value, params);
             toast.success('Address updated successfully');
         } else {
             // 新建地址

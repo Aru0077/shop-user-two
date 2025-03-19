@@ -112,7 +112,6 @@ import { AlertTriangle, Lock, Eye, EyeOff } from 'lucide-vue-next';
 import { useUserStore } from '@/stores/user.store';
 import { useToast } from '@/composables/useToast';
 import PageTitle from '@/components/common/PageTitle.vue';
-import { onUserLogout } from '@/utils/app-initializer';
 
 // 初始化路由、状态管理和 toast
 const router = useRouter();
@@ -123,7 +122,7 @@ const toast = useToast();
 const password = ref('');
 const showPassword = ref(false);
 const loading = computed(() => userStore.loading);
-const error = computed(() => userStore.error);
+const error = ref(''); // 替换为本地错误状态
 const showConfirmDialog = ref(false);
 
 // 确认删除 - 显示二次确认对话框
@@ -135,23 +134,23 @@ const confirmDelete = () => {
 // 执行删除账号操作
 const deleteAccount = async () => {
     try {
-        // 调用用户 store 的删除账号方法
-        await userStore.deleteAccount(password.value);
+        // 调用用户 store 的删除账号方法，根据类型定义应传入对象
+        const success = await userStore.deleteAccount({ password: password.value });
         
-        // 清除所有用户相关的缓存
-        onUserLogout();
-        
-        // 显示成功提示
-        toast.success('Your account has been deleted');
-        
-        // 关闭确认对话框
-        showConfirmDialog.value = false;
-        
-        // 重定向到主页
-        router.replace('/home');
+        if (success) {
+            // 显示成功提示
+            toast.success('Your account has been deleted');
+            
+            // 关闭确认对话框
+            showConfirmDialog.value = false;
+            
+            // 重定向到主页
+            router.replace('/home');
+        }
     } catch (err: any) {
         // 显示错误信息
-        toast.error(err.message || 'Failed to delete account');
+        error.value = err.message || 'Failed to delete account';
+        toast.error(error.value);
         // 关闭确认对话框
         showConfirmDialog.value = false;
     }

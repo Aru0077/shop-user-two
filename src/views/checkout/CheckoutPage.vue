@@ -147,26 +147,55 @@ const isSubmitting = ref(false);
 const countdownTimer = ref<number | null>(null);
 
 // 表单状态
-const selectedAddressId = computed({
-    get: () => tempOrderStore.selectedAddressId,
-    set: (val) => tempOrderStore.setSelectedAddress(val || 0)
-});
-const selectedPaymentType = computed({
-    get: () => tempOrderStore.selectedPaymentType || 'QPAY',
-    set: (val) => tempOrderStore.setPaymentType(val)
-});
-const orderRemark = computed({
-    get: () => tempOrderStore.remark,
-    set: (val) => tempOrderStore.setRemark(val)
-});
+const selectedAddressId = ref<number | null>(null);
+const selectedPaymentType = ref<string | null>('QPAY');
+const orderRemark = ref<string>('');
 
 // 临时订单信息
 const tempOrder = computed(() => tempOrderStore.tempOrder);
-const timeRemaining = computed(() => tempOrderStore.timeRemaining);
+const timeRemaining = ref<number>(0);
+
+// 计算倒计时
+const calculateTimeRemaining = () => {
+    if (!tempOrder.value || !tempOrder.value.expireTime) return 0;
+
+    const expireTime = new Date(tempOrder.value.expireTime).getTime();
+    const now = Date.now();
+    const remaining = Math.max(0, Math.floor((expireTime - now) / 1000));
+
+    return remaining;
+};
+
+// 监听地址ID变化
+watch(selectedAddressId, (newValue) => {
+    if (newValue !== null && tempOrder.value) {
+        tempOrderStore.updateTempOrder(tempOrder.value.id, {
+            addressId: newValue
+        });
+    }
+});
+
+// 监听支付方式变化
+watch(selectedPaymentType, (newValue) => {
+    if (newValue && tempOrder.value) {
+        tempOrderStore.updateTempOrder(tempOrder.value.id, {
+            paymentType: newValue
+        });
+    }
+});
+
+// 监听备注变化
+watch(orderRemark, (newValue) => {
+    if (tempOrder.value) {
+        tempOrderStore.updateTempOrder(tempOrder.value.id, {
+            remark: newValue
+        });
+    }
+});
 
 // 是否可以提交订单
 const isReadyToSubmit = computed(() => {
-    return !!selectedAddressId.value && !!selectedPaymentType.value && !tempOrderStore.isExpired;
+    return !!selectedAddressId.value && !!selectedPaymentType.value && timeRemaining.value > 0;
 });
 
 // 加载临时订单
@@ -183,51 +212,29 @@ const loadTempOrder = async () => {
             return;
         }
 
-        // 确保 tempOrderStore 已初始化
-        if (!tempOrderStore.isInitialized && !tempOrderStore.isInitializing) {
-            await tempOrderStore.init();
-        } else if (tempOrderStore.isInitializing) {
-            // 等待初始化完成
-            await new Promise<void>((resolve) => {
-                const unwatch = watch(() => tempOrderStore.isInitializing, (isInitializing) => {
-                    if (!isInitializing) {
-                        unwatch();
-                        resolve();
-                    }
-                });
-            });
+        // 获取临时订单
+        const order = await tempOrderStore.getTempOrder(tempOrderId);
+
+        if (!order) {
+            error.value = '未找到订单信息';
+            return;
         }
 
-        // 获取临时订单
-        await tempOrderStore.getTempOrder(tempOrderId);
-
         // 如果临时订单已过期
-        if (tempOrderStore.isExpired) {
+        timeRemaining.value = calculateTimeRemaining();
+        if (timeRemaining.value <= 0) {
             error.value = '订单已过期，请重新下单';
             return;
         }
 
-        // 确保 addressStore 已初始化
-        if (!addressStore.isInitialized && !addressStore.isInitializing) {
-            await addressStore.init();
-        } else if (addressStore.isInitializing) {
-            // 等待初始化完成
-            await new Promise<void>((resolve) => {
-                const unwatch = watch(() => addressStore.isInitializing, (isInitializing) => {
-                    if (!isInitializing) {
-                        unwatch();
-                        resolve();
-                    }
-                });
-            });
-        }
+        // 设置表单默认值
+        selectedAddressId.value = order.addressId || null;
+        selectedPaymentType.value = order.paymentType || 'QPAY';
+        orderRemark.value = order.remark || '';
 
         // 确保地址信息已加载
         if (addressStore.addresses.length === 0) {
-            await addressStore.fetchAddresses();
-        } else {
-            // 如有必要刷新地址数据
-            await addressStore.refreshAddressesIfNeeded();
+            await addressStore.getAddresses();
         }
 
         // 启动倒计时更新
@@ -246,8 +253,13 @@ const startCountdown = () => {
         clearInterval(countdownTimer.value);
     }
 
+    // 更新初始倒计时
+    timeRemaining.value = calculateTimeRemaining();
+
     // 每秒更新倒计时
     countdownTimer.value = window.setInterval(() => {
+        timeRemaining.value = calculateTimeRemaining();
+
         // 当倒计时接近结束时(小于3分钟)，尝试刷新临时订单有效期
         if (timeRemaining.value > 0 && timeRemaining.value < 180) {
             refreshTempOrder();
@@ -263,10 +275,12 @@ const startCountdown = () => {
 
 // 刷新临时订单有效期
 const refreshTempOrder = async () => {
-    if (!tempOrder.value || tempOrderStore.isExpired) return;
+    if (!tempOrder.value || timeRemaining.value <= 0) return;
 
     try {
-        await tempOrderStore.refreshTempOrder();
+        await tempOrderStore.refreshTempOrder(tempOrder.value.id);
+        // 更新倒计时
+        timeRemaining.value = calculateTimeRemaining();
     } catch (err) {
         console.error('刷新订单失败:', err);
     }
@@ -281,7 +295,7 @@ const formatCountdown = (seconds: number): string => {
 
 // 提交订单
 const submitOrder = async () => {
-    if (!isReadyToSubmit.value || isSubmitting.value) return;
+    if (!isReadyToSubmit.value || isSubmitting.value || !tempOrder.value) return;
 
     if (!selectedAddressId.value) {
         toast.error('请选择收货地址');
@@ -291,15 +305,12 @@ const submitOrder = async () => {
     isSubmitting.value = true;
 
     try {
-        // 更新临时订单
-        await tempOrderStore.updateTempOrder({
-            addressId: selectedAddressId.value,
-            paymentType: selectedPaymentType.value,
-            remark: orderRemark.value
-        });
-
         // 确认临时订单
-        const order = await tempOrderStore.confirmTempOrder();
+        const order = await tempOrderStore.confirmTempOrder(tempOrder.value.id);
+
+        if (!order) {
+            throw new Error('提交订单失败');
+        }
 
         // 跳转到支付页面
         router.push({
@@ -320,23 +331,21 @@ const goBack = () => {
 };
 
 // 页面加载时初始化
-onMounted(() => {
-    loadTempOrder();
+onMounted(async () => {
+    // 初始化store
+    await Promise.all([
+        tempOrderStore.init(),
+        addressStore.init()
+    ]);
+
+    // 加载订单数据
+    await loadTempOrder();
 });
 
 // 清理倒计时
 onUnmounted(() => {
     if (countdownTimer.value) {
         clearInterval(countdownTimer.value);
-    }
-
-    // 清理资源
-    if (tempOrderStore.dispose) {
-        tempOrderStore.dispose();
-    }
-
-    if (addressStore.dispose) {
-        addressStore.dispose();
     }
 });
 </script>

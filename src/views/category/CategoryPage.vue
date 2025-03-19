@@ -13,8 +13,17 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue';
 import PageTitle from '@/components/common/PageTitle.vue';
 import Disclosure from '@/components/category/Disclosure.vue';
+import { useProductStore } from '@/stores/product.store';
 
+const productStore = useProductStore();
 
+onMounted(async () => {
+    // 确保产品存储已初始化
+    if (!productStore.categoriesLoaded) {
+        await productStore.init();
+    }
+});
 </script>

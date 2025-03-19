@@ -85,12 +85,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Heart, ShoppingCart, Trash2 } from 'lucide-vue-next';
 import { useFavoriteStore } from '@/stores/favorite.store';
 import { useToast } from '@/composables/useToast';
-import PageTitle from '@/components/common/PageTitle.vue'; 
+import PageTitle from '@/components/common/PageTitle.vue';
 import type { Product } from '@/types/product.type';
 import { getFormattedPrice } from '@/utils/price.utils';
 
@@ -165,12 +165,12 @@ const removeFavorite = async (productId: number) => {
     try {
         const success = await favoriteStore.removeFavorite(productId);
         if (success) {
-            toast.success('Removed from favorites');
+            toast.success('已从收藏中移除');
         } else {
-            toast.error('Failed to remove from favorites');
+            toast.error('移除收藏失败');
         }
     } catch (error: any) {
-        toast.error(error.message || 'Failed to remove from favorites');
+        toast.error(error.message || '移除收藏失败');
     }
 };
 
@@ -192,7 +192,7 @@ const batchRemoveFavorites = async () => {
 
         const success = await favoriteStore.batchRemoveFavorites({ productIds });
         if (success) {
-            toast.success(`Removed ${productIds.length} items from favorites`);
+            toast.success(`已移除${productIds.length}项收藏`);
             // 清空选择
             selectedItems.value = [];
             // 如果已经没有收藏了，退出编辑模式
@@ -200,10 +200,10 @@ const batchRemoveFavorites = async () => {
                 isEditMode.value = false;
             }
         } else {
-            toast.error('Failed to remove items from favorites');
+            toast.error('批量移除收藏失败');
         }
     } catch (error: any) {
-        toast.error(error.message || 'Failed to remove from favorites');
+        toast.error(error.message || '批量移除收藏失败');
     }
 };
 
@@ -211,8 +211,7 @@ const batchRemoveFavorites = async () => {
 const fetchFavorites = async (page = 1) => {
     loading.value = true;
     try {
-        await favoriteStore.refreshFavoritesIfNeeded(true); // 使用新的刷新方法
-        await favoriteStore.fetchFavorites(page, pageSize.value);
+        await favoriteStore.getFavorites(page, pageSize.value);
     } catch (error) {
         toast.error((error as Error).message || '加载收藏失败');
     } finally {
@@ -222,28 +221,16 @@ const fetchFavorites = async (page = 1) => {
 
 // 组件挂载时获取收藏列表
 onMounted(async () => {
-    if (favoriteStore.isInitialized) {
-        loading.value = favorites.value.length === 0;
-        await fetchFavorites();
-    } else if (favoriteStore.isInitializing) {
-        loading.value = true;
-        // 使用 watch 等待初始化完成
-        const unwatch = watch(() => favoriteStore.isInitializing, (isInitializing) => {
-            if (!isInitializing) {
-                unwatch();
-                fetchFavorites();
-            }
-        });
-    } else {
+    loading.value = true;
+    try {
+        // 确保 favoriteStore 已初始化
         await favoriteStore.init();
-        await fetchFavorites();
-    }
-});
-
-// 添加 onBeforeUnmount 钩子清理资源
-onBeforeUnmount(() => {
-    if (favoriteStore.dispose) {
-        favoriteStore.dispose();
+        await fetchFavorites(1);
+    } catch (error) {
+        console.error('获取收藏列表失败:', error);
+        toast.error('加载收藏失败');
+    } finally {
+        loading.value = false;
     }
 });
 </script>
