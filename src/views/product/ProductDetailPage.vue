@@ -63,7 +63,7 @@ const favoriteStore = useFavoriteStore();
 
 // 状态
 const loading = ref(true);
-const product = ref<ProductDetail | null>(null);
+const product = ref<ProductDetail>(emptyProduct);
 
 // SKU选择器状态
 const isSkuSelectorOpen = ref(false);
@@ -82,11 +82,14 @@ const fetchProductDetail = async () => {
     loading.value = true;
     
     try {
-        // 获取商品详情
         const productDetail = await productStore.getProductDetail(productId.value);
-        product.value = productDetail;
+        if (productDetail) {
+            product.value = productDetail;
+        }
+        // 如果productDetail为null，保持emptyProduct不变
     } catch (err) {
         console.error('获取商品详情失败:', err);
+        // 出错时product仍然是emptyProduct
     } finally {
         loading.value = false;
     }
@@ -117,8 +120,9 @@ onMounted(async () => {
 });
 
 // 组件卸载前清理资源
+// 修改onUnmounted
 onUnmounted(() => {
-    // 清除当前商品引用，避免内存泄漏
-    product.value = null;
+    // 恢复为emptyProduct而不是设为null
+    product.value = emptyProduct;
 });
 </script>
