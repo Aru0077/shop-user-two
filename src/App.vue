@@ -53,13 +53,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { initializeApp } from '@/utils/app-initializer';
+import { ref, computed, onMounted } from 'vue'; 
 
 import { useRoute } from 'vue-router';
 import { useUiStore } from '@/stores/ui.store';
 import NavBar from './components/common/NavBar.vue';
 import TabBar from './components/common/TabBar.vue';
+import { initializeApp } from '@/utils/app-initializer';
 
 
 const isAppLoading = ref(true);
@@ -82,8 +82,8 @@ const isMobile = computed(() => uiStore.isMobile);
 onMounted(async () => {
     uiStore.initializeScreenSize();
     window.addEventListener('resize', uiStore.handleResize);
-    try {
-        await initializeApp();
+    try { 
+        await initializeApp();  // 调用初始化函数
     } finally {
         // 不管成功失败，1.5秒后关闭启动页
         setTimeout(() => {
