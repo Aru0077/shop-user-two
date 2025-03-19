@@ -1,6 +1,4 @@
 // src/types/order.type.ts
-import type { OrderStatus, PaymentStatus } from '@/types/common.type';
-
 
 // 修正后
 export interface OrderItemSpec {
