@@ -1,7 +1,6 @@
 <template>
-    <nav class="h-[60px] flex justify-between items-center px-4 z-50 transition-colors duration-300 border-b "
+    <nav class="h-[60px] flex justify-between items-center px-4 z-50 transition-colors duration-300 border-b"
         :class="{ 'bg-white/80 backdrop-blur-sm': navbarOptions.showBackground, 'bg-transparent': !navbarOptions.showBackground }">
-        <!-- 导航栏内容保持不变 -->
         <!-- 左侧按钮 Button -->
         <div v-if="navbarOptions.leftButton"
             class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer"
@@ -18,11 +17,13 @@
             @click="handleRightButtonClick">
             <!-- 购物车图标 -->
             <ShoppingCart v-if="navbarOptions.rightButton === 'cart'" class="w-6 h-6 text-black" />
-            <!-- 购物车数量角标 -->
-            <span v-if="navbarOptions.rightButton === 'cart' && cartItemCount > 0"
-                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center px-1">
-                {{ cartItemCount > 99 ? '99+' : cartItemCount }}
-            </span>
+            <!-- 购物车数量角标 - 添加动画效果 -->
+            <transition name="badge-pop">
+                <span v-if="navbarOptions.rightButton === 'cart' && displayCartCount > 0"
+                    class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center px-1 transform origin-center">
+                    {{ displayCartCount > 99 ? '99+' : displayCartCount }}
+                </span>
+            </transition>
             <FilePenLine v-if="navbarOptions.rightButton === 'edit'" class="w-6 h-6 text-black" />
             <Plus v-if="navbarOptions.rightButton === 'add'" class="w-6 h-6 text-black" />
         </div>
@@ -31,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
     ShoppingCart,
@@ -42,8 +43,7 @@ import {
 import LogoIcon from '@/assets/logo.png';
 import { useAddressStore } from '@/stores/address.store';
 import { useCartStore } from '@/stores/cart.store';
-
-
+import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 
 interface NavbarOptions {
     leftButton?: string;
@@ -57,11 +57,23 @@ const router = useRouter();
 const addressStore = useAddressStore();
 const cartStore = useCartStore();
 
+// 创建一个独立的响应式变量跟踪购物车数量
+// 使用ref而不是computed，以便我们可以直接更新它
+const displayCartCount = ref(0);
+
+// 更新显示的购物车数量
+const updateCartCount = () => {
+    displayCartCount.value = cartStore.cartItemCount;
+};
+
 // 计算属性
 const addresses = computed(() => addressStore.addresses);
-const cartItemCount = computed(() => cartStore.cartItemCount); // 获取购物车商品数量
+const cartItemCount = computed(() => cartStore.cartItemCount);
 
-
+// 监听cartItemCount的变化并更新displayCartCount
+const updateDisplayCartCount = () => {
+    displayCartCount.value = cartItemCount.value;
+};
 
 // Default navbar options
 const defaultNavbarOptions: NavbarOptions = {
@@ -77,6 +89,43 @@ const navbarOptions = computed<NavbarOptions>(() => {
         ...defaultNavbarOptions,
         ...routeNavbar
     };
+});
+
+// 监听购物车事件
+const setupCartEventListeners = () => {
+    // 监听购物车更新事件
+    eventBus.on(EVENT_NAMES.CART_UPDATED, updateCartCount);
+
+    // 监听商品添加事件
+    eventBus.on(EVENT_NAMES.CART_ITEM_ADDED, updateCartCount);
+
+    // 监听商品删除事件
+    eventBus.on(EVENT_NAMES.CART_ITEM_DELETED, updateCartCount);
+
+    // 监听商品更新事件
+    eventBus.on(EVENT_NAMES.CART_ITEM_UPDATED, updateCartCount);
+};
+
+// 清理事件监听
+const cleanupCartEventListeners = () => {
+    eventBus.off(EVENT_NAMES.CART_UPDATED, updateCartCount);
+    eventBus.off(EVENT_NAMES.CART_ITEM_ADDED, updateCartCount);
+    eventBus.off(EVENT_NAMES.CART_ITEM_DELETED, updateCartCount);
+    eventBus.off(EVENT_NAMES.CART_ITEM_UPDATED, updateCartCount);
+};
+
+// 组件挂载时设置事件监听
+onMounted(() => {
+    // 初始化显示数量
+    updateDisplayCartCount();
+
+    // 设置事件监听
+    setupCartEventListeners();
+});
+
+// 组件卸载时清理事件监听
+onUnmounted(() => {
+    cleanupCartEventListeners();
 });
 
 // Handle left button click
@@ -123,3 +172,21 @@ const handleRightButtonClick = () => {
     }
 };
 </script>
+
+<style scoped>
+/* 添加角标弹出动画 */
+.badge-pop-enter-active,
+.badge-pop-leave-active {
+    transition: all 0.3s ease;
+}
+
+.badge-pop-enter-from {
+    opacity: 0;
+    transform: scale(0.5) translateY(10px);
+}
+
+.badge-pop-leave-to {
+    opacity: 0;
+    transform: scale(0.5) translateY(-10px);
+}
+</style>

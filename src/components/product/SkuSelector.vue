@@ -229,6 +229,7 @@ const handleAction = async () => {
 };
 
 // 加入购物车
+// 加入购物车
 const handleAddToCart = async () => {
     if (!props.product || !selectedSkuId.value) {
         toast.error('请选择商品规格');
@@ -246,17 +247,26 @@ const handleAddToCart = async () => {
         // 2. 先关闭弹窗提供良好的用户体验
         closeSelector();
         
-        // 3. 添加到购物车并等待结果
-        await cartStore.addToCart(cartData);
+        // 3. 显示加载中的提示
+        toast.info('正在添加到购物车...');
         
-        // 4. 请求成功后才显示成功提示
-        toast.success('添加成功');
+        // 4. 添加到购物车
+        const success = await cartStore.addToCart(cartData);
+        
+        if (success) {
+            // 5. 添加成功后，立即刷新购物车数据
+            await cartStore.getCartList();
+            
+            // 6. 显示成功提示
+            toast.success('商品已添加到购物车');
+        } else {
+            toast.error('添加到购物车失败，请重试');
+        }
     } catch (error) {
         console.error('Adding to cart failed:', error);
         toast.error('添加购物车失败，请重试');
     }
-};
-
+}
 // 立即购买
 const handleBuyNow = async () => {
     if (!props.product || !selectedSkuId.value) return;

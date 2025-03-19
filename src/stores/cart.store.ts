@@ -8,6 +8,7 @@ import { toast } from '@/utils/toast.service';
 import type { CartItem, AddToCartParams, UpdateCartItemParams, PreviewOrderParams, OrderAmountPreview } from '@/types/cart.type';
 import type { ApiError, PaginatedResponse } from '@/types/common.type';
 import { useUserStore } from '@/stores/user.store';
+import { useProductStore } from '@/stores/product.store';
 import { createInitializeHelper } from '@/utils/store-helpers';
 
 /**
@@ -210,9 +211,19 @@ export const useCartStore = defineStore('cart', () => {
     /**
      * 添加商品到购物车
      * @param params 添加购物车参数
+     * @param tempId 临时ID，如果是乐观更新模式则需要提供
      */
-    async function addToCart(params: AddToCartParams): Promise<boolean> {
-        setLoading(true);
+    async function addToCart(params: AddToCartParams, tempId?: number): Promise<boolean> {
+        // 如果是乐观更新模式且没有提供tempId，直接返回成功
+        if (params.optimistic && !tempId) {
+            console.warn('乐观更新模式需要提供tempId');
+            return true;
+        }
+
+        // 如果不是乐观更新模式且未提供tempId，则设置加载状态
+        if (!params.optimistic) {
+            setLoading(true);
+        }
 
         try {
             const response = await api.cartApi.addToCart(params);
@@ -229,6 +240,7 @@ export const useCartStore = defineStore('cart', () => {
                 product: {
                     id: response.cartItem.product.id,
                     name: response.cartItem.product.name,
+                    
                     status: 'ONLINE'
                 },
                 skuData: {
@@ -239,35 +251,88 @@ export const useCartStore = defineStore('cart', () => {
                 isAvailable: true
             };
 
-            // 添加到本地状态
-            addCartItem(newItem);
+            // 如果是乐观更新，替换临时项
+            if (tempId) {
+                // 替换本地状态中的临时项
+                const index = cartItems.value.findIndex(item => item.id === tempId);
+                if (index !== -1) {
+                    cartItems.value[index] = newItem;
+                } else {
+                    // 如果找不到临时项，直接添加
+                    addCartItem(newItem);
+                }
 
-            // 更新本地缓存
-            const cachedCart = storage.getCartData<PaginatedResponse<CartItem>>();
-            if (cachedCart) {
-                cachedCart.data.push(newItem);
-                storage.saveCartData(cachedCart);
+                // 更新本地缓存
+                const cachedCart = storage.getCartData<PaginatedResponse<CartItem>>();
+                if (cachedCart) {
+                    const cacheIndex = cachedCart.data.findIndex(item => item.id === tempId);
+                    if (cacheIndex !== -1) {
+                        cachedCart.data[cacheIndex] = newItem;
+                    } else {
+                        cachedCart.data.push(newItem);
+                    }
+                    storage.saveCartData(cachedCart);
+                }
+            } else {
+                // 非乐观更新模式，直接添加
+                addCartItem(newItem);
+
+                // 更新本地缓存
+                const cachedCart = storage.getCartData<PaginatedResponse<CartItem>>();
+                if (cachedCart) {
+                    cachedCart.data.push(newItem);
+                    storage.saveCartData(cachedCart);
+                }
             }
 
-            // 发布事件
-            eventBus.emit(EVENT_NAMES.CART_ITEM_ADDED, {
-                item: newItem,
-                count: response.cartItemCount,
-                isLowStock: response.isLowStock
-            });
+            // 发布事件，但如果是乐观更新则不需要重复发布
+            if (!tempId) {
+                eventBus.emit(EVENT_NAMES.CART_ITEM_ADDED, {
+                    item: newItem,
+                    count: response.cartItemCount,
+                    isLowStock: response.isLowStock
+                });
 
-            if (response.isLowStock) {
+                if (response.isLowStock) {
+                    toast.warning('该商品库存不足，已添加最大可用数量');
+                } else {
+                    toast.success('商品已添加到购物车');
+                }
+            } else if (response.isLowStock) {
+                // 如果是乐观更新但显示库存不足，仍然需要提示
                 toast.warning('该商品库存不足，已添加最大可用数量');
-            } else {
-                toast.success('商品已添加到购物车');
             }
 
             return true;
         } catch (error: any) {
-            handleError(error, '添加到购物车失败');
+            // 如果是乐观更新且失败，需要回滚本地状态
+            if (tempId) {
+                // 从本地状态中移除临时项
+                cartItems.value = cartItems.value.filter(item => item.id !== tempId);
+
+                // 更新本地缓存
+                const cachedCart = storage.getCartData<PaginatedResponse<CartItem>>();
+                if (cachedCart) {
+                    cachedCart.data = cachedCart.data.filter(item => item.id !== tempId);
+                    storage.saveCartData(cachedCart);
+                }
+
+                // 发布购物车更新事件
+                eventBus.emit(EVENT_NAMES.CART_UPDATED, {
+                    items: cartItems.value,
+                    total: cartItems.value.length
+                });
+
+                // 显示错误提示
+                toast.error('添加到购物车失败，请重试');
+            } else {
+                handleError(error, '添加到购物车失败');
+            }
             return false;
         } finally {
-            setLoading(false);
+            if (!params.optimistic) {
+                setLoading(false);
+            }
         }
     }
 
@@ -425,6 +490,77 @@ export const useCartStore = defineStore('cart', () => {
         }
     }
 
+    /**
+ * 乐观更新：在发送网络请求前先更新本地购物车数据
+ * @param params 添加购物车参数
+ * @returns 临时ID，用于后续更新
+ */
+    function optimisticAddToCart(params: AddToCartParams): number {
+        // 生成临时ID (负数，避免与服务器ID冲突)
+        const tempId = -Date.now();
+
+        // 创建临时购物车项
+        const tempItem: CartItem = {
+            id: tempId,
+            userId: '',  // 临时项不需要userId
+            productId: params.productId,
+            skuId: params.skuId,
+            quantity: params.quantity || 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            isAvailable: true,
+            // 尝试从本地商品缓存获取更多信息
+            product: null,
+            skuData: null,
+        };
+
+        // 尝试从缓存获取商品信息
+        const productStore = useProductStore();
+        const cachedProduct = productStore.cachedProducts.find(p => p.id === params.productId);
+
+        if (cachedProduct) {
+            // 设置产品信息
+            tempItem.product = {
+                id: cachedProduct.id,
+                name: cachedProduct.name,
+                mainImage: cachedProduct.mainImage ?? undefined,
+                status: cachedProduct.status
+            };
+
+            // 设置SKU信息
+            const sku = cachedProduct.skus?.find(s => s.id === params.skuId);
+            if (sku) {
+                tempItem.skuData = {
+                    id: sku.id,
+                    price: sku.price,
+                    promotion_price: sku.promotion_price,
+                    stock: sku.stock, 
+                    sku_specs: sku.sku_specs // 添加SKU规格信息
+                };
+            }
+        }
+
+        // 添加到本地状态
+        addCartItem(tempItem);
+
+        // 更新本地缓存
+        const cachedCart = storage.getCartData<PaginatedResponse<CartItem>>();
+        if (cachedCart) {
+            cachedCart.data.push(tempItem);
+            storage.saveCartData(cachedCart);
+        }
+
+        // 发布购物车项添加事件
+        eventBus.emit(EVENT_NAMES.CART_ITEM_ADDED, {
+            item: tempItem,
+            count: cartItems.value.length,
+            isLowStock: false,
+            isOptimistic: true
+        });
+
+        return tempId;
+    }
+
     // 立即初始化事件监听
     setupEventListeners();
 
@@ -456,6 +592,7 @@ export const useCartStore = defineStore('cart', () => {
         clearCart,
         previewOrderAmount,
         init,
+        optimisticAddToCart,
         isInitialized: initHelper.isInitialized
     };
 });

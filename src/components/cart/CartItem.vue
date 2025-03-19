@@ -17,8 +17,7 @@
 
             <!-- 商品图片 -->
             <div class="w-24 h-24 rounded-lg overflow-hidden mr-3 flex-shrink-0 border border-gray-100">
-                <img :src="item.product?.mainImage || 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png'"
-                    :alt="item.product?.name" class="w-full h-full object-cover" />
+                <img :src="getItemImage()" :alt="item.product?.name" class="w-full h-full object-cover" />
             </div>
 
             <!-- 商品信息 -->
@@ -108,4 +107,20 @@ const formatSpecs = (specs: Array<{ spec: { name: string }, specValue: { value: 
 const updateQuantity = (quantity: number) => {
     emit('update-quantity', props.item.id, quantity);
 };
+
+// 获取商品图片，优先使用SKU图片
+const getItemImage = (): string => {
+    // 优先使用SKU图片
+    if (props.item.skuData?.image) {
+        return props.item.skuData.image;
+    }
+    // 其次使用产品主图
+    if (props.item.product?.mainImage) {
+        return props.item.product.mainImage;
+    }
+    // 最后使用默认图片
+    return 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png';
+};
+
+
 </script>
