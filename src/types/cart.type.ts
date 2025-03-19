@@ -9,21 +9,19 @@ export interface CartItem {
       productId: number;
       skuId: number;
       quantity: number;
-      createdAt: string; 
       updatedAt: string;
-      product?: {
+      product: {
             id: number;
             name: string;
-            mainImage?: string;
+            mainImage: string;
             status: string;
       } | null;
-      skuData?: {
+      skuData: {
             id: number;
             price: number;
-            promotion_price?: number | null;
-            stock?: number;
-            image?: string; 
-            sku_specs?: Array<{
+            promotion_price: number | null;
+            stock: number;
+            sku_specs: Array<{
                   spec: { name: string };
                   specValue: { value: string };
             }>;

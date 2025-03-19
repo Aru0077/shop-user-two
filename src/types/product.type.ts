@@ -49,8 +49,8 @@ export interface Sku {
       skuCode?: string;
       image?: string;
       sku_specs?: SkuSpec[];
-      createdAt?: string; // 添加后端有但前端没有的字段
-      updatedAt?: string; // 添加后端有但前端没有的字段
+      createdAt: string; // 添加后端有但前端没有的字段
+      updatedAt: string; // 添加后端有但前端没有的字段
 }
 
 /**
@@ -60,8 +60,8 @@ export interface Product {
       id: number;
       categoryId: number;
       name: string;
-      content?: string | null;
-      mainImage?: string | null;
+      content?: string;
+      mainImage?: string;
       detailImages?: Record<string, any> | any[] | null;
       is_promotion?: number | null;
       status: ProductStatus;
@@ -81,7 +81,7 @@ export interface Product {
  */
 export interface ProductDetail extends Product {
       specs: Spec[];
-      validSpecCombinations: Record<string, number>;
+      validSpecCombinations: Record<string, { skuId: number, stock: number, price: number }>;
       loadingSkus: boolean; // 必需属性
       skus: Sku[];
 }

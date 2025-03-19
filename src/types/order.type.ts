@@ -56,8 +56,8 @@ export interface OrderBasic {
       id: string;
       orderNo: string;
       userId: string;
-      orderStatus: OrderStatus;
-      paymentStatus: PaymentStatus;
+      orderStatus: number | null;
+      paymentStatus: number | null;
       shippingAddress: ShippingAddress;
       totalAmount: number;
       paymentAmount: number;
@@ -94,8 +94,8 @@ export interface CreateOrderResponse {
       totalAmount: number;
       discountAmount: number;
       paymentAmount: number;
-      orderStatus: OrderStatus;
-      paymentStatus: PaymentStatus;
+      orderStatus: number | null;
+      paymentStatus: number | null;
       createdAt: string;
       timeoutSeconds: number;
       promotion: {

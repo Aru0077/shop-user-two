@@ -11,7 +11,7 @@ export interface UserAddress {
       province: string;
       city: string;
       detailAddress: string;
-      isDefault: number;
+      isDefault?: number;
       createdAt: string;
       updatedAt: string;
 }

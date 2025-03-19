@@ -5,12 +5,12 @@ import type { Product } from '@/types/product.type';
 /**
  * 收藏项
  */
-export interface Favorite {
+export interface UserFavorite {
       id: number;
       userId: string;
       productId: number;
       createdAt: string;
-      product?: Product;
+      product: Product;
 }
 
 /**
@@ -30,7 +30,7 @@ export interface BatchRemoveFavoritesParams {
 /**
  * 收藏列表响应
  */
-export interface FavoritesResponse extends PaginatedResponse<Favorite> { }
+export interface FavoritesResponse extends PaginatedResponse<UserFavorite> { }
 
 /**
  * 收藏ID列表响应

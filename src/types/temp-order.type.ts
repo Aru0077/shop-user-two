@@ -8,7 +8,7 @@ export interface TempOrderItem {
       quantity: number;
       productName: string;
       mainImage: string;
-      skuSpecs: Array<{ specName: string; specValue: string }>;
+      skuSpecs: any[];
       unitPrice: number;
       totalPrice: number;
 }

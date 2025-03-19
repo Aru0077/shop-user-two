@@ -2,7 +2,7 @@
     <Transition name="slide-up">
         <div v-if="isOpen" class="fixed inset-0 z-50 flex items-end justify-center">
             <!-- 透明遮罩层 -->
-            <div class="absolute inset-0 bg-transparent" @click="closeSelector"></div>
+            <div class="absolute inset-0 bg-black bg-opacity-40" @click="closeSelector"></div>
 
             <!-- 弹窗内容 -->
             <div class="relative bg-white rounded-t-3xl w-full min-h-[60vh] max-h-[80vh] flex flex-col z-10 shadow-xl">
@@ -98,7 +98,8 @@ import { useTempOrderStore } from '@/stores/temp-order.store';
 import { toast } from '@/utils/toast.service';
 import { formatPrice } from '@/utils/price.utils';
 import type { ProductDetail, Sku } from '@/types/product.type';
-import { ProductStatus } from '@/types/common.type';
+import type { AddToCartParams } from '@/types/cart.type';
+import type { CreateTempOrderParams } from '@/types/temp-order.type';
 
 // 定义接收的props
 const props = defineProps<{
@@ -110,7 +111,6 @@ const props = defineProps<{
 // 定义事件
 const emit = defineEmits<{
     'update:is-open': [value: boolean];
-    'add-to-cart': [skuId: number, quantity: number];
 }>();
 
 // 引入stores
@@ -160,10 +160,9 @@ const formattedTotalPrice = computed((): string => {
     return formatPrice(totalPrice);
 });
 
-// 判断是否禁用操作按钮
+// 判断是否禁用操作按钮 - 已删除ProductStatus相关判断
 const actionDisabled = computed(() => {
     if (!props.product) return true;
-    if (props.product.status !== ProductStatus.ONLINE) return true;
     if (!selectedSku.value) return true;
     if ((selectedSku.value.stock || 0) <= 0) return true;
     return false;
@@ -182,23 +181,40 @@ const selectSpec = (specId: number, valueId: number) => {
     updateSelectedSku();
 };
 
+// 修复的SKU选择逻辑，适应新的validSpecCombinations格式
 const updateSelectedSku = () => {
     if (!props.product || !props.product.specs) return;
 
+    // 如果所有规格都已选择
     if (selectedSpecs.value.size === props.product.specs.length) {
-        const key = Array.from(selectedSpecs.value.entries())
-            .sort((a, b) => a[0] - b[0])
-            .map(([specId, valueId]) => `${specId}:${valueId}`)
-            .join(';');
+        // 获取所有已选的specValueIds
+        const selectedValueIds = Array.from(selectedSpecs.value.values());
 
-        const skuId = props.product.validSpecCombinations[key];
-        if (skuId) {
-            selectedSkuId.value = skuId;
+        // 尝试所有可能的排列组合找到匹配的SKU
+        // 由于我们不确定validSpecCombinations中键的顺序，所以尝试不同排列
+        for (let i = 0; i < selectedValueIds.length; i++) {
+            for (let j = 0; j < selectedValueIds.length; j++) {
+                if (i !== j) {
+                    // 构建可能的键格式
+                    const possibleKey = `${selectedValueIds[i]}_${selectedValueIds[j]}`;
+                    const combinationInfo = props.product.validSpecCombinations[possibleKey];
 
-            // 获取对应的SKU
-            const sku = props.product.skus.find(s => s.id === skuId);
-            if (sku && quantity.value > (sku.stock || 0)) {
-                quantity.value = Math.max(1, sku.stock || 1);
+                    if (combinationInfo && combinationInfo.skuId) {
+                        selectedSkuId.value = combinationInfo.skuId;
+                        return;
+                    }
+                }
+            }
+        }
+
+        // 如果上面没有找到，再尝试单个值作为键
+        for (const valueId of selectedValueIds) {
+            const singleKey = `${valueId}`;
+            const combinationInfo = props.product.validSpecCombinations[singleKey];
+
+            if (combinationInfo && combinationInfo.skuId) {
+                selectedSkuId.value = combinationInfo.skuId;
+                return;
             }
         }
     }
@@ -274,26 +290,38 @@ const handleAddToCart = async () => {
     }
 
     try {
+        // 确保cartStore已初始化
+        if (!cartStore.isInitialized()) {
+            await cartStore.init();
+        }
+
         // 1. 先关闭弹窗提供良好的用户体验
         closeSelector();
-        
+
         // 2. 显示加载中的提示
         toast.info('正在添加到购物车...');
-        
-        // 3. 调用购物车store的方法
-        const response = await cartStore.addToCart({
+
+        // 3. 构造添加到购物车的参数
+        const params: AddToCartParams = {
             productId: props.product.id,
             skuId: selectedSkuId.value,
             quantity: quantity.value
-        });
+        };
 
-        // 4. 触发事件传递数据
-        emit('add-to-cart', selectedSkuId.value, quantity.value);
-        
-        // 5. 根据结果显示不同提示（注意cartStore已处理提示，这里不需要重复提示）
-    } catch (error) {
+        // 4. 调用购物车store的方法
+        const response = await cartStore.addToCart(params);
+
+        // 5. 处理响应结果
+        if (response) {
+            if (response.isLowStock) {
+                toast.warning(`已加入购物车，但库存不足，仅剩${response.cartItem.sku.stock}件`);
+            } else {
+                toast.success('商品已成功加入购物车');
+            }
+        }
+    } catch (error: any) {
         console.error('添加到购物车失败:', error);
-        toast.error('添加购物车失败，请重试');
+        toast.error(error.message || '添加购物车失败，请重试');
     }
 };
 
@@ -318,28 +346,31 @@ const handleBuyNow = async () => {
         if (!tempOrderStore.isInitialized()) {
             await tempOrderStore.init();
         }
-        
-        // 1. 创建临时订单
-        const tempOrder = await tempOrderStore.createTempOrder({
+
+        // 1. 构造临时订单参数
+        const params: CreateTempOrderParams = {
             mode: 'quick-buy',
             productInfo: {
                 productId: props.product.id,
                 skuId: selectedSkuId.value,
                 quantity: quantity.value
             }
-        });
+        };
 
-        // 添加空值检查：如果临时订单创建失败，提示用户并返回
+        // 2. 创建临时订单
+        const tempOrder = await tempOrderStore.createTempOrder(params);
+
+        // 如果临时订单创建失败，提示用户并返回
         if (!tempOrder) {
             toast.error('创建临时订单失败，请重试');
             return;
         }
 
-        // 2. 跳转到结账页面，带上临时订单ID
+        // 3. 跳转到结账页面，带上临时订单ID
         router.push({
             path: '/checkout',
             query: {
-                tempOrderId: tempOrder.id  
+                tempOrderId: tempOrder.id
             }
         });
     } catch (error) {
@@ -351,27 +382,34 @@ const handleBuyNow = async () => {
     }
 };
 
+// 智能地为每个规格选择最佳的默认值
+const initializeDefaultSelection = () => {
+    if (!props.product || !props.product.skus || props.product.skus.length === 0) return;
+
+    // 先清空已选规格
+    selectedSpecs.value = new Map();
+
+    // 找到有库存的第一个SKU
+    const availableSku = props.product.skus.find(sku => (sku.stock || 0) > 0);
+    if (!availableSku) return;
+
+    // 设置默认选中的SKU
+    selectedSkuId.value = availableSku.id;
+
+    // 如果SKU有规格信息，设置为默认选择
+    if (availableSku.sku_specs && availableSku.sku_specs.length > 0) {
+        availableSku.sku_specs.forEach(skuSpec => {
+            if (skuSpec.spec && skuSpec.specValue) {
+                selectedSpecs.value.set(skuSpec.specId, skuSpec.specValueId);
+            }
+        });
+    }
+};
+
 // 当商品数据变化时重置选择
 watch(() => props.product, (newProduct) => {
     if (newProduct && newProduct.skus && newProduct.skus.length > 0) {
-        // 重置选择
-        selectedSpecs.value = new Map();
-        quantity.value = 1;
-
-        // 默认选择第一个SKU
-        const firstSku = newProduct.skus[0];
-        if (firstSku) {
-            selectedSkuId.value = firstSku.id;
-
-            // 如果有SKU规格，设置默认选择
-            if (firstSku.sku_specs && firstSku.sku_specs.length > 0) {
-                firstSku.sku_specs.forEach(skuSpec => {
-                    if (skuSpec && skuSpec.spec && skuSpec.specValue) {
-                        selectedSpecs.value.set(skuSpec.spec.id, skuSpec.specValue.id);
-                    }
-                });
-            }
-        }
+        initializeDefaultSelection();
     } else {
         // 如果没有SKU，重置所有状态
         selectedSpecs.value = new Map();
@@ -380,12 +418,32 @@ watch(() => props.product, (newProduct) => {
     }
 }, { immediate: true });
 
+// 监听isOpen属性，重置状态
+watch(() => props.isOpen, (newValue) => {
+    if (newValue) {
+        // 当弹窗打开时，重新初始化选择
+        isSubmitting.value = false;
+
+        // 如果没有选中的SKU，尝试重新初始化
+        if (!selectedSkuId.value && props.product) {
+            initializeDefaultSelection();
+        }
+    }
+});
+
 // 组件初始化
 onMounted(async () => {
-    // 确保购物车store已初始化
-    if (userStore.isLoggedIn && !cartStore.isInitialized()) {
-        await cartStore.init();
+    // 确保用户store已初始化
+    if (!userStore.isInitialized()) {
+        try {
+            await userStore.init();
+        } catch (error) {
+            console.error('初始化用户信息失败:', error);
+        }
     }
+
+    // 初始化选择
+    initializeDefaultSelection();
 });
 </script>
 

@@ -153,12 +153,5 @@ onUnmounted(() => {
     currentProduct.value = emptyProduct;
 });
 
-// 刷新商品数据
-const refreshProductData = () => {
-    if (productId.value) {
-        fetchProductDetail(true); // 强制刷新
-    }
-};
-
 
 </script>
