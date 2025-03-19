@@ -72,7 +72,7 @@ const pageTitle = computed(() => {
     if (listType.value === 'latest') return '最新上架';
     if (listType.value === 'topselling') return '热销商品';
     if (listType.value === 'promotion') return '促销商品';
-    if (listType.value.startsWith('category-')) {
+    if (listType.value && listType.value.startsWith('category-')) {
         const categoryId = Number(listType.value.split('-')[1]);
         const category = productStore.categories.find(c => c.id === categoryId);
         return category?.name || '分类商品';
@@ -99,7 +99,7 @@ const loadProducts = async (isLoadMore = false) => {
             newProducts = await productStore.getTopSellingProducts(currentPage.value, pageSize.value);
         } else if (listType.value === 'promotion') {
             newProducts = await productStore.getPromotionProducts(currentPage.value, pageSize.value);
-        } else if (listType.value.startsWith('category-')) {
+        } else if (listType.value && listType.value.startsWith('category-')) {
             const categoryId = Number(listType.value.split('-')[1]);
             newProducts = await productStore.getCategoryProducts(
                 categoryId,
