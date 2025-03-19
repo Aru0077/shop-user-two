@@ -1,190 +1,309 @@
 // src/stores/address.store.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { addressService } from '@/services/address.service';
-import { authService } from '@/services/auth.service';
+import { api } from '@/api/index.api';
+import { storage } from '@/utils/storage';
+import { eventBus, EVENT_NAMES } from '@/core/event-bus';
+import { toast } from '@/utils/toast.service';
 import type { UserAddress, CreateAddressParams, UpdateAddressParams } from '@/types/address.type';
+import type { ApiError } from '@/types/common.type';
+import { useUserStore } from '@/stores/user.store';
 
+/**
+ * 地址状态存储与服务
+ * 集成状态管理和业务逻辑
+ */
 export const useAddressStore = defineStore('address', () => {
-      // 状态
+      // ==================== 状态 ====================
       const addresses = ref<UserAddress[]>([]);
       const loading = ref<boolean>(false);
-      const error = ref<string | null>(null);
 
-      // 初始化状态追踪变量
-      const isInitialized = ref<boolean>(false);
-      const isInitializing = ref<boolean>(false);
+      // ==================== Getters ====================
+      const defaultAddress = computed(() =>
+            addresses.value.find(addr => addr.isDefault === 1) || null
+      );
 
-      // 注册地址变化监听，在组件销毁时取消订阅
-      let unsubscribeAddressChange: (() => void) | null = null;
+      const addressCount = computed(() => addresses.value.length);
 
-      // 计算属性
-      const defaultAddress = computed(() => {
-            return addresses.value.find(address => address.isDefault === 1) || null;
-      });
+      // ==================== 内部工具方法 ====================
+      /**
+       * 处理API错误
+       * @param error API错误
+       * @param customMessage 自定义错误消息
+       */
+      function handleError(error: ApiError, customMessage?: string): void {
+            console.error(`[AddressStore] Error:`, error);
 
-      // 初始化方法
-      async function init() {
-            // 避免重复初始化
-            if (isInitialized.value || isInitializing.value) return;
-            isInitializing.value = true;
+            // 显示错误提示
+            const message = customMessage || error.message || '发生未知错误';
+            toast.error(message);
+      }
 
-            try {
-                  // 监听地址服务的状态变化
-                  if (!unsubscribeAddressChange) {
-                        unsubscribeAddressChange = addressService.onAddressChange((newAddresses) => {
-                              addresses.value = newAddresses;
-                        });
-                  }
+      /**
+       * 设置事件监听
+       */
+      function setupEventListeners(): void {
+            // 监听用户登录事件
+            eventBus.on(EVENT_NAMES.USER_LOGIN, () => {
+                  // 用户登录后获取地址列表
+                  getAddresses();
+            });
 
-                  // 如果已登录，获取地址列表
-                  if (authService.isLoggedIn.value) {
-                        await fetchAddresses();
-                  }
+            // 监听用户登出事件
+            eventBus.on(EVENT_NAMES.USER_LOGOUT, () => {
+                  // 用户登出后清除地址数据
+                  clearAddresses();
+            });
+      }
 
-                  isInitialized.value = true;
-                  return true;
-            } catch (err) {
-                  console.error('地址存储初始化失败:', err);
-                  return false;
-            } finally {
-                  isInitializing.value = false;
+      // ==================== 状态管理方法 ====================
+      /**
+       * 设置地址列表
+       */
+      function setAddresses(addressList: UserAddress[]) {
+            addresses.value = addressList;
+      }
+
+      /**
+       * 添加地址
+       */
+      function addAddress(address: UserAddress) {
+            addresses.value.push(address);
+      }
+
+      /**
+       * 更新地址
+       */
+      function updateAddress(updatedAddress: UserAddress) {
+            const index = addresses.value.findIndex(addr => addr.id === updatedAddress.id);
+            if (index !== -1) {
+                  addresses.value[index] = updatedAddress;
             }
       }
 
-      // 获取地址列表
-      async function fetchAddresses(forceRefresh = false) {
-            if (!authService.isLoggedIn.value) return [];
+      /**
+       * 删除地址
+       */
+      function removeAddress(id: number) {
+            addresses.value = addresses.value.filter(addr => addr.id !== id);
+      }
 
-            loading.value = true;
-            error.value = null;
+      /**
+       * 清除所有地址
+       */
+      function clearAddresses() {
+            addresses.value = [];
+            storage.remove(storage.STORAGE_KEYS.ADDRESSES);
+      }
+
+      /**
+       * 设置加载状态
+       */
+      function setLoading(isLoading: boolean) {
+            loading.value = isLoading;
+      }
+
+      // ==================== 业务逻辑方法（原服务方法）====================
+      /**
+       * 获取用户地址列表
+       */
+      async function getAddresses(): Promise<UserAddress[]> {
+            const userStore = useUserStore();
+            if (!userStore.isLoggedIn) {
+                  return [];
+            }
+
+            setLoading(true);
 
             try {
-                  const response = await addressService.getAddresses(forceRefresh);
-                  addresses.value = response;
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '获取地址失败';
-                  console.error('获取地址失败:', err);
+                  // 尝试从缓存获取
+                  const cachedAddresses = storage.getAddresses<UserAddress[]>();
+                  if (cachedAddresses) {
+                        setAddresses(cachedAddresses);
+                        return cachedAddresses;
+                  }
+
+                  // 从API获取
+                  const fetchedAddresses = await api.addressApi.getAddresses();
+
+                  // 缓存地址列表
+                  storage.saveAddresses(fetchedAddresses);
+
+                  // 更新状态
+                  setAddresses(fetchedAddresses);
+
+                  // 发布地址列表更新事件
+                  eventBus.emit(EVENT_NAMES.ADDRESS_LIST_UPDATED, fetchedAddresses);
+
+                  return fetchedAddresses;
+            } catch (error: any) {
+                  handleError(error, '获取地址列表失败');
                   return [];
             } finally {
-                  loading.value = false;
+                  setLoading(false);
             }
       }
 
-      // 创建地址
-      async function createAddress(params: CreateAddressParams) {
-            loading.value = true;
-            error.value = null;
+      /**
+       * 创建新地址
+       * @param params 创建地址参数
+       */
+      async function createAddress(params: CreateAddressParams): Promise<UserAddress | null> {
+            setLoading(true);
 
             try {
-                  const response = await addressService.createAddress(params);
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '创建地址失败';
-                  throw err;
+                  const newAddress = await api.addressApi.createAddress(params);
+
+                  // 更新本地缓存
+                  const currentAddresses = [...addresses.value];
+                  currentAddresses.push(newAddress);
+                  storage.saveAddresses(currentAddresses);
+
+                  // 更新状态
+                  addAddress(newAddress);
+
+                  // 发布事件
+                  eventBus.emit(EVENT_NAMES.ADDRESS_CREATED, newAddress);
+
+                  toast.success('地址创建成功');
+                  return newAddress;
+            } catch (error: any) {
+                  handleError(error, '创建地址失败');
+                  return null;
             } finally {
-                  loading.value = false;
+                  setLoading(false);
             }
       }
 
-      // 更新地址
-      async function updateAddress(id: number, params: UpdateAddressParams) {
-            loading.value = true;
-            error.value = null;
+      /**
+       * 更新地址
+       * @param id 地址ID
+       * @param params 更新地址参数
+       */
+      async function updateExistingAddress(id: number, params: UpdateAddressParams): Promise<UserAddress | null> {
+            setLoading(true);
 
             try {
-                  const response = await addressService.updateAddress(id, params);
-                  return response;
-            } catch (err: any) {
-                  error.value = err.message || '更新地址失败';
-                  throw err;
+                  const updatedAddress = await api.addressApi.updateAddress(id, params);
+
+                  // 更新状态
+                  updateAddress(updatedAddress);
+
+                  // 更新本地缓存
+                  storage.saveAddresses(addresses.value);
+
+                  // 发布事件
+                  eventBus.emit(EVENT_NAMES.ADDRESS_UPDATED, updatedAddress);
+
+                  toast.success('地址更新成功');
+                  return updatedAddress;
+            } catch (error: any) {
+                  handleError(error, '更新地址失败');
+                  return null;
             } finally {
-                  loading.value = false;
+                  setLoading(false);
             }
       }
 
-      // 删除地址
-      async function deleteAddress(id: number) {
-            loading.value = true;
-            error.value = null;
+      /**
+       * 删除地址
+       * @param id 地址ID
+       */
+      async function deleteAddress(id: number): Promise<boolean> {
+            setLoading(true);
 
             try {
-                  await addressService.deleteAddress(id);
-            } catch (err: any) {
-                  error.value = err.message || '删除地址失败';
-                  throw err;
+                  await api.addressApi.deleteAddress(id);
+
+                  // 更新状态
+                  removeAddress(id);
+
+                  // 更新本地缓存
+                  storage.saveAddresses(addresses.value);
+
+                  // 发布事件
+                  eventBus.emit(EVENT_NAMES.ADDRESS_DELETED, { id });
+
+                  toast.success('地址删除成功');
+                  return true;
+            } catch (error: any) {
+                  handleError(error, '删除地址失败');
+                  return false;
             } finally {
-                  loading.value = false;
+                  setLoading(false);
             }
       }
 
-      // 设置默认地址
-      async function setDefaultAddress(id: number) {
-            loading.value = true;
-            error.value = null;
+      /**
+       * 设置默认地址
+       * @param id 地址ID
+       */
+      async function setDefaultAddress(id: number): Promise<UserAddress | null> {
+            setLoading(true);
 
             try {
-                  await addressService.setDefaultAddress(id);
-            } catch (err: any) {
-                  error.value = err.message || '设置默认地址失败';
-                  throw err;
+                  const updatedAddress = await api.addressApi.setDefaultAddress(id);
+
+                  // 先将所有地址设为非默认
+                  addresses.value.forEach(addr => {
+                        addr.isDefault = 0;
+                  });
+
+                  // 更新状态
+                  updateAddress(updatedAddress);
+
+                  // 更新本地缓存
+                  storage.saveAddresses(addresses.value);
+
+                  // 发布事件
+                  eventBus.emit(EVENT_NAMES.ADDRESS_DEFAULT_CHANGED, updatedAddress);
+
+                  toast.success('已设置默认地址');
+                  return updatedAddress;
+            } catch (error: any) {
+                  handleError(error, '设置默认地址失败');
+                  return null;
             } finally {
-                  loading.value = false;
+                  setLoading(false);
             }
       }
 
-      // 清除地址缓存
-      function clearAddressCache() {
-            addresses.value = [];
-            addressService.clearAddressCache();
-      }
-
-      // 在一定时间后刷新地址
-      async function refreshAddressesIfNeeded(forceRefresh = false) {
-            if (!authService.isLoggedIn.value) return;
-
-            if (addressService.shouldRefreshAddresses(forceRefresh)) {
-                  await fetchAddresses(true);
+      /**
+       * 初始化地址模块
+       */
+      async function init(): Promise<void> {
+            const userStore = useUserStore();
+            if (userStore.isLoggedIn) {
+                  await getAddresses();
             }
       }
 
-      // 重置store状态（用于处理用户登出等情况）
-      function reset() {
-            addresses.value = [];
-            error.value = null;
-            loading.value = false;
-      }
-
-      // 清理store资源（适用于组件销毁时）
-      function dispose() {
-            if (unsubscribeAddressChange) {
-                  unsubscribeAddressChange();
-                  unsubscribeAddressChange = null;
-            }
-      }
+      // 立即初始化存储和事件监听
+      setupEventListeners();
 
       return {
             // 状态
-            isInitialized,
-            isInitializing,
             addresses,
             loading,
-            error,
 
-            // 计算属性
+            // Getters
             defaultAddress,
+            addressCount,
 
-            // 动作
-            init,
-            fetchAddresses,
-            createAddress,
+            // 状态管理方法
+            setAddresses,
+            addAddress,
             updateAddress,
+            removeAddress,
+            setLoading,
+
+            // 业务逻辑方法
+            getAddresses,
+            createAddress,
+            updateExistingAddress,
             deleteAddress,
             setDefaultAddress,
-            clearAddressCache,
-            refreshAddressesIfNeeded,
-            reset,
-            dispose
+            clearAddresses,
+            init
       };
 });
