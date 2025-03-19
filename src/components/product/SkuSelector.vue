@@ -78,7 +78,7 @@
                 <div class="p-4 bg-white">
                     <button type="button" @click="handleAction"
                         class="w-full h-12 rounded-xl bg-black text-white font-medium"
-                        :disabled="!selectedSkuId || isSubmitting">
+                        :disabled="!selectedSkuId || isSubmitting || actionDisabled">
                         <span v-if="!isSubmitting">{{ mode === 'cart' ? '加入购物车' : '立即购买' }}</span>
                         <span v-else>处理中...</span>
                     </button>
@@ -89,18 +89,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { X, Minus, Plus } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
 import { useCartStore } from '@/stores/cart.store';
 import { useUserStore } from '@/stores/user.store';
-import type { ProductDetail, Sku } from '@/types/product.type';
+import { useTempOrderStore } from '@/stores/temp-order.store';
+import { toast } from '@/utils/toast.service';
 import { formatPrice } from '@/utils/price.utils';
-import { useToast } from '@/composables/useToast';
-import { useTempOrderStore } from '@/stores/temp-order.store'
-
-// 注入toast服务
-const toast = useToast();
+import type { ProductDetail, Sku } from '@/types/product.type';
+import { ProductStatus } from '@/types/common.type';
 
 // 定义接收的props
 const props = defineProps<{
@@ -112,19 +110,21 @@ const props = defineProps<{
 // 定义事件
 const emit = defineEmits<{
     'update:is-open': [value: boolean];
+    'add-to-cart': [skuId: number, quantity: number];
 }>();
 
-// 系统状态
+// 引入stores
 const router = useRouter();
-const cartStore = useCartStore();
 const userStore = useUserStore();
+const cartStore = useCartStore();
+const tempOrderStore = useTempOrderStore();
 
 // 内部状态
 const quantity = ref(1);
 const selectedSpecs = ref<Map<number, number>>(new Map());
 const selectedSkuId = ref<number | null>(null);
 const isSubmitting = ref(false);
-const loading = ref(false)
+const loading = ref(false);
 
 // 计算属性
 const selectedSku = computed<Sku | null>(() => {
@@ -141,6 +141,32 @@ const currentImage = computed((): string => {
 const maxStock = computed(() => {
     if (!selectedSku.value) return 10;
     return selectedSku.value.stock || 10;
+});
+
+const formattedTotalPrice = computed((): string => {
+    if (!selectedSku.value) return formatPrice(null);
+
+    let unitPrice;
+    if (selectedSku.value.promotion_price !== undefined &&
+        selectedSku.value.promotion_price !== null &&
+        props.product?.is_promotion === 1) {
+        unitPrice = selectedSku.value.promotion_price;
+    } else {
+        unitPrice = selectedSku.value.price;
+    }
+
+    // 计算总价：单价 × 数量
+    const totalPrice = unitPrice * quantity.value;
+    return formatPrice(totalPrice);
+});
+
+// 判断是否禁用操作按钮
+const actionDisabled = computed(() => {
+    if (!props.product) return true;
+    if (props.product.status !== ProductStatus.ONLINE) return true;
+    if (!selectedSku.value) return true;
+    if ((selectedSku.value.stock || 0) <= 0) return true;
+    return false;
 });
 
 // 方法
@@ -165,12 +191,14 @@ const updateSelectedSku = () => {
             .map(([specId, valueId]) => `${specId}:${valueId}`)
             .join(';');
 
-        const combination = props.product.validSpecCombinations[key];
-        if (combination) {
-            selectedSkuId.value = combination.skuId;
+        const skuId = props.product.validSpecCombinations[key];
+        if (skuId) {
+            selectedSkuId.value = skuId;
 
-            if (quantity.value > combination.stock) {
-                quantity.value = Math.max(1, combination.stock);
+            // 获取对应的SKU
+            const sku = props.product.skus.find(s => s.id === skuId);
+            if (sku && quantity.value > (sku.stock || 0)) {
+                quantity.value = Math.max(1, sku.stock || 1);
             }
         }
     }
@@ -229,44 +257,46 @@ const handleAction = async () => {
 };
 
 // 加入购物车
-// 加入购物车
 const handleAddToCart = async () => {
     if (!props.product || !selectedSkuId.value) {
         toast.error('请选择商品规格');
         return;
     }
 
+    // 检查用户是否登录
+    if (!userStore.isLoggedIn) {
+        router.push({
+            path: '/login',
+            query: { redirect: router.currentRoute.value.fullPath }
+        });
+        closeSelector();
+        return;
+    }
+
     try {
-        // 1. 准备提交的数据
-        const cartData = {
+        // 1. 先关闭弹窗提供良好的用户体验
+        closeSelector();
+        
+        // 2. 显示加载中的提示
+        toast.info('正在添加到购物车...');
+        
+        // 3. 调用购物车store的方法
+        const response = await cartStore.addToCart({
             productId: props.product.id,
             skuId: selectedSkuId.value,
             quantity: quantity.value
-        };
+        });
 
-        // 2. 先关闭弹窗提供良好的用户体验
-        closeSelector();
+        // 4. 触发事件传递数据
+        emit('add-to-cart', selectedSkuId.value, quantity.value);
         
-        // 3. 显示加载中的提示
-        toast.info('正在添加到购物车...');
-        
-        // 4. 添加到购物车
-        const success = await cartStore.addToCart(cartData);
-        
-        if (success) {
-            // 5. 添加成功后，立即刷新购物车数据
-            await cartStore.getCartList();
-            
-            // 6. 显示成功提示
-            toast.success('商品已添加到购物车');
-        } else {
-            toast.error('添加到购物车失败，请重试');
-        }
+        // 5. 根据结果显示不同提示（注意cartStore已处理提示，这里不需要重复提示）
     } catch (error) {
-        console.error('Adding to cart failed:', error);
+        console.error('添加到购物车失败:', error);
         toast.error('添加购物车失败，请重试');
     }
-}
+};
+
 // 立即购买
 const handleBuyNow = async () => {
     if (!props.product || !selectedSkuId.value) return;
@@ -284,8 +314,12 @@ const handleBuyNow = async () => {
     loading.value = true;
 
     try {
+        // 确保临时订单store初始化
+        if (!tempOrderStore.isInitialized()) {
+            await tempOrderStore.init();
+        }
+        
         // 1. 创建临时订单
-        const tempOrderStore = useTempOrderStore();
         const tempOrder = await tempOrderStore.createTempOrder({
             mode: 'quick-buy',
             productInfo: {
@@ -319,7 +353,6 @@ const handleBuyNow = async () => {
 
 // 当商品数据变化时重置选择
 watch(() => props.product, (newProduct) => {
-    // 修复 TypeScript 错误，添加必要的空值检查
     if (newProduct && newProduct.skus && newProduct.skus.length > 0) {
         // 重置选择
         selectedSpecs.value = new Map();
@@ -347,25 +380,13 @@ watch(() => props.product, (newProduct) => {
     }
 }, { immediate: true });
 
-// 添加在其他计算属性后面
-const formattedTotalPrice = computed((): string => {
-    if (!selectedSku.value) return formatPrice(null);
-
-    let unitPrice;
-    if (selectedSku.value.promotion_price !== undefined &&
-        selectedSku.value.promotion_price !== null &&
-        props.product?.is_promotion === 1) {
-        unitPrice = selectedSku.value.promotion_price;
-    } else {
-        unitPrice = selectedSku.value.price;
+// 组件初始化
+onMounted(async () => {
+    // 确保购物车store已初始化
+    if (userStore.isLoggedIn && !cartStore.isInitialized()) {
+        await cartStore.init();
     }
-
-    // 计算总价：单价 × 数量
-    const totalPrice = unitPrice * quantity.value;
-    return formatPrice(totalPrice);
 });
-
-
 </script>
 
 <style scoped>

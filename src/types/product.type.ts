@@ -1,4 +1,3 @@
-// src/types/product.type.ts
 import type { ProductStatus, PaginatedResponse } from '@/types/common.type';
 
 /**
@@ -42,9 +41,9 @@ export interface SkuSpec {
  */
 export interface Sku {
       id: number;
-      productId: number;
       price: number;
-      promotion_price?: number | null;
+      promotion_price?: number;
+      productId: number;
       stock?: number;
       lockedStock?: number; 
       skuCode?: string;
@@ -82,8 +81,9 @@ export interface Product {
  */
 export interface ProductDetail extends Product {
       specs: Spec[];
-      validSpecCombinations: Record<string, { skuId: number, stock: number, price: number }>;
+      validSpecCombinations: Record<string, number>;
       loadingSkus: boolean; // 必需属性
+      skus: Sku[];
 }
 
 /**

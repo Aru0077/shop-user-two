@@ -35,7 +35,7 @@
                 <div class="flex justify-between items-end mt-2">
                     <!-- 价格 -->
                     <div class="text-red-500 font-bold">
-                        {{ formatPrice(item.skuData?.promotion_price || item.skuData?.price) }}
+                        {{ formatPrice(getItemPrice()) }}
                     </div>
 
                     <!-- 非编辑模式下的数量显示 -->
@@ -67,9 +67,6 @@
 import { Trash2 } from 'lucide-vue-next';
 import type { CartItem } from '@/types/cart.type';
 import QuantityAdjuster from './QuantityAdjuster.vue';
-// import { useCartStore } from '@/stores/cart.store';
-
-// const cartStore = useCartStore();
 
 const props = defineProps({
     item: {
@@ -91,6 +88,14 @@ const emit = defineEmits<{
     'update-quantity': [id: number, quantity: number];
     'remove': [id: number];
 }>();
+
+// 获取商品价格（优先使用促销价格）
+const getItemPrice = (): number | undefined => {
+    if (!props.item.skuData) return undefined;
+    return props.item.skuData.promotion_price !== undefined && props.item.skuData.promotion_price !== null
+        ? props.item.skuData.promotion_price
+        : props.item.skuData.price;
+};
 
 // 格式化价格
 const formatPrice = (price?: number): string => {
@@ -119,8 +124,6 @@ const getItemImage = (): string => {
         return props.item.product.mainImage;
     }
     // 最后使用默认图片
-    return 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png';
+    return 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png'; // 添加默认图片URL
 };
-
-
 </script>
