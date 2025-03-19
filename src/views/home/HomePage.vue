@@ -72,7 +72,7 @@ onMounted(async () => {
         // 确保 productStore 已初始化
         await productStore.init();
         // 获取首页数据
-        await productStore.getHomePageData();
+        await productStore.loadHomePageData();
     } catch (err) {
         console.error('加载首页数据失败:', err);
         error.value = err.message || '加载数据失败';

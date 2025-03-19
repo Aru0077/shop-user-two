@@ -84,12 +84,6 @@ const openSkuSelector = (mode: 'cart' | 'buy') => {
         return;
     }
 
-    // 检查商品状态
-    if (currentProduct.value.status !== ProductStatus.ONLINE) {
-        toast.warning('商品当前不可购买');
-        return;
-    }
-
     selectorMode.value = mode;
     isSkuSelectorOpen.value = true;
 };
@@ -151,11 +145,6 @@ const initializeStores = async () => {
 onMounted(async () => {
     // 初始化必要的stores
     await initializeStores();
-
-    // 获取商品详情
-    if (productId.value) {
-        fetchProductDetail();
-    }
 });
 
 // 组件卸载前清理资源
