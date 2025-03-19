@@ -65,42 +65,42 @@ const username = computed(() => userStore.user?.username || '未登录');
 // 菜单列表
 const menuList = [
     {
-        name: '我的地址',
+        name: 'My Addresses',
         path: '/address',
         icon: 'MapPin'
     },
     {
-        name: '我的订单',
+        name: 'My Orders',
         path: '/order',
         icon: 'ShoppingBag'
     },
     {
-        name: '我的购物车',
+        name: 'My Cart',
         path: '/cart',
         icon: 'ShoppingCart'
     },
     {
-        name: '我的收藏',
+        name: 'My Favorites',
         path: '/favorite',
         icon: 'Heart'
     },
     {
-        name: '隐私政策',
+        name: 'Privacy Policy',
         path: '/privacy-policy',
         icon: 'Shield'
     },
     {
-        name: '服务条款',
+        name: 'Terms of Service',
         path: '/terms-of-service',
         icon: 'FileText'
     },
     {
-        name: '删除账号',
+        name: 'Delete Account',
         path: '/delete-account',
         icon: 'UserX'
     },
     {
-        name: '退出登录',
+        name: 'Log Out',
         path: '',
         icon: 'LogOut'
     },

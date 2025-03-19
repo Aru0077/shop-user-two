@@ -240,6 +240,19 @@ export const useFavoriteStore = defineStore('favorite', () => {
                         storage.saveFavoriteIds(cachedIds);
                   }
 
+                  // 添加以下代码更新收藏列表缓存
+                  const cachedList = storage.getFavoritesList<FavoritesResponse>();
+                  if (cachedList && cachedList.data) {
+                        // 创建一个新的收藏项
+                        const newFavorite: Favorite = {
+                              id: Date.now(), // 临时ID，实际应使用API返回的ID
+                              userId: '', // 应填入实际用户ID
+                              productId: params.productId,
+                              createdAt: new Date().toISOString()
+                        };
+                        cachedList.data.push(newFavorite);
+                        storage.saveFavoritesList(cachedList);
+                  }
                   // 发布事件
                   eventBus.emit(EVENT_NAMES.FAVORITE_ADDED, { productId: params.productId });
 
@@ -276,6 +289,12 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   // 更新收藏列表
                   setFavorites(favorites.value.filter(item => item.productId !== productId));
 
+                  // 添加以下代码更新收藏列表缓存
+                  const cachedList = storage.getFavoritesList<FavoritesResponse>();
+                  if (cachedList && cachedList.data) {
+                        cachedList.data = cachedList.data.filter(item => item.productId !== productId);
+                        storage.saveFavoritesList(cachedList);
+                  }
                   // 发布事件
                   eventBus.emit(EVENT_NAMES.FAVORITE_REMOVED, { productId });
 

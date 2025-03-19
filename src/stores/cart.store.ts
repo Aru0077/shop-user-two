@@ -242,6 +242,13 @@ export const useCartStore = defineStore('cart', () => {
             // 添加到本地状态
             addCartItem(newItem);
 
+            // 更新本地缓存
+            const cachedCart = storage.getCartData<PaginatedResponse<CartItem>>();
+            if (cachedCart) {
+                cachedCart.data.push(newItem);
+                storage.saveCartData(cachedCart);
+            }
+
             // 发布事件
             eventBus.emit(EVENT_NAMES.CART_ITEM_ADDED, {
                 item: newItem,
@@ -281,6 +288,16 @@ export const useCartStore = defineStore('cart', () => {
             // 发布事件
             eventBus.emit(EVENT_NAMES.CART_ITEM_UPDATED, updatedItem);
 
+            // 更新本地缓存
+            const cachedCart = storage.getCartData<PaginatedResponse<CartItem>>();
+            if (cachedCart) {
+                const index = cachedCart.data.findIndex(item => item.id === id);
+                if (index !== -1) {
+                    cachedCart.data[index].quantity = params.quantity;
+                    storage.saveCartData(cachedCart);
+                }
+            }
+
             return true;
         } catch (error: any) {
             handleError(error, '更新购物车失败');
@@ -303,8 +320,22 @@ export const useCartStore = defineStore('cart', () => {
             // 更新本地状态
             removeCartItem(id);
 
+            // 更新本地缓存
+            const cachedCart = storage.getCartData<PaginatedResponse<CartItem>>();
+            if (cachedCart) {
+                cachedCart.data = cachedCart.data.filter(item => item.id !== id);
+                cachedCart.total = Math.max(0, cachedCart.total - 1);
+                storage.saveCartData(cachedCart);
+            }
+
             // 发布事件
             eventBus.emit(EVENT_NAMES.CART_ITEM_DELETED, { id });
+
+            // 额外触发购物车更新事件，确保所有监听组件都能更新
+            eventBus.emit(EVENT_NAMES.CART_UPDATED, {
+                items: cartItems.value,
+                total: cartItems.value.length
+            });
 
             toast.success('商品已从购物车移除');
             return true;

@@ -94,6 +94,8 @@ const toggleFavorite = async () => {
             // 添加收藏
             success = await favoriteStore.addFavorite({ productId });
             if (success) {
+                // 收藏操作成功后刷新状态
+                await favoriteStore.getFavoriteIds();
                 toast.success('收藏成功');
             } else {
                 toast.error('收藏失败，请重试');

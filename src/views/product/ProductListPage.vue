@@ -69,9 +69,9 @@ const hasMore = ref(true);
 // 列表类型和标题
 const listType = computed(() => route.params.type as string);
 const pageTitle = computed(() => {
-    if (listType.value === 'latest') return '最新上架';
-    if (listType.value === 'topselling') return '热销商品';
-    if (listType.value === 'promotion') return '促销商品';
+    if (listType.value === 'latest') return 'New Arrivals';
+    if (listType.value === 'topselling') return 'Best Sellers';
+    if (listType.value === 'promotion') return 'On Sale';
     if (listType.value && listType.value.startsWith('category-')) {
         const categoryId = Number(listType.value.split('-')[1]);
         const category = productStore.categories.find(c => c.id === categoryId);
@@ -151,15 +151,15 @@ const goToHome = () => {
 onMounted(async () => {
     // 初始化productStore
     await productStore.init();
-    
+
     // 如果是分类页面且分类数据为空，获取分类树
     if (listType.value.startsWith('category-') && productStore.categories.length === 0) {
         await productStore.getCategoryTree();
     }
-    
+
     // 加载商品列表
     resetAndLoad();
-    
+
     // 监听路由变化
     watch(() => route.params.type, () => {
         resetAndLoad();

@@ -95,6 +95,17 @@ export const useCheckoutStore = defineStore('checkout', () => {
      */
     function setSelectedAddressId(addressId: number | null) {
         selectedAddressId.value = addressId;
+        // 更新本地缓存
+        const cachedInfo = storage.getCheckoutInfo<CheckoutInfo>();
+        if (cachedInfo && checkoutInfo.value) {
+            // 因为缓存中没有选中状态字段，可以考虑扩展CheckoutInfo类型
+            // 或创建一个新的存储项专门保存选中状态
+            storage.set(
+                'checkout_selected_address',
+                addressId,
+                storage.STORAGE_EXPIRY.CHECKOUT_INFO
+            );
+        }
     }
 
     /**
@@ -102,6 +113,16 @@ export const useCheckoutStore = defineStore('checkout', () => {
      */
     function setSelectedPaymentType(paymentType: string | null) {
         selectedPaymentType.value = paymentType;
+       // 更新本地缓存
+        const cachedInfo = storage.getCheckoutInfo<CheckoutInfo>();
+        if (cachedInfo && checkoutInfo.value) {
+            // 因为缓存中没有选中状态字段，可以考虑扩展CheckoutInfo类型
+            // 或创建一个新的存储项专门保存选中状态
+            storage.set(
+                'checkout_selected_address', 
+                storage.STORAGE_EXPIRY.CHECKOUT_INFO
+            );
+        }
     }
 
     /**
@@ -109,6 +130,16 @@ export const useCheckoutStore = defineStore('checkout', () => {
      */
     function setRemark(orderRemark: string) {
         remark.value = orderRemark;
+        // 更新本地缓存
+        const cachedInfo = storage.getCheckoutInfo<CheckoutInfo>();
+        if (cachedInfo && checkoutInfo.value) {
+            // 因为缓存中没有选中状态字段，可以考虑扩展CheckoutInfo类型
+            // 或创建一个新的存储项专门保存选中状态
+            storage.set(
+                'checkout_selected_address', 
+                storage.STORAGE_EXPIRY.CHECKOUT_INFO
+            );
+        }
     }
 
     /**
@@ -138,7 +169,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
         if (!userStore.isLoggedIn) {
             return null;
         }
-        
+
         if (loading.value) {
             return checkoutInfo.value;
         }

@@ -162,7 +162,7 @@ export const useOrderStore = defineStore('order', () => {
         if (loading.value) {
             return orders.value;
         }
-        
+
         setLoading(true);
 
         try {
@@ -343,10 +343,12 @@ export const useOrderStore = defineStore('order', () => {
                     orderStatus: 5 // 已取消状态
                 };
                 updateOrder(updatedOrder);
+             
             }
 
             toast.success('订单已取消');
             return true;
+
         } catch (error: any) {
             handleError(error, '取消订单失败');
             return false;
