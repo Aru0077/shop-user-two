@@ -74,8 +74,24 @@ const pageTitle = computed(() => {
     if (listType.value === 'promotion') return 'On Sale';
     if (listType.value && listType.value.startsWith('category-')) {
         const categoryId = Number(listType.value.split('-')[1]);
-        const category = productStore.categories.find(c => c.id === categoryId);
-        return category?.name || '分类商品';
+
+        // 先检查是否为顶级分类
+        let foundCategory = productStore.categories.find(c => c.id === categoryId);
+        if (foundCategory) {
+            return foundCategory.name;
+        }
+
+        // 如果不是顶级分类，在子分类中查找
+        for (const parentCategory of productStore.categories) {
+            if (parentCategory.children) {
+                const subCategory = parentCategory.children.find(c => c.id === categoryId);
+                if (subCategory) {
+                    return subCategory.name;
+                }
+            }
+        }
+
+        return '分类商品';
     }
     return '商品列表';
 });

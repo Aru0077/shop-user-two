@@ -80,7 +80,7 @@ const initCategories = async () => {
 // 导航到分类
 const navigateToCategory = (category) => {
     router.push({
-        path: `/category/${category.id}`,
+        path: `/product-list/category-${category.id}`,
         query: { name: category.name }
     });
 };
