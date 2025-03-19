@@ -122,6 +122,7 @@ const defaultOptions: StorageOptions = {
 export class StorageService {
       private options: StorageOptions;
       public STORAGE_KEYS = STORAGE_KEYS;
+      public STORAGE_EXPIRY = STORAGE_EXPIRY;
 
       constructor(options: StorageOptions = {}) {
             this.options = { ...defaultOptions, ...options };

@@ -1,224 +1,233 @@
 // src/stores/checkout.store.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { checkoutService } from '@/services/checkout.service';
-import { authService } from '@/services/auth.service';
-import type { CheckoutInfo } from '@/types/checkout.type';
-import type { OrderAmountPreview, PreviewOrderParams } from '@/types/cart.type';
+import { api } from '@/api/index.api';
+import { storage } from '@/utils/storage';
+import { eventBus, EVENT_NAMES } from '@/core/event-bus';
+import { toast } from '@/utils/toast.service';
+import type { CheckoutInfo, PaymentMethod } from '@/types/checkout.type';
+import type { UserAddress } from '@/types/address.type';
+import type { Promotion } from '@/types/promotion.type';
+import type { ApiError } from '@/types/common.type';
+import { useUserStore } from '@/stores/user.store';
+import { useAddressStore } from '@/stores/address.store';
 
+/**
+ * 结算状态存储与服务
+ * 集成状态管理和业务逻辑
+ */
 export const useCheckoutStore = defineStore('checkout', () => {
-    // 状态
+    // ==================== 状态 ====================
     const checkoutInfo = ref<CheckoutInfo | null>(null);
-    const orderPreview = ref<OrderAmountPreview | null>(null);
-    const selectedAddressId = ref<number | null>(null);
-    const selectedPaymentType = ref<string>('');
-    const remark = ref<string>('');
     const loading = ref<boolean>(false);
-    const error = ref<string | null>(null);
-    const lastFetchTime = ref<number>(0);
-    // 添加初始化状态跟踪变量
-    const isInitialized = ref<boolean>(false);
-    const isInitializing = ref<boolean>(false);
+    const selectedAddressId = ref<number | null>(null);
+    const selectedPaymentType = ref<string | null>(null);
+    const remark = ref<string>('');
 
-    // 不再使用 eventBus，而是直接获取 authService 的状态
-    const isUserLoggedIn = computed(() => authService.isLoggedIn.value);
+    // ==================== Getters ====================
+    const addresses = computed<UserAddress[]>(() => checkoutInfo.value?.addresses || []);
+    const defaultAddressId = computed<number | null>(() => checkoutInfo.value?.defaultAddressId || null);
+    const availablePromotions = computed<Promotion[]>(() => checkoutInfo.value?.availablePromotions || []);
+    const paymentMethods = computed<PaymentMethod[]>(() => checkoutInfo.value?.paymentMethods || []);
+    const preferredPaymentType = computed<string>(() => checkoutInfo.value?.preferredPaymentType || '');
 
-    // 注册结算信息变化监听，在组件销毁时取消订阅
-    let unsubscribeCheckoutChange: (() => void) | null = null;
-    let unsubscribePreviewChange: (() => void) | null = null;
-
-    // 计算属性
-    const isReadyToCheckout = computed(() => {
-        return !!selectedAddressId.value && !!selectedPaymentType.value;
+    const selectedAddress = computed<UserAddress | null>(() => {
+        const addressId = selectedAddressId.value || defaultAddressId.value;
+        if (!addressId) return null;
+        return addresses.value.find(addr => addr.id === addressId) || null;
     });
 
-    // 初始化结算信息
-    async function initCheckout(forceRefresh = false) {
-        if (!isUserLoggedIn.value) return;
+    // ==================== 内部工具方法 ====================
+    /**
+     * 处理API错误
+     * @param error API错误
+     * @param customMessage 自定义错误消息
+     */
+    function handleError(error: ApiError, customMessage?: string): void {
+        console.error(`[CheckoutStore] Error:`, error);
 
-        // 避免重复初始化
-        if (isInitializing.value) return;
-        if (isInitialized.value && !forceRefresh) return;
+        // 显示错误提示
+        const message = customMessage || error.message || '发生未知错误';
+        toast.error(message);
+    }
 
-        isInitializing.value = true;
+    /**
+     * 设置事件监听
+     */
+    function setupEventListeners(): void {
+        // 监听地址更新事件
+        eventBus.on(EVENT_NAMES.ADDRESS_LIST_UPDATED, () => {
+            refreshCheckoutInfo();
+        });
 
-        try {
-            // 监听结算服务的状态变化
-            if (!unsubscribeCheckoutChange) {
-                unsubscribeCheckoutChange = checkoutService.onCheckoutChange((newCheckoutInfo) => {
-                    checkoutInfo.value = newCheckoutInfo;
-
-                    // 设置默认值
-                    if (newCheckoutInfo?.defaultAddressId && !selectedAddressId.value) {
-                        selectedAddressId.value = newCheckoutInfo.defaultAddressId;
-                    }
-
-                    if (newCheckoutInfo?.preferredPaymentType && !selectedPaymentType.value) {
-                        selectedPaymentType.value = newCheckoutInfo.preferredPaymentType;
-                    } else if (newCheckoutInfo?.paymentMethods?.length && !selectedPaymentType.value) {
-                        selectedPaymentType.value = newCheckoutInfo.paymentMethods[0].id;
-                    }
-                });
+        // 监听默认地址变更事件
+        eventBus.on(EVENT_NAMES.ADDRESS_DEFAULT_CHANGED, (address: UserAddress) => {
+            if (checkoutInfo.value) {
+                checkoutInfo.value.defaultAddressId = address.id;
             }
+        });
+    }
 
-            if (!unsubscribePreviewChange) {
-                unsubscribePreviewChange = checkoutService.onPreviewChange((newPreview) => {
-                    orderPreview.value = newPreview;
-                });
-            }
+    // ==================== 状态管理方法 ====================
+    /**
+     * 设置结算信息
+     */
+    function setCheckoutInfo(info: CheckoutInfo | null) {
+        checkoutInfo.value = info;
 
-            // 初始化结算服务
-            await checkoutService.init();
-            lastFetchTime.value = Date.now();
+        // 如果有默认地址，自动选择
+        if (info && info.defaultAddressId) {
+            selectedAddressId.value = info.defaultAddressId;
+        }
 
-            isInitialized.value = true;
-            return checkoutInfo.value;
-        } catch (err) {
-            console.error('结算初始化失败:', err);
-            return null;
-        } finally {
-            isInitializing.value = false;
+        // 如果有首选支付方式，自动选择
+        if (info && info.preferredPaymentType) {
+            selectedPaymentType.value = info.preferredPaymentType;
         }
     }
 
-    // 预览订单金额
-    async function previewOrderAmount(params: PreviewOrderParams) {
-        loading.value = true;
-        error.value = null;
-
-        try {
-            const preview = await checkoutService.previewOrderAmount(params);
-            return preview;
-        } catch (err: any) {
-            error.value = err.message || '预览订单金额失败';
-            throw err;
-        } finally {
-            loading.value = false;
-        }
-    }
-
-    // 从购物车预览
-    async function previewFromCart(cartItemIds: number[]) {
-        loading.value = true;
-        error.value = null;
-
-        try {
-            const preview = await checkoutService.previewFromCart(cartItemIds);
-            return preview;
-        } catch (err: any) {
-            error.value = err.message || '预览订单金额失败';
-            throw err;
-        } finally {
-            loading.value = false;
-        }
-    }
-
-    // 从商品详情预览
-    async function previewFromProduct(productId: number, skuId: number, quantity: number) {
-        loading.value = true;
-        error.value = null;
-
-        try {
-            const preview = await checkoutService.previewFromProduct(productId, skuId, quantity);
-            return preview;
-        } catch (err: any) {
-            error.value = err.message || '预览订单金额失败';
-            throw err;
-        } finally {
-            loading.value = false;
-        }
-    }
-
-    // 设置选中的地址
-    function setSelectedAddress(addressId: number) {
+    /**
+     * 设置选中的地址ID
+     */
+    function setSelectedAddressId(addressId: number | null) {
         selectedAddressId.value = addressId;
     }
 
-    // 设置支付方式
-    function setPaymentType(paymentType: string) {
+    /**
+     * 设置选中的支付方式
+     */
+    function setSelectedPaymentType(paymentType: string | null) {
         selectedPaymentType.value = paymentType;
     }
 
-    // 设置订单备注
-    function setRemark(text: string) {
-        remark.value = text;
+    /**
+     * 设置订单备注
+     */
+    function setRemark(orderRemark: string) {
+        remark.value = orderRemark;
     }
 
-    // 重置结算状态
-    function resetCheckout() {
-        orderPreview.value = null;
-        remark.value = '';
-        // 不重置地址和支付方式，保留用户首选项
+    /**
+     * 设置加载状态
+     */
+    function setLoading(isLoading: boolean) {
+        loading.value = isLoading;
     }
 
-    // 清除结算缓存
-    function clearCheckoutCache() {
-        checkoutService.clearCheckoutCache();
-    }
-
-    // 在一定时间后刷新结算信息
-    async function refreshCheckoutIfNeeded(forceRefresh = false) {
-        if (!isUserLoggedIn.value) return;
-
-        if (checkoutService.shouldRefreshCheckout(forceRefresh)) {
-            await initCheckout(true);
-        }
-    }
-
-    // 清理资源
-    function dispose() {
-        if (unsubscribeCheckoutChange) {
-            unsubscribeCheckoutChange();
-            unsubscribeCheckoutChange = null;
-        }
-
-        if (unsubscribePreviewChange) {
-            unsubscribePreviewChange();
-            unsubscribePreviewChange = null;
-        }
-    }
-
-    function reset() {
+    /**
+     * 清除结算数据
+     */
+    function clearCheckoutData() {
         checkoutInfo.value = null;
-        orderPreview.value = null;
         selectedAddressId.value = null;
-        selectedPaymentType.value = '';
+        selectedPaymentType.value = null;
         remark.value = '';
-        loading.value = false;
-        error.value = null;
-        lastFetchTime.value = 0;
-        isInitialized.value = false;
+        storage.remove(storage.STORAGE_KEYS.CHECKOUT_INFO);
     }
+
+    // ==================== 业务逻辑方法 ====================
+    /**
+     * 获取结算信息
+     */
+    async function getCheckoutInfo(): Promise<CheckoutInfo | null> {
+        const userStore = useUserStore();
+        if (!userStore.isLoggedIn) {
+            return null;
+        }
+
+        setLoading(true);
+
+        try {
+            // 尝试从缓存获取
+            const cachedInfo = storage.getCheckoutInfo<CheckoutInfo>();
+            if (cachedInfo) {
+                setCheckoutInfo(cachedInfo);
+                return cachedInfo;
+            }
+
+            // 从API获取
+            const info = await api.checkoutApi.getCheckoutInfo();
+
+            // 缓存结算信息
+            storage.saveCheckoutInfo(info);
+
+            // 更新状态
+            setCheckoutInfo(info);
+
+            return info;
+        } catch (error: any) {
+            handleError(error, '获取结算信息失败');
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * 刷新结算信息
+     */
+    async function refreshCheckoutInfo(): Promise<CheckoutInfo | null> {
+        // 删除缓存强制刷新
+        storage.remove(storage.STORAGE_KEYS.CHECKOUT_INFO);
+        return getCheckoutInfo();
+    }
+
+    /**
+     * 创建临时订单前准备
+     */
+    function prepareCheckoutData() {
+        return {
+            addressId: selectedAddressId.value || defaultAddressId.value,
+            paymentType: selectedPaymentType.value || preferredPaymentType.value,
+            remark: remark.value
+        };
+    }
+
+    /**
+     * 初始化结算模块
+     */
+    async function init(): Promise<void> {
+        const userStore = useUserStore();
+        if (userStore.isLoggedIn) {
+            // 初始化地址Store
+            const addressStore = useAddressStore();
+            await addressStore.init();
+
+            // 获取结算信息
+            await getCheckoutInfo();
+        }
+    }
+
+    // 立即初始化事件监听
+    setupEventListeners();
 
     return {
         // 状态
-        isInitialized,
-        isInitializing,
         checkoutInfo,
-        orderPreview,
+        loading,
         selectedAddressId,
         selectedPaymentType,
         remark,
-        loading,
-        error,
-        lastFetchTime,
 
-        // 计算属性
-        isReadyToCheckout,
-        isUserLoggedIn,
+        // Getters
+        addresses,
+        defaultAddressId,
+        availablePromotions,
+        paymentMethods,
+        preferredPaymentType,
+        selectedAddress,
 
-        // 动作
-        initCheckout,
-        previewOrderAmount,
-        previewFromCart,
-        previewFromProduct,
-        setSelectedAddress,
-        setPaymentType,
+        // 状态管理方法
+        setSelectedAddressId,
+        setSelectedPaymentType,
         setRemark,
-        resetCheckout,
-        clearCheckoutCache,
-        refreshCheckoutIfNeeded,
-        dispose,
-        reset
+        setLoading,
+
+        // 业务逻辑方法
+        getCheckoutInfo,
+        refreshCheckoutInfo,
+        prepareCheckoutData,
+        clearCheckoutData,
+        init
     };
 });

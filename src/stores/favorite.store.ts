@@ -1,234 +1,373 @@
 // src/stores/favorite.store.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { favoriteService } from '@/services/favorite.service';
-import { authService } from '@/services/auth.service';
-import type { Favorite, AddFavoriteParams, BatchRemoveFavoritesParams } from '@/types/favorite.type';
+import { api } from '@/api/index.api';
+import { storage } from '@/utils/storage';
+import { eventBus, EVENT_NAMES } from '@/core/event-bus';
+import { toast } from '@/utils/toast.service';
+import type { Favorite, AddFavoriteParams, BatchRemoveFavoritesParams, FavoritesResponse, FavoriteIdsResponse } from '@/types/favorite.type';
+import type { ApiError } from '@/types/common.type';
+import { useUserStore } from '@/stores/user.store';
 
+/**
+ * 收藏状态存储与服务
+ * 集成状态管理和业务逻辑
+ */
 export const useFavoriteStore = defineStore('favorite', () => {
-      // 状态
+      // ==================== 状态 ====================
       const favorites = ref<Favorite[]>([]);
       const favoriteIds = ref<number[]>([]);
-      const totalFavorites = ref<number>(0);
       const loading = ref<boolean>(false);
-      const error = ref<string | null>(null);
-      const lastFetchTime = ref<number>(0);
-      // 添加初始化状态跟踪变量
-      const isInitialized = ref<boolean>(false);
-      const isInitializing = ref<boolean>(false);
+      const total = ref<number>(0);
+      const page = ref<number>(1);
+      const limit = ref<number>(10);
 
-      // 不再使用 eventBus，而是直接获取 authService 的状态
-      const isUserLoggedIn = computed(() => authService.isLoggedIn.value);
+      // ==================== Getters ====================
+      const favoriteCount = computed(() => favoriteIds.value.length);
 
-      // 注册收藏变化监听，在组件销毁时取消订阅
-      let unsubscribeFavoritesChange: (() => void) | null = null;
-      let unsubscribeFavoriteIdsChange: (() => void) | null = null;
+      const isFavorite = (productId: number) => favoriteIds.value.includes(productId);
 
-      // 计算属性
-      const hasFavorites = computed(() => favoriteIds.value.length > 0);
+      // ==================== 内部工具方法 ====================
+      /**
+       * 处理API错误
+       * @param error API错误
+       * @param customMessage 自定义错误消息
+       */
+      function handleError(error: ApiError, customMessage?: string): void {
+            console.error(`[FavoriteStore] Error:`, error);
 
-      // 初始化
-      async function init() {
-            if (!isUserLoggedIn.value) return;
+            // 显示错误提示
+            const message = customMessage || error.message || '发生未知错误';
+            toast.error(message);
+      }
 
-            // 避免重复初始化
-            if (isInitialized.value || isInitializing.value) return;
-            isInitializing.value = true;
+      /**
+       * 设置事件监听
+       */
+      function setupEventListeners(): void {
+            // 监听用户登录事件
+            eventBus.on(EVENT_NAMES.USER_LOGIN, () => {
+                  // 用户登录后获取收藏ID列表
+                  getFavoriteIds();
+            });
 
-            try {
-                  // 监听收藏服务的状态变化
-                  if (!unsubscribeFavoritesChange) {
-                        unsubscribeFavoritesChange = favoriteService.onFavoritesChange((newFavorites) => {
-                              favorites.value = newFavorites;
-                              totalFavorites.value = newFavorites.length;
-                        });
-                  }
+            // 监听用户登出事件
+            eventBus.on(EVENT_NAMES.USER_LOGOUT, () => {
+                  // 用户登出后清除收藏数据
+                  clearFavoriteData();
+            });
+      }
 
-                  if (!unsubscribeFavoriteIdsChange) {
-                        unsubscribeFavoriteIdsChange = favoriteService.onFavoriteIdsChange((newIds) => {
-                              favoriteIds.value = newIds;
-                              totalFavorites.value = newIds.length;
-                        });
-                  }
+      // ==================== 状态管理方法 ====================
+      /**
+       * 设置收藏列表
+       */
+      function setFavorites(favsList: Favorite[]) {
+            favorites.value = favsList;
+      }
 
-                  // 初始化收藏服务
-                  await favoriteService.init();
+      /**
+       * 设置收藏ID列表
+       */
+      function setFavoriteIds(ids: number[]) {
+            favoriteIds.value = ids;
+      }
 
-                  isInitialized.value = true;
-                  return true;
-            } catch (err) {
-                  console.error('收藏初始化失败:', err);
-                  return false;
-            } finally {
-                  isInitializing.value = false;
+      /**
+       * 设置分页信息
+       */
+      function setPagination(totalItems: number, currentPage: number, pageLimit: number) {
+            total.value = totalItems;
+            page.value = currentPage;
+            limit.value = pageLimit;
+      }
+
+      /**
+       * 添加收藏ID
+       */
+      function addFavoriteId(productId: number) {
+            if (!favoriteIds.value.includes(productId)) {
+                  favoriteIds.value.push(productId);
             }
       }
 
-      // 获取收藏ID列表
-      async function fetchFavoriteIds(forceRefresh = false) {
-            if (!isUserLoggedIn.value) return [];
-
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const ids = await favoriteService.getFavoriteIds(forceRefresh);
-                  lastFetchTime.value = Date.now();
-                  return ids;
-            } catch (err: any) {
-                  error.value = err.message || '获取收藏ID失败';
-                  console.error('获取收藏ID失败:', err);
-                  return [];
-            } finally {
-                  loading.value = false;
-            }
+      /**
+       * 移除收藏ID
+       */
+      function removeFavoriteId(productId: number) {
+            favoriteIds.value = favoriteIds.value.filter(id => id !== productId);
       }
 
-      // 获取收藏列表
-      async function fetchFavorites(page: number = 1, limit: number = 10, forceRefresh = false) {
-            if (!isUserLoggedIn.value) return null;
-
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const data = await favoriteService.getFavorites(page, limit, forceRefresh);
-                  return {
-                        data,
-                        total: totalFavorites.value,
-                        page,
-                        limit
-                  };
-            } catch (err: any) {
-                  error.value = err.message || '获取收藏列表失败';
-                  console.error('获取收藏列表失败:', err);
-                  return null;
-            } finally {
-                  loading.value = false;
-            }
+      /**
+       * 批量移除收藏ID
+       */
+      function batchRemoveFavoriteIds(productIds: number[]) {
+            favoriteIds.value = favoriteIds.value.filter(id => !productIds.includes(id));
       }
 
-      // 添加收藏
-      async function addFavorite(params: AddFavoriteParams) {
-            if (!isUserLoggedIn.value) return false;
-
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const success = await favoriteService.addFavorite(params);
-                  return success;
-            } catch (err: any) {
-                  error.value = err.message || '添加收藏失败';
-                  return false;
-            } finally {
-                  loading.value = false;
-            }
+      /**
+       * 设置加载状态
+       */
+      function setLoading(isLoading: boolean) {
+            loading.value = isLoading;
       }
 
-      // 移除收藏
-      async function removeFavorite(productId: number) {
-            if (!isUserLoggedIn.value) return false;
-
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const success = await favoriteService.removeFavorite(productId);
-                  return success;
-            } catch (err: any) {
-                  error.value = err.message || '移除收藏失败';
-                  return false;
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      // 批量移除收藏
-      async function batchRemoveFavorites(params: BatchRemoveFavoritesParams) {
-            if (!isUserLoggedIn.value) return false;
-
-            loading.value = true;
-            error.value = null;
-
-            try {
-                  const success = await favoriteService.batchRemoveFavorites(params);
-                  return success;
-            } catch (err: any) {
-                  error.value = err.message || '批量移除收藏失败';
-                  return false;
-            } finally {
-                  loading.value = false;
-            }
-      }
-
-      // 检查商品是否已收藏
-      async function isFavorite(productId: number) {
-            return favoriteService.isFavorite(productId);
-      }
-
-      // 清除收藏缓存
-      function clearFavoriteCache() {
-            favoriteService.clearFavoriteCache();
-      }
-
-      // 在一定时间后刷新收藏
-      async function refreshFavoritesIfNeeded(forceRefresh = false) {
-            if (!isUserLoggedIn.value) return;
-
-            if (favoriteService.shouldRefreshFavorites(forceRefresh)) {
-                  await fetchFavoriteIds(true);
-            }
-      }
-
-      // 清理资源
-      function dispose() {
-            if (unsubscribeFavoritesChange) {
-                  unsubscribeFavoritesChange();
-                  unsubscribeFavoritesChange = null;
-            }
-
-            if (unsubscribeFavoriteIdsChange) {
-                  unsubscribeFavoriteIdsChange();
-                  unsubscribeFavoriteIdsChange = null;
-            }
-      }
-      function reset() {
+      /**
+       * 清除收藏数据
+       */
+      function clearFavoriteData() {
             favorites.value = [];
             favoriteIds.value = [];
-            totalFavorites.value = 0;
-            error.value = null;
-            loading.value = false;
-            lastFetchTime.value = 0;
-            isInitialized.value = false;  // 重置初始化状态
+            total.value = 0;
+            page.value = 1;
+            storage.remove(storage.STORAGE_KEYS.FAVORITES_LIST);
+            storage.remove(storage.STORAGE_KEYS.FAVORITE_IDS);
       }
+
+      // ==================== 业务逻辑方法 ====================
+      /**
+       * 获取收藏列表
+       * @param currentPage 页码
+       * @param pageLimit 每页数量
+       */
+      async function getFavorites(currentPage: number = 1, pageLimit: number = 10): Promise<Favorite[]> {
+            const userStore = useUserStore();
+            if (!userStore.isLoggedIn) {
+                  return [];
+            }
+
+            setLoading(true);
+
+            try {
+                  // 尝试从缓存获取
+                  const cachedFavorites = storage.getFavoritesList<FavoritesResponse>();
+                  if (cachedFavorites && cachedFavorites.page === currentPage && cachedFavorites.limit === pageLimit) {
+                        setFavorites(cachedFavorites.data);
+                        setPagination(cachedFavorites.total, cachedFavorites.page, cachedFavorites.limit);
+                        return cachedFavorites.data;
+                  }
+
+                  // 从API获取
+                  const response = await api.favoriteApi.getFavorites(currentPage, pageLimit);
+
+                  // 缓存收藏列表
+                  storage.saveFavoritesList(response);
+
+                  // 更新状态
+                  setFavorites(response.data);
+                  setPagination(response.total, response.page, response.limit);
+
+                  // 发布收藏更新事件
+                  eventBus.emit(EVENT_NAMES.FAVORITE_UPDATED, {
+                        favorites: response.data,
+                        total: response.total
+                  });
+
+                  return response.data;
+            } catch (error: any) {
+                  handleError(error, '获取收藏列表失败');
+                  return [];
+            } finally {
+                  setLoading(false);
+            }
+      }
+
+      /**
+       * 获取收藏ID列表
+       */
+      async function getFavoriteIds(): Promise<number[]> {
+            const userStore = useUserStore();
+            if (!userStore.isLoggedIn) {
+                  return [];
+            }
+
+            setLoading(true);
+
+            try {
+                  // 尝试从缓存获取
+                  const cachedIds = storage.getFavoriteIds<FavoriteIdsResponse>();
+                  if (cachedIds) {
+                        setFavoriteIds(cachedIds.data);
+                        return cachedIds.data;
+                  }
+
+                  // 从API获取
+                  const response = await api.favoriteApi.getFavoriteIds();
+
+                  // 缓存收藏ID列表
+                  storage.saveFavoriteIds(response);
+
+                  // 更新状态
+                  setFavoriteIds(response.data);
+
+                  return response.data;
+            } catch (error: any) {
+                  handleError(error, '获取收藏ID列表失败');
+                  return [];
+            } finally {
+                  setLoading(false);
+            }
+      }
+
+      /**
+       * 添加收藏
+       * @param params 添加收藏参数
+       */
+      async function addFavorite(params: AddFavoriteParams): Promise<boolean> {
+            setLoading(true);
+
+            try {
+                  await api.favoriteApi.addFavorite(params);
+
+                  // 更新本地状态
+                  addFavoriteId(params.productId);
+
+                  // 更新本地缓存
+                  const cachedIds = storage.getFavoriteIds<FavoriteIdsResponse>();
+                  if (cachedIds) {
+                        cachedIds.data.push(params.productId);
+                        storage.saveFavoriteIds(cachedIds);
+                  }
+
+                  // 发布事件
+                  eventBus.emit(EVENT_NAMES.FAVORITE_ADDED, { productId: params.productId });
+
+                  toast.success('已添加到收藏');
+                  return true;
+            } catch (error: any) {
+                  handleError(error, '添加收藏失败');
+                  return false;
+            } finally {
+                  setLoading(false);
+            }
+      }
+
+      /**
+       * 取消收藏
+       * @param productId 商品ID
+       */
+      async function removeFavorite(productId: number): Promise<boolean> {
+            setLoading(true);
+
+            try {
+                  await api.favoriteApi.removeFavorite(productId);
+
+                  // 更新本地状态
+                  removeFavoriteId(productId);
+
+                  // 更新本地缓存
+                  const cachedIds = storage.getFavoriteIds<FavoriteIdsResponse>();
+                  if (cachedIds) {
+                        cachedIds.data = cachedIds.data.filter(id => id !== productId);
+                        storage.saveFavoriteIds(cachedIds);
+                  }
+
+                  // 更新收藏列表
+                  setFavorites(favorites.value.filter(item => item.productId !== productId));
+
+                  // 发布事件
+                  eventBus.emit(EVENT_NAMES.FAVORITE_REMOVED, { productId });
+
+                  toast.success('已取消收藏');
+                  return true;
+            } catch (error: any) {
+                  handleError(error, '取消收藏失败');
+                  return false;
+            } finally {
+                  setLoading(false);
+            }
+      }
+
+      /**
+       * 批量取消收藏
+       * @param params 批量取消收藏参数
+       */
+      async function batchRemoveFavorites(params: BatchRemoveFavoritesParams): Promise<boolean> {
+            setLoading(true);
+
+            try {
+                  await api.favoriteApi.batchRemoveFavorites(params);
+
+                  // 更新本地状态
+                  batchRemoveFavoriteIds(params.productIds);
+
+                  // 更新本地缓存
+                  const cachedIds = storage.getFavoriteIds<FavoriteIdsResponse>();
+                  if (cachedIds) {
+                        cachedIds.data = cachedIds.data.filter(id => !params.productIds.includes(id));
+                        storage.saveFavoriteIds(cachedIds);
+                  }
+
+                  // 更新收藏列表
+                  setFavorites(favorites.value.filter(item => !params.productIds.includes(item.productId)));
+
+                  // 发布事件
+                  eventBus.emit(EVENT_NAMES.FAVORITE_UPDATED, {
+                        favorites: favorites.value,
+                        total: favorites.value.length
+                  });
+
+                  toast.success('已取消选中商品的收藏');
+                  return true;
+            } catch (error: any) {
+                  handleError(error, '批量取消收藏失败');
+                  return false;
+            } finally {
+                  setLoading(false);
+            }
+      }
+
+      /**
+       * 切换收藏状态
+       * @param productId 商品ID
+       */
+      async function toggleFavorite(productId: number): Promise<boolean> {
+            if (isFavorite(productId)) {
+                  return removeFavorite(productId);
+            } else {
+                  return addFavorite({ productId });
+            }
+      }
+
+      /**
+       * 初始化收藏模块
+       */
+      async function init(): Promise<void> {
+            const userStore = useUserStore();
+            if (userStore.isLoggedIn) {
+                  await getFavoriteIds();
+            }
+      }
+
+      // 立即初始化事件监听
+      setupEventListeners();
 
       return {
             // 状态
-            isInitialized,
-            isInitializing,
             favorites,
             favoriteIds,
-            totalFavorites,
             loading,
-            error,
-            lastFetchTime,
+            total,
+            page,
+            limit,
 
-            // 计算属性
-            hasFavorites,
-            isUserLoggedIn,
+            // Getters
+            favoriteCount,
+            isFavorite,
 
-            // 动作
-            init,
-            fetchFavoriteIds,
-            fetchFavorites,
+            // 状态管理方法
+            setFavorites,
+            setFavoriteIds,
+            setLoading,
+            clearFavoriteData,
+
+            // 业务逻辑方法
+            getFavorites,
+            getFavoriteIds,
             addFavorite,
             removeFavorite,
             batchRemoveFavorites,
-            isFavorite,
-            clearFavoriteCache,
-            refreshFavoritesIfNeeded,
-            dispose,
-            reset
+            toggleFavorite,
+            init
       };
 });
