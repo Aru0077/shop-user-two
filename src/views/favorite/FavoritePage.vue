@@ -19,14 +19,7 @@
         </div>
 
         <!-- 空收藏状态 -->
-        <div v-else-if="favorites.length === 0" class="flex flex-col items-center justify-center h-60">
-            <Heart class="w-12 h-12 text-gray-300 mb-2" />
-            <div class="text-gray-500 mb-4">You haven't added any favorites yet</div>
-            <button @click="goToHome" class="bg-black text-white py-2 px-6 rounded-full flex items-center">
-                <ShoppingCart class="w-4 h-4 mr-1" />
-                Continue Shopping
-            </button>
-        </div>
+        <EmptyFavorites v-else-if="favorites.length === 0" @shop-now="goToHome" />
 
         <!-- 收藏列表 -->
         <div v-else>
@@ -93,6 +86,7 @@ import { useToast } from '@/composables/useToast';
 import PageTitle from '@/components/common/PageTitle.vue';
 import type { Product } from '@/types/product.type';
 import { getFormattedPrice } from '@/utils/price.utils';
+import EmptyFavorites from '@/components/favorite/EmptyFavorites.vue';
 
 // 初始化路由和存储
 const router = useRouter();

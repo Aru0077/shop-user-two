@@ -67,7 +67,7 @@ const toggleFavorite = async () => {
     if (!props.product || !props.product.id) return;
 
     // 如果用户未登录或 token 已过期，跳转到登录页
-    if (!userStore.isLoggedIn || !userStore.checkTokenExpiry()) {
+    if (!userStore.isLoggedIn) {
         router.push({
             path: '/login',
             query: { redirect: router.currentRoute.value.fullPath }

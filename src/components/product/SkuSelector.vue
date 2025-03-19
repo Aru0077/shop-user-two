@@ -285,11 +285,17 @@ const handleBuyNow = async () => {
             }
         });
 
+        // 添加空值检查：如果临时订单创建失败，提示用户并返回
+        if (!tempOrder) {
+            toast.error('创建临时订单失败，请重试');
+            return;
+        }
+
         // 2. 跳转到结账页面，带上临时订单ID
         router.push({
             path: '/checkout',
             query: {
-                tempOrderId: tempOrder.id
+                tempOrderId: tempOrder.id  
             }
         });
     } catch (error) {

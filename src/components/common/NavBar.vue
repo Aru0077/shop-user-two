@@ -14,9 +14,15 @@
 
         <!-- 右侧按钮 Button -->
         <div v-if="navbarOptions.rightButton"
-            class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer"
+            class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer relative"
             @click="handleRightButtonClick">
+            <!-- 购物车图标 -->
             <ShoppingCart v-if="navbarOptions.rightButton === 'cart'" class="w-6 h-6 text-black" />
+            <!-- 购物车数量角标 -->
+            <span v-if="navbarOptions.rightButton === 'cart' && cartItemCount > 0"
+                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center px-1">
+                {{ cartItemCount > 99 ? '99+' : cartItemCount }}
+            </span>
             <FilePenLine v-if="navbarOptions.rightButton === 'edit'" class="w-6 h-6 text-black" />
             <Plus v-if="navbarOptions.rightButton === 'add'" class="w-6 h-6 text-black" />
         </div>
@@ -35,6 +41,7 @@ import {
 } from 'lucide-vue-next';
 import LogoIcon from '@/assets/logo.png';
 import { useAddressStore } from '@/stores/address.store';
+import { useCartStore } from '@/stores/cart.store';
 
 
 
@@ -48,9 +55,11 @@ interface NavbarOptions {
 const route = useRoute();
 const router = useRouter();
 const addressStore = useAddressStore();
+const cartStore = useCartStore();
 
 // 计算属性
 const addresses = computed(() => addressStore.addresses);
+const cartItemCount = computed(() => cartStore.cartItemCount); // 获取购物车商品数量
 
 
 

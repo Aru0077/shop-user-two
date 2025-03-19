@@ -158,6 +158,11 @@ export const useCartStore = defineStore('cart', () => {
      */
     async function getCartList(currentPage: number = 1, pageLimit: number = 10): Promise<CartItem[]> {
         const userStore = useUserStore();
+
+        console.log('购物车获取数据 - 用户登录状态:', userStore.isLoggedIn);
+        console.log('购物车获取数据 - 用户Token:', userStore.token ? '存在' : '不存在');
+
+
         if (!userStore.isLoggedIn) {
             return [];
         }
@@ -374,11 +379,16 @@ export const useCartStore = defineStore('cart', () => {
         try {
             const userStore = useUserStore();
             if (userStore.isLoggedIn) {
+                console.info('用户已登录，获取购物车数据');
                 await getCartList();
+            } else {
+                console.info('用户未登录，跳过购物车数据获取');
             }
+
             // 初始化成功
             initHelper.completeInitialization();
         } catch (error) {
+            console.error('购物车初始化失败:', error);
             initHelper.failInitialization(error);
             throw error;
         }

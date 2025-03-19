@@ -97,8 +97,10 @@ export const useUserStore = defineStore('user', () => {
                   setToken(storedToken);
                   setUser(userInfo);
 
-                  // 发布用户登录事件，通知其他模块用户已登录
+                  // 发布用户登录事件，通知其他模块用户已登录 
                   eventBus.emit(EVENT_NAMES.USER_LOGIN, { user: userInfo, token: storedToken });
+                  // 增加日志帮助调试
+                  console.info('已恢复用户登录状态:', userInfo.username);
             }
       }
 
@@ -132,7 +134,7 @@ export const useUserStore = defineStore('user', () => {
       async function login(params: LoginParams): Promise<LoginResponse | null> {
             if (loading.value) {
                   return null; // 登录操作不应重复，直接返回null
-              }
+            }
             setLoading(true);
 
             try {

@@ -38,25 +38,31 @@ export class ServiceInitializer {
                   const userStore = useUserStore();
                   await userStore.init();
 
-                  // 2. 初始化基础数据模块
-                  const stores = [
-                        useAddressStore(),
+                  // 2. 初始化基础数据模块（所有用户共用，不依赖登录状态）
+                  const baseStores = [
                         useProductStore(),
                         usePromotionStore()
                   ];
 
                   // 并行初始化基础模块
-                  await Promise.all(stores.map(store => store.init()));
+                  await Promise.all(baseStores.map(store => store.init()));
 
-                  // 3. 初始化用户关联数据模块
-                  const userDataStores = [
-                        useCartStore(),
-                        useFavoriteStore(),
-                        useTempOrderStore()
-                  ];
+                  // 3. 根据登录状态初始化用户相关数据模块
+                  if (userStore.isLoggedIn) {
+                        console.info('用户已登录，初始化用户相关数据模块');
 
-                  // 并行初始化用户数据模块
-                  await Promise.all(userDataStores.map(store => store.init()));
+                        const userDataStores = [
+                              useAddressStore(),
+                              useCartStore(),
+                              useFavoriteStore(),
+                              useTempOrderStore()
+                        ];
+
+                        // 并行初始化用户数据模块
+                        await Promise.all(userDataStores.map(store => store.init()));
+                  } else {
+                        console.info('用户未登录，跳过用户相关数据模块初始化');
+                  }
 
                   // 发布核心服务初始化完成事件
                   eventBus.emit(EVENT_NAMES.CORE_SERVICES_READY);
