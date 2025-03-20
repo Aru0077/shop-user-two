@@ -25,6 +25,7 @@ import { ArrowLeft, ShoppingCart } from 'lucide-vue-next'
 import { useRouter } from 'vue-router';
 import { useCartStore } from '@/stores/cart.store';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
+import { useUserStore } from '@/stores/user.store';
 
 // 定义组件属性
 defineProps({
@@ -36,6 +37,7 @@ defineProps({
 
 const router = useRouter();
 const cartStore = useCartStore();
+const userStore = useUserStore();
 
 // 购物车数量计算属性
 const cartItemCount = computed(() => cartStore.totalCount);
@@ -47,9 +49,12 @@ const displayCartCount = computed(() => {
 
 // 更新购物车数量
 const updateCartCount = () => {
-    // 确保购物车store已初始化
-    if (!cartStore.isInitialized()) {
-        cartStore.init();
+    // 只有在用户已登录的情况下才初始化购物车
+    if (userStore.isLoggedIn) {
+        // 确保购物车store已初始化
+        if (!cartStore.isInitialized()) {
+            cartStore.init();
+        }
     }
 };
 

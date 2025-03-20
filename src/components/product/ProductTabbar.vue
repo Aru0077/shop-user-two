@@ -84,16 +84,11 @@ const toggleFavorite = async () => {
 
         if (isFavorite.value) {
             // 取消收藏
-            const success = await favoriteStore.removeFavorite(productId);
-            if (success) {
-                toast.success('已取消收藏');
-            } else {
-                toast.error('取消收藏失败，请重试');
-            }
+            await favoriteStore.removeFavorite(productId);
+
         } else {
             // 添加收藏
-            await favoriteStore.addFavorite(productId);
-            toast.success('收藏成功');
+            await favoriteStore.addFavorite(productId); 
         }
     } catch (error) {
         console.error('收藏操作失败:', error);

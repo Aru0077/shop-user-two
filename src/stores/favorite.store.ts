@@ -156,38 +156,55 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   return null;
             }
 
+            // 如果已经收藏，直接返回
+            if (isFavorite(productId)) {
+                  toast.info('该商品已经收藏');
+                  return null;
+            }
+
+            // 备份原始状态，用于失败时恢复
+            const originalFavoriteIds = [...favoriteIds.value];
+
             try {
+                  // 乐观更新：先更新本地状态
+                  favoriteIds.value.push(productId);
+
+                  // 更新本地缓存
+                  storage.saveFavoriteIds(favoriteIds.value);
+
+                  // 发布事件，通知UI更新
+                  eventBus.emit(EVENT_NAMES.FAVORITE_UPDATED, favoriteIds.value);
+
+                  // 显示提示（可选，也可以等API请求完成后再显示）
+                  toast.success('收藏成功');
+
+                  // 然后发送API请求
                   loading.value = true;
                   error.value = null;
-
-                  // 如果已经收藏，直接返回
-                  if (isFavorite(productId)) {
-                        toast.info('该商品已经收藏');
-                        return null;
-                  }
-
                   const params: AddFavoriteParams = { productId };
                   const newFavorite = await favoriteApi.addFavorite(params);
-
-                  // 更新本地状态
-                  favoriteIds.value.push(productId);
 
                   // 如果已加载详情列表，则添加到列表中
                   if (favorites.value.length > 0) {
                         favorites.value.unshift(newFavorite);
                   }
 
-                  // 更新本地缓存
-                  storage.saveFavoriteIds(favoriteIds.value);
-
-                  // 发布事件
+                  // 发布添加收藏事件
                   eventBus.emit(EVENT_NAMES.FAVORITE_ADDED, newFavorite);
-                  eventBus.emit(EVENT_NAMES.FAVORITE_UPDATED, favoriteIds.value);
 
-                  toast.success('收藏成功');
                   return newFavorite;
             } catch (err: any) {
+                  // 请求失败，回滚本地状态
+                  favoriteIds.value = originalFavoriteIds;
+
+                  // 更新本地缓存为原始状态
+                  storage.saveFavoriteIds(favoriteIds.value);
+
+                  // 再次发布事件，使UI回滚变更
+                  eventBus.emit(EVENT_NAMES.FAVORITE_UPDATED, favoriteIds.value);
+
                   handleError(err, '添加收藏失败');
+                  toast.error('添加收藏失败，请重试');
                   return null;
             } finally {
                   loading.value = false;
@@ -206,18 +223,17 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   return false;
             }
 
+            // 如果未收藏，直接返回成功
+            if (!isFavorite(productId)) {
+                  return true;
+            }
+
+            // 备份原始状态，用于失败时恢复
+            const originalFavoriteIds = [...favoriteIds.value];
+            const originalFavorites = [...favorites.value];
+
             try {
-                  loading.value = true;
-                  error.value = null;
-
-                  // 如果未收藏，直接返回成功
-                  if (!isFavorite(productId)) {
-                        return true;
-                  }
-
-                  await favoriteApi.removeFavorite(productId);
-
-                  // 更新本地状态
+                  // 乐观更新：先更新本地状态
                   favoriteIds.value = favoriteIds.value.filter(id => id !== productId);
                   favorites.value = favorites.value.filter(item => item.productId !== productId);
 
@@ -228,10 +244,28 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   eventBus.emit(EVENT_NAMES.FAVORITE_REMOVED, productId);
                   eventBus.emit(EVENT_NAMES.FAVORITE_UPDATED, favoriteIds.value);
 
+                  // 显示提示
                   toast.success('已取消收藏');
+
+                  // 然后发送API请求
+                  loading.value = true;
+                  error.value = null;
+                  await favoriteApi.removeFavorite(productId);
+
                   return true;
             } catch (err: any) {
+                  // 请求失败，回滚本地状态
+                  favoriteIds.value = originalFavoriteIds;
+                  favorites.value = originalFavorites;
+
+                  // 更新本地缓存为原始状态
+                  storage.saveFavoriteIds(favoriteIds.value);
+
+                  // 再次发布事件，使UI回滚变更
+                  eventBus.emit(EVENT_NAMES.FAVORITE_UPDATED, favoriteIds.value);
+
                   handleError(err, '取消收藏失败');
+                  toast.error('取消收藏失败，请重试');
                   return false;
             } finally {
                   loading.value = false;
