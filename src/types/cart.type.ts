@@ -21,6 +21,7 @@ export interface CartItem {
             price: number;
             promotion_price: number | null;
             stock: number;
+            image?: string; 
             sku_specs: Array<{
                   spec: { name: string };
                   specValue: { value: string };
