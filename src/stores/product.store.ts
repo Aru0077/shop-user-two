@@ -409,15 +409,49 @@ export const useProductStore = defineStore('product', () => {
     }
 
     /**
-     * 获取完整商品详情（包含SKU信息）
-     * @param id 商品ID
-     */
+  * 获取完整商品详情（包含SKU信息）
+  * @param id 商品ID
+  */
     async function getProductFullDetail(id: number): Promise<ProductDetail | null> {
         try {
             loading.value = true;
             error.value = null;
 
-            // 从API获取
+            // 1. 尝试从本地状态获取
+            if (productDetails.value.has(id)) {
+                const product = productDetails.value.get(id)!;
+
+                // 检查是否包含完整信息（SKU和规格信息）
+                if (product.skus && product.skus.length > 0 && product.specs && product.specs.length > 0) {
+                    console.info(`[ProductStore] 从本地状态获取商品完整信息: ${id}`);
+
+                    // 添加到最近浏览
+                    addToRecentlyViewed(product);
+
+                    return product;
+                }
+            }
+
+            // 2. 尝试从缓存获取
+            const cachedDetail = storage.getProductDetail<ProductDetail>(id);
+            if (cachedDetail) {
+                // 检查缓存中是否包含完整信息
+                if (cachedDetail.skus && cachedDetail.skus.length > 0 &&
+                    cachedDetail.specs && cachedDetail.specs.length > 0) {
+                    console.info(`[ProductStore] 从缓存获取商品完整信息: ${id}`);
+
+                    // 更新本地状态
+                    productDetails.value.set(id, cachedDetail);
+
+                    // 添加到最近浏览
+                    addToRecentlyViewed(cachedDetail);
+
+                    return cachedDetail;
+                }
+            }
+
+            // 3. 缓存中没有完整信息，从API获取
+            console.info(`[ProductStore] 从API获取商品完整信息: ${id}`);
             const detail = await productApi.getProductFullDetail(id);
             productDetails.value.set(id, detail);
 

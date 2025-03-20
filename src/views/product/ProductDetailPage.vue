@@ -99,10 +99,5 @@ onMounted(async () => {
     if (!productStore.isInitialized()) {
         await productStore.init();
     }
-
-    // 有商品ID参数时获取商品详情
-    if (productId.value) {
-        fetchProductDetail();
-    }
 });
 </script>
