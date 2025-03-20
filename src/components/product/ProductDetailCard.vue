@@ -69,9 +69,10 @@ const detailImagesList = computed(() => {
     if (!props.product?.detailImages) return [];
 
     try {
-        // 处理可能是字符串或已经是数组的情况
         if (typeof props.product.detailImages === 'string') {
-            return JSON.parse(props.product.detailImages);
+            // 确保字符串被正确解析为数组
+            const parsed = JSON.parse(props.product.detailImages);
+            return Array.isArray(parsed) ? parsed : [];
         } else if (Array.isArray(props.product.detailImages)) {
             return props.product.detailImages;
         } else {
@@ -88,8 +89,13 @@ const formattedPrice = computed(() => {
     if (!props.product?.skus?.length) return formatPrice(0);
     
     const sku = props.product.skus[0];
+    // 增加安全检查
+    if (!sku) return formatPrice(0);
+    
     // 判断是否有促销价
-    if (props.product.is_promotion === 1 && sku.promotion_price !== undefined && sku.promotion_price !== null) {
+    if (props.product.is_promotion === 1 && 
+        sku.promotion_price !== undefined && 
+        sku.promotion_price !== null) {
         return formatPrice(sku.promotion_price);
     }
     return formatPrice(sku.price);

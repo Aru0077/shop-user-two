@@ -73,7 +73,7 @@ const fetchProductDetail = async () => {
 
     try {
         // 使用productStore加载商品详情
-        const product = await productStore.getProductDetail(productId.value);
+        const product = await productStore.getProductFullDetail(productId.value);
 
         if (product) {
             currentProduct.value = product;

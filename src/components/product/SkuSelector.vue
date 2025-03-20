@@ -197,22 +197,23 @@ const updateSelectedSku = () => {
 
     // 如果所有规格都已选择
     if (selectedSpecs.value.size === props.product.specs.length) {
-        const selectedValueIds = Array.from(selectedSpecs.value.values());
+        // 构建键，例如 "1_4"
+        const selectedSpecIds = Array.from(selectedSpecs.value.entries())
+            .map(([_, valueId]) => valueId)
+            .sort()
+            .join('_');
 
-        // 在validSpecCombinations中查找匹配的SKU
-        for (const key in props.product.validSpecCombinations) {
-            // 检查键是否包含所有选中的规格值ID
-            const allValuesIncluded = selectedValueIds.every(valueId =>
-                key.includes(`${valueId}`)
-            );
 
-            if (allValuesIncluded) {
-                const combinationInfo = props.product.validSpecCombinations[key];
-                if (combinationInfo && combinationInfo.skuId) {
-                    selectedSkuId.value = combinationInfo.skuId;
-                    return;
-                }
-            }
+        // 直接尝试匹配组合键
+        const matchedKey = Object.keys(props.product.validSpecCombinations).find(key => {
+            // 将键排序后比较
+            const parts = key.split('_').sort();
+            return parts.join('_') === selectedSpecIds;
+        });
+
+        if (matchedKey && props.product.validSpecCombinations[matchedKey]) {
+            selectedSkuId.value = props.product.validSpecCombinations[matchedKey].skuId;
+            return;
         }
 
         // 尝试其他方法查找SKU
