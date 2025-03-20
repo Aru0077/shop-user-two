@@ -1,71 +1,105 @@
 // src/stores/checkout.store.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { api } from '@/api/index.api';
+import { checkoutApi } from '@/api/checkout.api';
+import { tempOrderApi } from '@/api/temp-order.api';
+import { createInitializeHelper } from '@/utils/store-helpers';
 import { storage } from '@/utils/storage';
-import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import { toast } from '@/utils/toast.service';
-import type { CheckoutInfo, PaymentMethod } from '@/types/checkout.type';
-import type { UserAddress } from '@/types/address.type';
-import type { Promotion } from '@/types/promotion.type';
-import type { ApiError } from '@/types/common.type';
+import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import { useUserStore } from '@/stores/user.store';
 import { useAddressStore } from '@/stores/address.store';
-import { createInitializeHelper } from '@/utils/store-helpers';
-
-// 定义结算选中状态接口
-interface CheckoutSelections {
-    addressId: number | null;
-    paymentType: string | null;
-    remark: string;
-}
-
-// 存储键名
-const CHECKOUT_SELECTIONS = 'checkout_selections';
+import type { CheckoutInfo } from '@/types/checkout.type';
+import type { TempOrder, CreateTempOrderParams } from '@/types/temp-order.type';
+import type { CreateOrderResponse } from '@/types/order.type';
+import type { ApiError } from '@/types/common.type';
 
 /**
- * 结算状态存储与服务
- * 集成状态管理和业务逻辑
+ * 结算状态管理
  */
 export const useCheckoutStore = defineStore('checkout', () => {
-    // 创建初始化
+    // 初始化助手
     const initHelper = createInitializeHelper('CheckoutStore');
 
-    // ==================== 状态 ====================
+    // 状态
     const checkoutInfo = ref<CheckoutInfo | null>(null);
-    const loading = ref<boolean>(false);
+    const tempOrder = ref<TempOrder | null>(null);
     const selectedAddressId = ref<number | null>(null);
-    const selectedPaymentType = ref<string | null>(null);
-    const remark = ref<string>('');
+    const selectedPaymentType = ref<string>('');
+    const orderRemark = ref<string>('');
+    const loading = ref(false);
+    const creatingOrder = ref(false);
+    const confirmingOrder = ref(false);
+    const error = ref<string | null>(null);
 
-    // ==================== Getters ====================
-    const addresses = computed<UserAddress[]>(() => checkoutInfo.value?.addresses || []);
-    const defaultAddressId = computed<number | null>(() => checkoutInfo.value?.defaultAddressId || null);
-    const availablePromotions = computed<Promotion[]>(() => checkoutInfo.value?.availablePromotions || []);
-    const paymentMethods = computed<PaymentMethod[]>(() => checkoutInfo.value?.paymentMethods || []);
-    const preferredPaymentType = computed<string>(() => checkoutInfo.value?.preferredPaymentType || '');
+    // 获取其他store
+    const userStore = useUserStore();
+    const addressStore = useAddressStore();
 
-    const selectedAddress = computed<UserAddress | null>(() => {
-        const addressId = selectedAddressId.value || defaultAddressId.value;
-        if (!addressId) return null;
-        return addresses.value.find(addr => addr.id === addressId) || null;
+    // 计算属性
+    const availableAddresses = computed(() => {
+        return checkoutInfo.value?.addresses || [];
+    });
+
+    const availablePaymentMethods = computed(() => {
+        return checkoutInfo.value?.paymentMethods || [];
+    });
+
+    const availablePromotions = computed(() => {
+        return checkoutInfo.value?.availablePromotions || [];
+    });
+
+    const selectedAddress = computed(() => {
+        if (!selectedAddressId.value) return null;
+        return availableAddresses.value.find(addr => addr.id === selectedAddressId.value) || null;
+    });
+
+    const selectedPaymentMethod = computed(() => {
+        if (!selectedPaymentType.value) return null;
+        return availablePaymentMethods.value.find(method => method.id === selectedPaymentType.value) || null;
+    });
+
+    const orderItems = computed(() => {
+        return tempOrder.value?.items || [];
+    });
+
+    const orderTotalAmount = computed(() => {
+        return tempOrder.value?.totalAmount || 0;
+    });
+
+    const orderDiscountAmount = computed(() => {
+        return tempOrder.value?.discountAmount || 0;
+    });
+
+    const orderPaymentAmount = computed(() => {
+        return tempOrder.value?.paymentAmount || 0;
+    });
+
+    const appliedPromotion = computed(() => {
+        return tempOrder.value?.promotion || null;
+    });
+
+    const orderExpireTime = computed(() => {
+        return tempOrder.value?.expireTime || '';
+    });
+
+    const checkoutReady = computed(() => {
+        return !!selectedAddressId.value && !!selectedPaymentType.value && !!tempOrder.value;
     });
 
     // ==================== 内部工具方法 ====================
     /**
      * 处理API错误
-     * @param error API错误
-     * @param customMessage 自定义错误消息
      */
     function handleError(error: ApiError, customMessage?: string): void {
         console.error(`[CheckoutStore] Error:`, error);
-
-        // 显示错误提示
         const message = customMessage || error.message || '发生未知错误';
         toast.error(message);
     }
 
-    // 添加通用初始化检查方法
+    /**
+     * 确保已初始化
+     */
     async function ensureInitialized(): Promise<void> {
         if (!initHelper.isInitialized()) {
             console.info('[CheckoutStore] 数据未初始化，正在初始化...');
@@ -77,109 +111,26 @@ export const useCheckoutStore = defineStore('checkout', () => {
      * 设置事件监听
      */
     function setupEventListeners(): void {
+        // 监听用户登录事件
+        eventBus.on(EVENT_NAMES.USER_LOGIN, () => {
+            getCheckoutInfo();
+        });
+
+        // 监听用户登出事件
+        eventBus.on(EVENT_NAMES.USER_LOGOUT, () => {
+            clearCheckoutState();
+            initHelper.resetInitialization();
+        });
+
         // 监听地址更新事件
         eventBus.on(EVENT_NAMES.ADDRESS_LIST_UPDATED, () => {
-            refreshCheckoutInfo();
+            getCheckoutInfo();
         });
 
-        // 监听默认地址变更事件
-        eventBus.on(EVENT_NAMES.ADDRESS_DEFAULT_CHANGED, (address: UserAddress) => {
-            if (checkoutInfo.value) {
-                checkoutInfo.value.defaultAddressId = address.id;
-            }
+        // 监听地址默认变更事件
+        eventBus.on(EVENT_NAMES.ADDRESS_DEFAULT_CHANGED, () => {
+            getCheckoutInfo();
         });
-    }
-
-    // ==================== 状态管理方法 ====================
-    /**
-     * 设置结算信息
-     */
-    function setCheckoutInfo(info: CheckoutInfo | null) {
-        checkoutInfo.value = info;
-
-        // 如果有默认地址，自动选择
-        if (info && info.defaultAddressId) {
-            selectedAddressId.value = info.defaultAddressId;
-        }
-
-        // 如果有首选支付方式，自动选择
-        if (info && info.preferredPaymentType) {
-            selectedPaymentType.value = info.preferredPaymentType;
-        }
-    }
-
-    /**
-     * 保存所有选中状态到本地缓存
-     */
-    function saveSelectionsToStorage() {
-        const selections: CheckoutSelections = {
-            addressId: selectedAddressId.value,
-            paymentType: selectedPaymentType.value,
-            remark: remark.value
-        };
-        storage.set(
-            CHECKOUT_SELECTIONS,
-            selections,
-            storage.STORAGE_EXPIRY.CHECKOUT_INFO
-        );
-    }
-
-    /**
-     * 从本地缓存恢复选中状态
-     */
-    function restoreSelectionsFromStorage() {
-        const selections = storage.get<CheckoutSelections>(CHECKOUT_SELECTIONS, null);
-        if (selections) {
-            selectedAddressId.value = selections.addressId;
-            selectedPaymentType.value = selections.paymentType;
-            remark.value = selections.remark || '';
-        }
-    }
-
-    /**
-     * 设置选中的地址ID
-     */
-    function setSelectedAddressId(addressId: number | null) {
-        selectedAddressId.value = addressId;
-        // 更新本地缓存
-        saveSelectionsToStorage();
-    }
-
-    /**
-     * 设置选中的支付方式
-     */
-    function setSelectedPaymentType(paymentType: string | null) {
-        selectedPaymentType.value = paymentType;
-        // 更新本地缓存
-        saveSelectionsToStorage();
-    }
-
-    /**
-     * 设置订单备注
-     */
-    function setRemark(orderRemark: string) {
-        remark.value = orderRemark;
-        // 更新本地缓存
-        saveSelectionsToStorage();
-    }
-
-    /**
-     * 设置加载状态
-     */
-    function setLoading(isLoading: boolean) {
-        loading.value = isLoading;
-    }
-
-    /**
-     * 清除结算数据
-     */
-    function clearCheckoutData() {
-        checkoutInfo.value = null;
-        selectedAddressId.value = null;
-        selectedPaymentType.value = null;
-        remark.value = '';
-        storage.remove(storage.STORAGE_KEYS.CHECKOUT_INFO);
-        storage.remove(CHECKOUT_SELECTIONS);
     }
 
     // ==================== 业务逻辑方法 ====================
@@ -187,97 +138,327 @@ export const useCheckoutStore = defineStore('checkout', () => {
      * 获取结算信息
      */
     async function getCheckoutInfo(): Promise<CheckoutInfo | null> {
-        const userStore = useUserStore();
         if (!userStore.isLoggedIn) {
+            console.info('用户未登录，无法获取结算信息');
             return null;
         }
 
-        if (loading.value) {
-            return checkoutInfo.value;
-        }
-
-        setLoading(true);
-
         try {
+            loading.value = true;
+            error.value = null;
+
             // 尝试从缓存获取
             const cachedInfo = storage.getCheckoutInfo<CheckoutInfo>();
             if (cachedInfo) {
-                setCheckoutInfo(cachedInfo);
-                // 恢复选中状态
-                restoreSelectionsFromStorage();
+                checkoutInfo.value = cachedInfo;
+
+                // 设置默认值
+                if (!selectedAddressId.value && cachedInfo.defaultAddressId) {
+                    selectedAddressId.value = cachedInfo.defaultAddressId;
+                }
+
+                if (!selectedPaymentType.value && cachedInfo.preferredPaymentType) {
+                    selectedPaymentType.value = cachedInfo.preferredPaymentType;
+                }
+
                 return cachedInfo;
             }
 
             // 从API获取
-            const info = await api.checkoutApi.getCheckoutInfo();
+            const info = await checkoutApi.getCheckoutInfo();
+            checkoutInfo.value = info;
 
-            // 缓存结算信息
+            // 设置默认值
+            if (!selectedAddressId.value && info.defaultAddressId) {
+                selectedAddressId.value = info.defaultAddressId;
+            }
+
+            if (!selectedPaymentType.value && info.preferredPaymentType) {
+                selectedPaymentType.value = info.preferredPaymentType;
+            }
+
+            // 缓存到本地
             storage.saveCheckoutInfo(info);
 
-            // 更新状态
-            setCheckoutInfo(info);
-
-            // 恢复选中状态
-            restoreSelectionsFromStorage();
-
             return info;
-        } catch (error: any) {
-            handleError(error, '获取结算信息失败');
+        } catch (err: any) {
+            handleError(err, '获取结算信息失败');
             return null;
         } finally {
-            setLoading(false);
+            loading.value = false;
         }
     }
 
     /**
-     * 刷新结算信息
+     * 创建临时订单
      */
-    async function refreshCheckoutInfo(): Promise<CheckoutInfo | null> {
-        // 删除缓存强制刷新
-        storage.remove(storage.STORAGE_KEYS.CHECKOUT_INFO);
-        return getCheckoutInfo();
+    async function createTempOrder(params: CreateTempOrderParams): Promise<TempOrder | null> {
+        if (!userStore.isLoggedIn) {
+            toast.warning('请先登录后再创建订单');
+            return null;
+        }
+
+        try {
+            creatingOrder.value = true;
+            error.value = null;
+
+            const order = await tempOrderApi.createTempOrder(params);
+            tempOrder.value = order;
+
+            // 缓存到本地
+            storage.saveTempOrder(order);
+
+            // 初始化地址和支付方式
+            if (!selectedAddressId.value && order.addressId) {
+                selectedAddressId.value = order.addressId;
+            } else if (checkoutInfo.value?.defaultAddressId) {
+                selectedAddressId.value = checkoutInfo.value.defaultAddressId;
+            }
+
+            if (!selectedPaymentType.value && order.paymentType) {
+                selectedPaymentType.value = order.paymentType;
+            } else if (checkoutInfo.value?.preferredPaymentType) {
+                selectedPaymentType.value = checkoutInfo.value.preferredPaymentType;
+            }
+
+            if (order.remark) {
+                orderRemark.value = order.remark;
+            }
+
+            return order;
+        } catch (err: any) {
+            handleError(err, '创建临时订单失败');
+            return null;
+        } finally {
+            creatingOrder.value = false;
+        }
     }
 
     /**
-     * 创建临时订单前准备
+     * 加载临时订单
      */
-    async function prepareCheckoutData() {
-        // 确保初始化
-        await ensureInitialized();
+    async function loadTempOrder(id: string): Promise<TempOrder | null> {
+        if (!userStore.isLoggedIn) {
+            toast.warning('请先登录');
+            return null;
+        }
 
-        // 添加: 变更前刷新结算信息
-        await refreshCheckoutInfo();
+        try {
+            loading.value = true;
+            error.value = null;
 
-        return {
-            addressId: selectedAddressId.value || defaultAddressId.value,
-            paymentType: selectedPaymentType.value || preferredPaymentType.value,
-            remark: remark.value
-        };
+            // 尝试从缓存获取
+            const cachedOrder = storage.getTempOrder<TempOrder>();
+            if (cachedOrder && cachedOrder.id === id) {
+                tempOrder.value = cachedOrder;
+
+                // 初始化地址和支付方式
+                if (!selectedAddressId.value && cachedOrder.addressId) {
+                    selectedAddressId.value = cachedOrder.addressId;
+                }
+
+                if (!selectedPaymentType.value && cachedOrder.paymentType) {
+                    selectedPaymentType.value = cachedOrder.paymentType;
+                }
+
+                if (cachedOrder.remark) {
+                    orderRemark.value = cachedOrder.remark;
+                }
+
+                return cachedOrder;
+            }
+
+            // 从API获取
+            const order = await tempOrderApi.getTempOrder(id);
+            tempOrder.value = order;
+
+            // 初始化地址和支付方式
+            if (!selectedAddressId.value && order.addressId) {
+                selectedAddressId.value = order.addressId;
+            }
+
+            if (!selectedPaymentType.value && order.paymentType) {
+                selectedPaymentType.value = order.paymentType;
+            }
+
+            if (order.remark) {
+                orderRemark.value = order.remark;
+            }
+
+            // 缓存到本地
+            storage.saveTempOrder(order);
+
+            return order;
+        } catch (err: any) {
+            handleError(err, '加载临时订单失败');
+            return null;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    /**
+     * 更新临时订单
+     */
+    async function updateTempOrder(): Promise<TempOrder | null> {
+        if (!tempOrder.value) {
+            toast.warning('没有临时订单可更新');
+            return null;
+        }
+
+        try {
+            loading.value = true;
+            error.value = null;
+
+            const params = {
+                addressId: selectedAddressId.value || undefined,
+                paymentType: selectedPaymentType.value || undefined,
+                remark: orderRemark.value || undefined
+            };
+
+            const updatedOrder = await tempOrderApi.updateTempOrder(tempOrder.value.id, params);
+            tempOrder.value = updatedOrder;
+
+            // 缓存到本地
+            storage.saveTempOrder(updatedOrder);
+
+            return updatedOrder;
+        } catch (err: any) {
+            handleError(err, '更新临时订单失败');
+            return null;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    /**
+     * 刷新临时订单有效期
+     */
+    async function refreshTempOrder(): Promise<TempOrder | null> {
+        if (!tempOrder.value) {
+            return null;
+        }
+
+        try {
+            loading.value = true;
+            error.value = null;
+
+            const refreshedOrder = await tempOrderApi.refreshTempOrder(tempOrder.value.id);
+            tempOrder.value = refreshedOrder;
+
+            // 缓存到本地
+            storage.saveTempOrder(refreshedOrder);
+
+            return refreshedOrder;
+        } catch (err: any) {
+            handleError(err, '刷新临时订单有效期失败');
+            return null;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    /**
+     * 提交订单
+     */
+    async function confirmOrder(): Promise<CreateOrderResponse | null> {
+        if (!tempOrder.value) {
+            toast.warning('没有临时订单可提交');
+            return null;
+        }
+
+        if (!selectedAddressId.value) {
+            toast.warning('请选择收货地址');
+            return null;
+        }
+
+        if (!selectedPaymentType.value) {
+            toast.warning('请选择支付方式');
+            return null;
+        }
+
+        try {
+            confirmingOrder.value = true;
+            error.value = null;
+
+            // 先更新订单信息
+            await updateTempOrder();
+
+            // 确认订单
+            const result = await tempOrderApi.confirmTempOrder(tempOrder.value.id);
+
+            // 清理临时订单
+            tempOrder.value = null;
+            storage.remove(storage.STORAGE_KEYS.TEMP_ORDER);
+
+            toast.success('订单创建成功');
+            return result;
+        } catch (err: any) {
+            handleError(err, '提交订单失败');
+            return null;
+        } finally {
+            confirmingOrder.value = false;
+        }
+    }
+
+    /**
+     * 设置选择的地址
+     */
+    function setSelectedAddress(addressId: number): void {
+        selectedAddressId.value = addressId;
+    }
+
+    /**
+     * 设置选择的支付方式
+     */
+    function setSelectedPaymentType(paymentType: string): void {
+        selectedPaymentType.value = paymentType;
+    }
+
+    /**
+     * 设置订单备注
+     */
+    function setOrderRemark(remark: string): void {
+        orderRemark.value = remark;
+    }
+
+    /**
+     * 清除结算状态
+     */
+    function clearCheckoutState(): void {
+        checkoutInfo.value = null;
+        tempOrder.value = null;
+        selectedAddressId.value = null;
+        selectedPaymentType.value = '';
+        orderRemark.value = '';
+        error.value = null;
+
+        // 清除本地缓存
+        storage.remove(storage.STORAGE_KEYS.CHECKOUT_INFO);
+        storage.remove(storage.STORAGE_KEYS.TEMP_ORDER);
     }
 
     /**
      * 初始化结算模块
      */
-    async function init(): Promise<void> {
-        if (!initHelper.canInitialize()) {
+    async function init(force: boolean = false): Promise<void> {
+        if (!initHelper.canInitialize(force)) {
             return;
         }
 
         initHelper.startInitialization();
 
         try {
-            const userStore = useUserStore();
             if (userStore.isLoggedIn) {
-                // 初始化地址Store
-                const addressStore = useAddressStore();
-                await addressStore.init();
+                // 确保地址store已初始化
+                if (!addressStore.isInitialized()) {
+                    await addressStore.init();
+                }
 
                 // 获取结算信息
                 await getCheckoutInfo();
-
-                // 恢复选中状态
-                restoreSelectionsFromStorage();
             }
+
             // 初始化成功
             initHelper.completeInitialization();
         } catch (error) {
@@ -286,37 +467,49 @@ export const useCheckoutStore = defineStore('checkout', () => {
         }
     }
 
-    // 立即初始化事件监听
+    // 初始化事件监听
     setupEventListeners();
 
     return {
         // 状态
         checkoutInfo,
-        loading,
+        tempOrder,
         selectedAddressId,
         selectedPaymentType,
-        remark,
+        orderRemark,
+        loading,
+        creatingOrder,
+        confirmingOrder,
+        error,
 
-        // Getters
-        addresses,
-        defaultAddressId,
+        // 计算属性
+        availableAddresses,
+        availablePaymentMethods,
         availablePromotions,
-        paymentMethods,
-        preferredPaymentType,
         selectedAddress,
-
-        // 状态管理方法
-        setSelectedAddressId,
-        setSelectedPaymentType,
-        setRemark,
-        setLoading,
+        selectedPaymentMethod,
+        orderItems,
+        orderTotalAmount,
+        orderDiscountAmount,
+        orderPaymentAmount,
+        appliedPromotion,
+        orderExpireTime,
+        checkoutReady,
 
         // 业务逻辑方法
         getCheckoutInfo,
-        refreshCheckoutInfo,
-        prepareCheckoutData,
-        clearCheckoutData,
+        createTempOrder,
+        loadTempOrder,
+        updateTempOrder,
+        refreshTempOrder,
+        confirmOrder,
+        setSelectedAddress,
+        setSelectedPaymentType,
+        setOrderRemark,
+        clearCheckoutState,
         init,
+
+        // 初始化状态
         isInitialized: initHelper.isInitialized,
         ensureInitialized
     };

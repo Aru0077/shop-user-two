@@ -2,445 +2,490 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { cartApi } from '@/api/cart.api';
-import { createInitializeHelper } from '@/utils/store-helpers';
 import { storage } from '@/utils/storage';
-import { toast } from '@/utils/toast.service';
+import { createInitializeHelper } from '@/utils/store-helpers';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
-import { useUserStore } from '@/stores/user.store';
+import { toast } from '@/utils/toast.service';
 import type {
     CartItem,
     AddToCartParams,
-    AddToCartResponse,
     UpdateCartItemParams,
+    AddToCartResponse,
     PreviewOrderParams,
     OrderAmountPreview
 } from '@/types/cart.type';
-import { ProductStatus } from '@/types/common.type';
-import { getFormattedPrice } from '@/utils/price.utils';
 
 /**
- * 购物车状态管理
+ * 购物车Store
+ * 负责购物车数据的管理和同步
  */
 export const useCartStore = defineStore('cart', () => {
-    // 初始化辅助工具
-    const {
-        initialized,
-        isInitialized,
-        canInitialize,
-        startInitialization,
-        completeInitialization,
-        failInitialization
-    } = createInitializeHelper('CartStore');
+    // 状态
+    const items = ref<CartItem[]>([]);
+    const totalCount = ref(0);
+    const loading = ref(false);
+    const error = ref<string | null>(null);
+    const orderPreview = ref<OrderAmountPreview | null>(null);
 
-    // 引用其他store
-    const userStore = useUserStore();
-
-    // 状态定义
-    const cartItems = ref<CartItem[]>([]);
-    const loadingCart = ref(false);
-    const addingToCart = ref(false);
-    const updatingCartItem = ref(false);
-    const previewingOrder = ref(false);
-    const orderAmountPreview = ref<OrderAmountPreview | null>(null);
-    const optimisticUpdateQueue = ref<{ id: number, quantity: number }[]>([]);
+    // 初始化助手
+    const initHelper = createInitializeHelper('CartStore');
 
     // 计算属性
-    const cartItemCount = computed(() => {
-        return cartItems.value.reduce((count, item) => count + item.quantity, 0);
-    });
-
-    const availableCartItems = computed(() => {
-        return cartItems.value.filter(item => item.isAvailable);
-    });
-
-    const unavailableCartItems = computed(() => {
-        return cartItems.value.filter(item => !item.isAvailable);
-    });
-
-    const totalCartAmount = computed(() => {
-        return availableCartItems.value.reduce((total, item) => {
-            const price = item.skuData?.promotion_price ?? item.skuData?.price ?? 0;
-            return total + (price * item.quantity);
+    const totalAmount = computed(() => {
+        return items.value.reduce((sum, item) => {
+            if (!item.isAvailable || !item.skuData) return sum;
+            const price = item.skuData.promotion_price ?? item.skuData.price;
+            return sum + (price * item.quantity);
         }, 0);
     });
 
-    const formattedTotalAmount = computed(() => {
-        return getFormattedPrice({
-            skus: [{
-                price: totalCartAmount.value,
-                id: 0,
-                productId: 0
-            }],
-            id: 0,
-            categoryId: 0,
-            name: '',
-            status: ProductStatus.DRAFT,
-            productCode: '',
-            createdAt: '',
-            updatedAt: ''
-        });
+    const availableItems = computed(() => {
+        return items.value.filter(item => item.isAvailable);
     });
 
+    const selectedItems = ref<number[]>([]);
+
+    const selectedItemsData = computed(() => {
+        return items.value.filter(item => selectedItems.value.includes(item.id));
+    });
+
+    const selectedTotalAmount = computed(() => {
+        return selectedItemsData.value.reduce((sum, item) => {
+            if (!item.isAvailable || !item.skuData) return sum;
+            const price = item.skuData.promotion_price ?? item.skuData.price;
+            return sum + (price * item.quantity);
+        }, 0);
+    });
+
+    // 方法
+
     /**
-     * 初始化购物车
+     * 加载购物车列表
      */
-    async function init(force: boolean = false): Promise<void> {
-        if (!canInitialize(force)) return;
-
-        // 用户未登录时不初始化
-        if (!userStore.isLoggedIn) {
-            console.info('用户未登录，跳过购物车初始化');
-            return;
-        }
-
-        startInitialization();
-
+    async function loadCartItems(page: number = 1, limit: number = 50) {
         try {
-            // 尝试从缓存恢复数据
-            await restoreDataFromCache();
-
-            // 从服务器获取最新购物车数据
-            await fetchCartItems();
-
-            // 订阅相关事件
-            setupEventSubscriptions();
-
-            completeInitialization();
-        } catch (error) {
-            failInitialization(error);
-            toast.error('购物车初始化失败，请刷新页面重试');
-            throw error;
-        }
-    }
-
-    /**
-     * 从缓存恢复购物车数据
-     */
-    async function restoreDataFromCache(): Promise<void> {
-        // 尝试从缓存获取购物车数据
-        const cachedCart = storage.getCartData<CartItem[]>();
-        if (cachedCart && cachedCart.length > 0) {
-            cartItems.value = cachedCart;
-        }
-    }
-
-    /**
-     * 设置事件订阅
-     */
-    function setupEventSubscriptions(): void {
-        // 用户登出时清空购物车
-        eventBus.on(EVENT_NAMES.USER_LOGOUT, () => {
-            clearCart(false); // 不调用API，仅清空本地数据
-        });
-
-        // 用户登录时重新加载购物车
-        eventBus.on(EVENT_NAMES.USER_LOGIN, () => {
-            init(true);
-        });
-    }
-
-    /**
-     * 获取购物车列表
-     */
-    async function fetchCartItems(page: number = 1, limit: number = 50): Promise<void> {
-        if (!userStore.isLoggedIn) {
-            console.info('用户未登录，无法获取购物车');
-            return;
-        }
-
-        try {
-            loadingCart.value = true;
+            loading.value = true;
+            error.value = null;
 
             const response = await cartApi.getCartList(page, limit);
-            cartItems.value = response.data;
+            items.value = response.data;
+            totalCount.value = response.total;
 
-            // 更新本地缓存
-            storage.saveCartData(response.data);
+            // 缓存到本地存储
+            saveToLocalStorage();
 
-            // 发布购物车更新事件
-            eventBus.emit(EVENT_NAMES.CART_UPDATED, {
-                count: cartItemCount.value,
-                items: cartItems.value
-            });
-        } catch (error) {
-            console.error('获取购物车失败:', error);
-            toast.error('获取购物车失败，请重试');
+            return response;
+        } catch (err: any) {
+            error.value = err.message || '加载购物车失败';
+            console.error('加载购物车失败:', err);
+            throw err;
         } finally {
-            loadingCart.value = false;
+            loading.value = false;
         }
     }
 
     /**
      * 添加商品到购物车
      */
-    async function addToCart(params: AddToCartParams): Promise<AddToCartResponse | null> {
-        if (!userStore.isLoggedIn) {
-            toast.warning('请先登录后再添加商品到购物车');
-            return null;
-        }
-
+    async function addToCart(params: AddToCartParams): Promise<AddToCartResponse> {
         try {
-            addingToCart.value = true;
+            loading.value = true;
+            error.value = null;
 
-            // 默认数量为1
-            const finalParams = {
-                ...params,
-                quantity: params.quantity || 1
-            };
+            // 如果开启乐观更新，先在本地添加
+            if (params.optimistic) {
+                // 查找是否已存在相同商品
+                const existingItemIndex = items.value.findIndex(
+                    item => item.productId === params.productId && item.skuId === params.skuId
+                );
 
-            const response = await cartApi.addToCart(finalParams);
-
-            // 更新购物车状态
-            await fetchCartItems();
-
-            // 显示成功提示
-            if (response.isLowStock) {
-                toast.warning(`已加入购物车，但库存不足，仅剩${response.cartItem.sku.stock}件`);
-            } else {
-                toast.success('商品已成功加入购物车');
+                if (existingItemIndex !== -1) {
+                    // 已存在则更新数量
+                    items.value[existingItemIndex].quantity += params.quantity || 1;
+                }
+                // 实际新增项目需要后端返回，所以这里不处理新增的情况
             }
 
-            // 发布商品添加到购物车事件
-            eventBus.emit(EVENT_NAMES.CART_ITEM_ADDED, {
-                item: response.cartItem,
-                count: response.cartItemCount
-            });
+            // 调用API添加到购物车
+            const response = await cartApi.addToCart(params);
+
+            // 根据API返回更新购物车
+            const { cartItem, cartItemCount } = response;
+
+            // 查找是否已存在该商品
+            const existingIndex = items.value.findIndex(
+                item => item.id === cartItem.id
+            );
+
+            if (existingIndex !== -1) {
+                // 已存在则更新
+                items.value[existingIndex] = {
+                    ...cartItem,
+                    product: cartItem.product,
+                    skuData: cartItem.sku,
+                    isAvailable: true,
+                    updatedAt: new Date().toISOString()
+                };
+            } else {
+                // 不存在则添加
+                items.value.push({
+                    id: cartItem.id,
+                    userId: cartItem.userId,
+                    productId: cartItem.productId,
+                    skuId: cartItem.skuId,
+                    quantity: cartItem.quantity,
+                    updatedAt: new Date().toISOString(),
+                    product: cartItem.product,
+                    skuData: cartItem.sku,
+                    isAvailable: true
+                });
+            }
+
+            totalCount.value = cartItemCount;
+
+            // 保存到本地缓存
+            saveToLocalStorage();
+
+            // 发布购物车更新事件
+            eventBus.emit(EVENT_NAMES.CART_ITEM_ADDED, cartItem);
+            eventBus.emit(EVENT_NAMES.CART_UPDATED, items.value);
+
+            // 显示提示
+            if (!params.optimistic) {
+                toast.success('成功添加到购物车');
+            }
 
             return response;
-        } catch (error) {
-            console.error('添加到购物车失败:', error);
-            toast.error('添加到购物车失败，请重试');
-            return null;
+        } catch (err: any) {
+            error.value = err.message || '添加到购物车失败';
+            console.error('添加到购物车失败:', err);
+
+            // 显示错误提示
+            toast.error(error.value || '添加到购物车失败');
+            throw err;
         } finally {
-            addingToCart.value = false;
+            loading.value = false;
         }
     }
 
     /**
      * 更新购物车商品数量
-     * @param id 购物车项ID
-     * @param quantity 新数量
-     * @param optimistic 是否使用乐观更新
      */
-    async function updateCartItemQuantity(
-        id: number,
-        quantity: number,
-        optimistic: boolean = true
-    ): Promise<CartItem | null> {
-        if (!userStore.isLoggedIn) {
-            toast.warning('请先登录');
-            return null;
-        }
-
-        // 数量必须大于0
-        if (quantity <= 0) {
-            return deleteCartItem(id);
-        }
-
-        // 如果启用乐观更新，先更新本地状态
-        if (optimistic) {
-            // 查找并更新本地购物车项
-            const itemIndex = cartItems.value.findIndex(item => item.id === id);
-            if (itemIndex !== -1) {
-                // 保存旧数量用于还原
-                const oldQuantity = cartItems.value[itemIndex].quantity;
-
-                // 更新本地状态
-                cartItems.value[itemIndex].quantity = quantity;
-
-                // 添加到乐观更新队列
-                optimisticUpdateQueue.value.push({ id, quantity: oldQuantity });
-            }
-        }
-
+    async function updateCartItem(id: number, params: UpdateCartItemParams) {
         try {
-            updatingCartItem.value = true;
+            // 先乐观更新本地数据
+            const index = items.value.findIndex(item => item.id === id);
 
-            const params: UpdateCartItemParams = { quantity };
-            const response = await cartApi.updateCartItem(id, params);
+            if (index !== -1) {
+                const oldQuantity = items.value[index].quantity;
+                items.value[index].quantity = params.quantity;
 
-            // 从乐观更新队列中移除
-            if (optimistic) {
-                optimisticUpdateQueue.value = optimisticUpdateQueue.value.filter(item => item.id !== id);
-            }
+                try {
+                    loading.value = true;
 
-            // 更新本地购物车和缓存
-            const itemIndex = cartItems.value.findIndex(item => item.id === id);
-            if (itemIndex !== -1) {
-                cartItems.value[itemIndex] = response;
-            }
+                    // 调用API更新数量
+                    const updatedItem = await cartApi.updateCartItem(id, params);
 
-            storage.saveCartData(cartItems.value);
+                    // 更新本地数据
+                    items.value[index] = {
+                        ...updatedItem,
+                        product: items.value[index].product,
+                        skuData: items.value[index].skuData,
+                        isAvailable: items.value[index].isAvailable
+                    };
 
-            // 发布购物车更新事件
-            eventBus.emit(EVENT_NAMES.CART_ITEM_UPDATED, {
-                item: response,
-                count: cartItemCount.value
-            });
+                    // 保存到本地缓存
+                    saveToLocalStorage();
 
-            return response;
-        } catch (error) {
-            console.error('更新购物车商品数量失败:', error);
-            toast.error('更新数量失败，请重试');
+                    // 发布购物车更新事件
+                    eventBus.emit(EVENT_NAMES.CART_ITEM_UPDATED, updatedItem);
+                    eventBus.emit(EVENT_NAMES.CART_UPDATED, items.value);
 
-            // 如果是乐观更新，还原本地状态
-            if (optimistic) {
-                const queueItem = optimisticUpdateQueue.value.find(item => item.id === id);
-                if (queueItem) {
-                    const itemIndex = cartItems.value.findIndex(item => item.id === id);
-                    if (itemIndex !== -1) {
-                        cartItems.value[itemIndex].quantity = queueItem.quantity;
-                    }
-
-                    // 从队列中移除
-                    optimisticUpdateQueue.value = optimisticUpdateQueue.value.filter(item => item.id !== id);
+                    return updatedItem;
+                } catch (err: any) {
+                    // 更新失败，恢复原来的数量
+                    items.value[index].quantity = oldQuantity;
+                    error.value = err.message || '更新购物车失败';
+                    console.error('更新购物车失败:', err);
+                    throw err;
+                } finally {
+                    loading.value = false;
                 }
+            } else {
+                throw new Error('购物车项不存在');
             }
+        } catch (err: any) {
+            error.value = err.message || '更新购物车失败';
+            console.error('更新购物车失败:', err);
 
-            return null;
-        } finally {
-            updatingCartItem.value = false;
+            // 显示错误提示
+            toast.error(error.value || '更新购物车失败');
+            throw err;
         }
     }
 
     /**
      * 删除购物车商品
      */
-    async function deleteCartItem(id: number): Promise<null> {
-        if (!userStore.isLoggedIn) {
-            toast.warning('请先登录');
-            return null;
-        }
-
+    async function deleteCartItem(id: number) {
         try {
-            // 先从本地移除，提供即时反馈
-            const itemIndex = cartItems.value.findIndex(item => item.id === id);
-            if (itemIndex !== -1) {
-                // 记录要删除的item以便发布事件
-                cartItems.value[itemIndex];
-                cartItems.value.splice(itemIndex, 1);
+            // 先找到要删除的项目
+            const index = items.value.findIndex(item => item.id === id);
+
+            if (index === -1) {
+                throw new Error('购物车项不存在');
             }
 
-            await cartApi.deleteCartItem(id);
+            // 备份要删除的项目
+            const itemToDelete = { ...items.value[index] };
 
-            // 更新本地缓存
-            storage.saveCartData(cartItems.value);
+            // 乐观更新，先从本地移除
+            items.value.splice(index, 1);
+            totalCount.value = Math.max(0, totalCount.value - 1);
 
-            // 发布购物车更新事件
-            eventBus.emit(EVENT_NAMES.CART_ITEM_DELETED, {
-                itemId: id,
-                count: cartItemCount.value
-            });
+            try {
+                loading.value = true;
 
-            toast.success('商品已从购物车移除');
-            return null;
-        } catch (error) {
-            console.error('删除购物车商品失败:', error);
-            toast.error('删除失败，请重试');
+                // 调用API删除
+                await cartApi.deleteCartItem(id);
 
-            // 发生错误，重新获取最新购物车
-            await fetchCartItems();
-            return null;
+                // 从已选择列表中移除
+                selectedItems.value = selectedItems.value.filter(itemId => itemId !== id);
+
+                // 保存到本地缓存
+                saveToLocalStorage();
+
+                // 发布购物车更新事件
+                eventBus.emit(EVENT_NAMES.CART_ITEM_DELETED, id);
+                eventBus.emit(EVENT_NAMES.CART_UPDATED, items.value);
+
+                // 显示提示
+                toast.success('已从购物车中移除');
+
+                return true;
+            } catch (err: any) {
+                // 删除失败，恢复本地数据
+                items.value.splice(index, 0, itemToDelete);
+                totalCount.value += 1;
+
+                error.value = err.message || '删除购物车项失败';
+                console.error('删除购物车项失败:', err);
+                throw err;
+            } finally {
+                loading.value = false;
+            }
+        } catch (err: any) {
+            error.value = err.message || '删除购物车项失败';
+            console.error('删除购物车项失败:', err);
+
+            // 显示错误提示
+            toast.error(error.value || '删除购物车项失败');
+            throw err;
         }
     }
 
     /**
      * 清空购物车
      */
-    async function clearCart(callApi: boolean = true): Promise<void> {
-        if (callApi && userStore.isLoggedIn) {
-            try {
-                await cartApi.clearCart();
-                toast.success('购物车已清空');
-            } catch (error) {
-                console.error('清空购物车失败:', error);
-                toast.error('清空购物车失败，请重试');
-                return;
-            }
+    async function clearCart() {
+        try {
+            loading.value = true;
+
+            await cartApi.clearCart();
+
+            // 清空本地数据
+            items.value = [];
+            totalCount.value = 0;
+            selectedItems.value = [];
+
+            // 清除本地缓存
+            storage.remove(storage.STORAGE_KEYS.CART_DATA);
+
+            // 发布购物车更新事件
+            eventBus.emit(EVENT_NAMES.CART_UPDATED, []);
+
+            // 显示提示
+            toast.success('购物车已清空');
+
+            return true;
+        } catch (err: any) {
+            error.value = err.message || '清空购物车失败';
+            console.error('清空购物车失败:', err);
+
+            // 显示错误提示
+            toast.error(error.value || '清空购物车失败');
+            throw err;
+        } finally {
+            loading.value = false;
         }
-
-        // 清空本地购物车数据
-        cartItems.value = [];
-        storage.saveCartData([]);
-
-        // 发布购物车更新事件
-        eventBus.emit(EVENT_NAMES.CART_UPDATED, {
-            count: 0,
-            items: []
-        });
     }
 
     /**
      * 预览订单金额
      */
-    async function previewOrderAmount(params: PreviewOrderParams): Promise<OrderAmountPreview | null> {
-        if (!userStore.isLoggedIn) {
-            toast.warning('请先登录');
-            return null;
+    async function previewOrderAmount(params: PreviewOrderParams) {
+        try {
+            loading.value = true;
+
+            const preview = await cartApi.previewOrderAmount(params);
+            orderPreview.value = preview;
+
+            return preview;
+        } catch (err: any) {
+            error.value = err.message || '获取订单预览失败';
+            console.error('获取订单预览失败:', err);
+            throw err;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    /**
+     * 选择/取消选择购物车项
+     */
+    function toggleSelectCartItem(id: number) {
+        const index = selectedItems.value.findIndex(itemId => itemId === id);
+
+        if (index === -1) {
+            // 未选择则添加
+            selectedItems.value.push(id);
+        } else {
+            // 已选择则移除
+            selectedItems.value.splice(index, 1);
+        }
+
+        // 保存选择状态到本地
+        saveToLocalStorage();
+    }
+
+    /**
+     * 全选/取消全选
+     */
+    function toggleSelectAll(select: boolean) {
+        if (select) {
+            // 全选可用商品
+            selectedItems.value = availableItems.value.map(item => item.id);
+        } else {
+            // 取消全选
+            selectedItems.value = [];
+        }
+
+        // 保存选择状态到本地
+        saveToLocalStorage();
+    }
+
+    /**
+     * 检查商品是否已选择
+     */
+    function isItemSelected(id: number): boolean {
+        return selectedItems.value.includes(id);
+    }
+
+    /**
+     * 保存到本地存储
+     */
+    function saveToLocalStorage() {
+        const data = {
+            items: items.value,
+            totalCount: totalCount.value,
+            selectedItems: selectedItems.value
+        };
+        storage.saveCartData(data);
+    }
+
+    /**
+     * 从本地存储加载
+     */
+    function loadFromLocalStorage() {
+        const data = storage.getCartData<{
+            items: CartItem[],
+            totalCount: number,
+            selectedItems: number[]
+        }>();
+
+        if (data) {
+            items.value = data.items || [];
+            totalCount.value = data.totalCount || 0;
+            selectedItems.value = data.selectedItems || [];
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 初始化
+     */
+    async function init(force: boolean = false) {
+        // 使用初始化助手管理初始化状态
+        if (!initHelper.canInitialize(force)) {
+            return;
         }
 
         try {
-            previewingOrder.value = true;
+            initHelper.startInitialization();
 
-            const response = await cartApi.previewOrderAmount(params);
-            orderAmountPreview.value = response;
+            // 先尝试从本地加载
+            const hasLocalData = loadFromLocalStorage();
 
-            return response;
-        } catch (error) {
-            console.error('预览订单金额失败:', error);
-            toast.error('获取订单金额失败，请重试');
-            return null;
-        } finally {
-            previewingOrder.value = false;
+            // 如果没有本地数据或强制刷新，则从服务器加载
+            if (!hasLocalData || force) {
+                await loadCartItems();
+            }
+
+            initHelper.completeInitialization();
+        } catch (err) {
+            initHelper.failInitialization(err);
+            throw err;
         }
     }
 
     /**
-     * 检查商品是否在购物车中
+     * 重置状态
      */
-    function isInCart(productId: number, skuId: number): boolean {
-        return cartItems.value.some(
-            item => item.productId === productId && item.skuId === skuId
-        );
-    }
+    function resetState() {
+        items.value = [];
+        totalCount.value = 0;
+        selectedItems.value = [];
+        orderPreview.value = null;
+        error.value = null;
+        initHelper.resetInitialization();
 
-    /**
-     * 获取购物车中的商品数量
-     */
-    function getCartItemQuantity(productId: number, skuId: number): number {
-        const item = cartItems.value.find(
-            item => item.productId === productId && item.skuId === skuId
-        );
-        return item ? item.quantity : 0;
+        // 清除本地缓存
+        storage.remove(storage.STORAGE_KEYS.CART_DATA);
     }
 
     return {
         // 状态
-        cartItems,
-        loadingCart,
-        addingToCart,
-        updatingCartItem,
-        previewingOrder,
-        orderAmountPreview,
-        initialized,
+        items,
+        totalCount,
+        loading,
+        error,
+        orderPreview,
+        selectedItems,
 
         // 计算属性
-        cartItemCount,
-        availableCartItems,
-        unavailableCartItems,
-        totalCartAmount,
-        formattedTotalAmount,
+        totalAmount,
+        availableItems,
+        selectedItemsData,
+        selectedTotalAmount,
 
         // 方法
-        init,
-        isInitialized,
-        fetchCartItems,
+        loadCartItems,
         addToCart,
-        updateCartItemQuantity,
+        updateCartItem,
         deleteCartItem,
         clearCart,
         previewOrderAmount,
-        isInCart,
-        getCartItemQuantity
+        toggleSelectCartItem,
+        toggleSelectAll,
+        isItemSelected,
+        saveToLocalStorage,
+        loadFromLocalStorage,
+        init,
+        resetState,
+
+        // 初始化状态
+        isInitialized: initHelper.isInitialized
     };
 });
