@@ -96,10 +96,13 @@ export const useCartStore = defineStore('cart', () => {
      */
     async function addToCart(params: AddToCartParams): Promise<AddToCartResponse> {
         try {
-            loading.value = true;
+            // 对于乐观更新，不设置loading状态
+            if (!params.optimistic) {
+                loading.value = true;
+            }
             error.value = null;
 
-            // 如果开启乐观更新，先在本地添加
+            // 乐观更新：先在本地添加/更新
             if (params.optimistic) {
                 // 查找是否已存在相同商品
                 const existingItemIndex = items.value.findIndex(
@@ -109,8 +112,28 @@ export const useCartStore = defineStore('cart', () => {
                 if (existingItemIndex !== -1) {
                     // 已存在则更新数量
                     items.value[existingItemIndex].quantity += params.quantity || 1;
+                } else {
+                    // 新增情况：创建一个临时项
+                    const tempItem: CartItem = {
+                        id: Date.now(), // 临时ID，后续会被API返回的实际ID替换
+                        userId: '', // 会被API返回的实际值替换
+                        productId: params.productId,
+                        skuId: params.skuId,
+                        quantity: params.quantity || 1,
+                        updatedAt: new Date().toISOString(),
+                        product: null, // 暂无商品信息
+                        skuData: null, // 暂无SKU信息
+                        isAvailable: true
+                    };
+                    items.value.push(tempItem);
+                    totalCount.value += 1;
                 }
-                // 实际新增项目需要后端返回，所以这里不处理新增的情况
+
+                // 更新本地缓存
+                saveToLocalStorage();
+
+                // 发布事件通知UI更新
+                eventBus.emit(EVENT_NAMES.CART_UPDATED, items.value);
             }
 
             // 调用API添加到购物车
@@ -119,9 +142,10 @@ export const useCartStore = defineStore('cart', () => {
             // 根据API返回更新购物车
             const { cartItem, cartItemCount } = response;
 
-            // 查找是否已存在该商品
+            // 替换临时项或更新已有项
             const existingIndex = items.value.findIndex(
-                item => item.id === cartItem.id
+                item => (item.productId === cartItem.productId && item.skuId === cartItem.skuId) ||
+                    item.id === cartItem.id
             );
 
             if (existingIndex !== -1) {
@@ -133,8 +157,8 @@ export const useCartStore = defineStore('cart', () => {
                     isAvailable: true,
                     updatedAt: new Date().toISOString()
                 };
-            } else {
-                // 不存在则添加
+            } else if (!params.optimistic) {
+                // 如果不是乐观更新且不存在，则添加
                 items.value.push({
                     id: cartItem.id,
                     userId: cartItem.userId,
@@ -149,7 +173,7 @@ export const useCartStore = defineStore('cart', () => {
             }
 
             totalCount.value = cartItemCount;
-
+            toast.success('成功添加到购物车');
             // 保存到本地缓存
             saveToLocalStorage();
 
@@ -157,7 +181,7 @@ export const useCartStore = defineStore('cart', () => {
             eventBus.emit(EVENT_NAMES.CART_ITEM_ADDED, cartItem);
             eventBus.emit(EVENT_NAMES.CART_UPDATED, items.value);
 
-            // 显示提示
+            // 显示提示（非乐观更新时）
             if (!params.optimistic) {
                 toast.success('成功添加到购物车');
             }
@@ -169,9 +193,18 @@ export const useCartStore = defineStore('cart', () => {
 
             // 显示错误提示
             toast.error(error.value || '添加到购物车失败');
+
+            // 如果是乐观更新，需要回滚本地状态
+            if (params.optimistic) {
+                // 重新加载购物车数据以恢复正确状态
+                await loadCartItems();
+            }
+
             throw err;
         } finally {
-            loading.value = false;
+            if (!params.optimistic) {
+                loading.value = false;
+            }
         }
     }
 

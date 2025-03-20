@@ -23,7 +23,7 @@
         <!-- 商品信息 -->
         <div class="flex-1 min-w-0">
           <!-- 商品名称 -->
-          <div class="text-sm font-medium line-clamp-2">{{ item.product?.name || '商品名称' }}</div>
+          <div class="text-sm font-medium line-clamp-2">{{ item.product?.name || 'product name' }}</div>
   
           <!-- 规格信息 -->
           <div v-if="item.skuData?.sku_specs && item.skuData.sku_specs.length > 0"
@@ -133,6 +133,6 @@
       return props.item.product.mainImage;
     }
     // 最后使用默认图片
-    return 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png'; // 添加默认图片URL
+    return ''; // 添加默认图片URL
   };
   </script>

@@ -1,6 +1,6 @@
 <!-- src/components/cart/CartSummary.vue -->
 <template>
-    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-md z-10 safe-area-bottom">
+    <div class="h-[130px] bg-white border-t border-gray-200 shadow-md z-10 safe-area-bottom">
       <div class="p-3">
         <div class="flex items-center mb-3">
           <!-- 全选 -->

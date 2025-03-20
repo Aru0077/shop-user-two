@@ -319,14 +319,12 @@ const handleAddToCart = async () => {
         // 先关闭弹窗提供良好的用户体验
         closeSelector();
 
-        // 显示加载中的提示
-        toast.info('正在添加到购物车...');
-
         // 构造添加到购物车的参数
         const params: AddToCartParams = {
             productId: props.product.id,
             skuId: selectedSkuId.value,
-            quantity: quantity.value
+            quantity: quantity.value,
+            optimistic: true // 乐观更新
         };
 
         // 调用购物车store的方法
@@ -336,9 +334,7 @@ const handleAddToCart = async () => {
         if (response) {
             if (response.isLowStock) {
                 toast.warning(`已加入购物车，但库存不足，仅剩${response.cartItem.sku.stock}件`);
-            } else {
-                toast.success('商品已成功加入购物车');
-            }
+            }  
         }
     } catch (error: any) {
         console.error('添加到购物车失败:', error);

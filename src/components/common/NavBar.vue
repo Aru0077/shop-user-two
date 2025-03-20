@@ -63,12 +63,12 @@ const displayCartCount = ref(0);
 
 // 更新显示的购物车数量
 const updateCartCount = () => {
-    displayCartCount.value = cartStore.cartItemCount;
+    displayCartCount.value = cartStore.totalCount;
 };
 
 // 计算属性
 const addresses = computed(() => addressStore.addresses);
-const cartItemCount = computed(() => cartStore.cartItemCount);
+const cartItemCount = computed(() => cartStore.totalCount);
 
 // 监听cartItemCount的变化并更新displayCartCount
 const updateDisplayCartCount = () => {
