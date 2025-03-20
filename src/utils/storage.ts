@@ -95,7 +95,7 @@ export const STORAGE_VERSIONS = {
       CHECKOUT: '1.0.0',
       ORDER: '1.0.0',
       TEMP_ORDER: '1.0.0',
-      PROMOTIONS: '1.0.0',
+      PROMOTIONS: '1.0.0', 
 };
 
 // 缓存项的接口定义

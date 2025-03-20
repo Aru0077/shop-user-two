@@ -1,332 +1,350 @@
 // src/stores/temp-order.store.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { api } from '@/api/index.api';
+import { tempOrderApi } from '@/api/temp-order.api';
 import { storage } from '@/utils/storage';
+import { createInitializeHelper } from '@/utils/store-helpers';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import { toast } from '@/utils/toast.service';
+import { useUserStore } from '@/stores/user.store';
 import type { TempOrder, CreateTempOrderParams } from '@/types/temp-order.type';
 import type { CreateOrderResponse } from '@/types/order.type';
 import type { ApiError } from '@/types/common.type';
-import { useUserStore } from '@/stores/user.store';
-import { createInitializeHelper } from '@/utils/store-helpers';
 
 /**
- * 临时订单状态存储与服务
- * 集成状态管理和业务逻辑
+ * 临时订单Store
+ * 负责临时订单数据的管理和同步
  */
 export const useTempOrderStore = defineStore('tempOrder', () => {
-    // 创建初始化助手
-    const initHelper = createInitializeHelper('TempOrderStore');
+      // 初始化助手
+      const initHelper = createInitializeHelper('TempOrderStore');
 
-    // ==================== 状态 ====================
-    const tempOrder = ref<TempOrder | null>(null);
-    const loading = ref<boolean>(false);
+      // 状态
+      const tempOrder = ref<TempOrder | null>(null);
+      const loading = ref(false);
+      const creating = ref(false);
+      const confirming = ref(false);
+      const error = ref<string | null>(null);
 
-    // ==================== Getters ====================
-    const hasActiveTempOrder = computed(() => !!tempOrder.value);
-    const tempOrderId = computed(() => tempOrder.value?.id || '');
-    const tempOrderItems = computed(() => tempOrder.value?.items || []);
-    const tempOrderTotal = computed(() => tempOrder.value?.totalAmount || 0);
-    const tempOrderDiscount = computed(() => tempOrder.value?.discountAmount || 0);
-    const tempOrderPaymentAmount = computed(() => tempOrder.value?.paymentAmount || 0);
-    const tempOrderExpiration = computed(() => tempOrder.value?.expireTime || '');
+      // 获取其他store
+      const userStore = useUserStore();
 
-    // ==================== 内部工具方法 ====================
-    /**
-     * 处理API错误
-     * @param error API错误
-     * @param customMessage 自定义错误消息
-     */
-    function handleError(error: ApiError, customMessage?: string): void {
-        console.error(`[TempOrderStore] Error:`, error);
+      // 计算属性
+      const orderItems = computed(() => {
+            return tempOrder.value?.items || [];
+      });
 
-        // 显示错误提示
-        const message = customMessage || error.message || '发生未知错误';
-        toast.error(message);
-    }
+      const totalAmount = computed(() => {
+            return tempOrder.value?.totalAmount || 0;
+      });
 
-    // 添加通用初始化检查方法
-    async function ensureInitialized(): Promise<void> {
-        if (!initHelper.isInitialized()) {
-            console.info('[TempOrderStore] 数据未初始化，正在初始化...');
-            await init();
-        }
-    }
+      const discountAmount = computed(() => {
+            return tempOrder.value?.discountAmount || 0;
+      });
 
-    /**
-     * 设置事件监听
-     */
-    function setupEventListeners(): void {
-        // 监听用户登出事件
-        eventBus.on(EVENT_NAMES.USER_LOGOUT, () => {
-            // 用户登出后清除临时订单数据
-            clearTempOrder();
-        });
-    }
+      const paymentAmount = computed(() => {
+            return tempOrder.value?.paymentAmount || 0;
+      });
 
-    // ==================== 状态管理方法 ====================
-    /**
-     * 设置临时订单
-     */
-    function setTempOrder(order: TempOrder | null) {
-        tempOrder.value = order;
+      const promotion = computed(() => {
+            return tempOrder.value?.promotion || null;
+      });
 
-        if (order) {
-            // 保存到本地存储
-            storage.saveTempOrder(order);
-        } else {
-            // 从本地存储中移除
-            storage.remove(storage.STORAGE_KEYS.TEMP_ORDER);
-        }
-    }
+      const expireTime = computed(() => {
+            return tempOrder.value?.expireTime || '';
+      });
 
-    /**
-     * 设置加载状态
-     */
-    function setLoading(isLoading: boolean) {
-        loading.value = isLoading;
-    }
+      const isExpired = computed(() => {
+            if (!tempOrder.value?.expireTime) return true;
+            
+            const expireDate = new Date(tempOrder.value.expireTime);
+            return expireDate <= new Date();
+      });
 
-    /**
-     * 清除临时订单
-     */
-    function clearTempOrder() {
-        tempOrder.value = null;
-        storage.remove(storage.STORAGE_KEYS.TEMP_ORDER);
-    }
+      // ==================== 内部工具方法 ====================
+      /**
+       * 处理API错误
+       */
+      function handleError(error: ApiError, customMessage?: string): void {
+            console.error(`[TempOrderStore] Error:`, error);
+            const message = customMessage || error.message || '发生未知错误';
+            toast.error(message);
+      }
 
-    // ==================== 业务逻辑方法 ====================
-    /**
-     * 创建临时订单
-     * @param params 创建临时订单的参数
-     */
-    async function createTempOrder(params: CreateTempOrderParams): Promise<TempOrder | null> {
-        // 确保初始化
-        await ensureInitialized();
-
-        const userStore = useUserStore();
-        if (!userStore.isLoggedIn) {
-            toast.error('请先登录');
-            return null;
-        }
-
-        setLoading(true);
-
-        try {
-            const order = await api.tempOrderApi.createTempOrder(params);
-
-            // 更新状态
-            setTempOrder(order);
-
-            // 提示信息
-            toast.success('临时订单已创建');
-
-            // 获取已创建的订单最新数据
-            return await getTempOrder(order.id);
-        } catch (error: any) {
-            handleError(error, '创建临时订单失败');
-            return null;
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    /**
-     * 更新临时订单
-     * @param id 临时订单ID
-     * @param params 更新参数
-     */
-    async function updateTempOrder(id: string, params: {
-        addressId?: number;
-        paymentType?: string;
-        remark?: string;
-    }): Promise<TempOrder | null> {
-        // 确保初始化
-        await ensureInitialized();
-
-        setLoading(true);
-
-        try {
-            const updatedOrder = await api.tempOrderApi.updateTempOrder(id, params);
-
-            // 更新状态
-            setTempOrder(updatedOrder);
-
-            // 获取更新后的订单最新数据
-            return await getTempOrder(id);
-        } catch (error: any) {
-            handleError(error, '更新临时订单失败');
-            return null;
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    /**
-     * 根据临时订单创建正式订单
-     * @param id 临时订单ID
-     */
-    async function confirmTempOrder(id: string): Promise<CreateOrderResponse | null> {
-        setLoading(true);
-
-        try {
-            const response = await api.tempOrderApi.confirmTempOrder(id);
-
-            // 创建成功后清除临时订单
-            clearTempOrder();
-
-            // 提示信息
-            toast.success('订单已创建');
-
-            return response;
-        } catch (error: any) {
-            handleError(error, '创建订单失败');
-            return null;
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    /**
-     * 获取临时订单详情
-     * @param id 临时订单ID
-     */
-    async function getTempOrder(id: string): Promise<TempOrder | null> {
-        if (loading.value) {
-            return tempOrder.value;
-        }
-        setLoading(true);
-
-        try {
-            const order = await api.tempOrderApi.getTempOrder(id);
-
-            // 更新状态
-            setTempOrder(order);
-
-            return order;
-        } catch (error: any) {
-            handleError(error, '获取临时订单失败');
-            return null;
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    /**
-     * 刷新临时订单有效期
-     * @param id 临时订单ID
-     */
-    async function refreshTempOrder(id: string): Promise<TempOrder | null> {
-        setLoading(true);
-
-        try {
-            const refreshedOrder = await api.tempOrderApi.refreshTempOrder(id);
-
-            // 更新状态
-            setTempOrder(refreshedOrder);
-
-            // 提示信息
-            toast.success('临时订单有效期已刷新');
-
-            return refreshedOrder;
-        } catch (error: any) {
-            handleError(error, '刷新临时订单失败');
-            return null;
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    /**
-     * 从本地存储恢复临时订单
-     */
-    function restoreTempOrderFromStorage(): TempOrder | null {
-        const storedOrder = storage.getTempOrder<TempOrder>();
-
-        if (storedOrder) {
-            // 检查是否已过期
-            const expireTime = new Date(storedOrder.expireTime).getTime();
-            const now = Date.now();
-
-            if (expireTime > now) {
-                setTempOrder(storedOrder);
-                return storedOrder;
-            } else {
-                // 已过期，清除
-                clearTempOrder();
+      /**
+       * 确保已初始化
+       */
+      async function ensureInitialized(): Promise<void> {
+            if (!initHelper.isInitialized()) {
+                  console.info('[TempOrderStore] 数据未初始化，正在初始化...');
+                  await init();
             }
-        }
+      }
 
-        return null;
-    }
+      /**
+       * 设置事件监听
+       */
+      function setupEventListeners(): void {
+            // 监听用户登出事件
+            eventBus.on(EVENT_NAMES.USER_LOGOUT, () => {
+                  clearTempOrder();
+                  initHelper.resetInitialization();
+            });
+      }
 
-    /**
-     * 检查临时订单是否即将过期
-     * @returns 是否需要刷新（5分钟内过期返回true）
-     */
-    function checkTempOrderExpiration(): boolean {
-        if (!tempOrder.value) return false;
+      // ==================== 业务逻辑方法 ====================
+      /**
+       * 创建临时订单
+       */
+      async function createTempOrder(params: CreateTempOrderParams): Promise<TempOrder | null> {
+            if (!userStore.isLoggedIn) {
+                  toast.warning('请先登录后再创建订单');
+                  return null;
+            }
 
-        const expireTime = new Date(tempOrder.value.expireTime).getTime();
-        const now = Date.now();
-        const fiveMinutes = 5 * 60 * 1000;
+            try {
+                  creating.value = true;
+                  error.value = null;
 
-        return (expireTime - now) < fiveMinutes;
-    }
+                  const order = await tempOrderApi.createTempOrder(params);
+                  tempOrder.value = order;
 
-    /**
-     * 初始化临时订单模块
-     */
-    async function init(): Promise<void> {
-        if (!initHelper.canInitialize()) {
-            return;
-        }
+                  // 缓存到本地
+                  saveToLocalStorage();
 
-        initHelper.startInitialization();
+                  return order;
+            } catch (err: any) {
+                  handleError(err, '创建临时订单失败');
+                  return null;
+            } finally {
+                  creating.value = false;
+            }
+      }
 
-        try {
-            restoreTempOrderFromStorage();
-            // 初始化成功
-            initHelper.completeInitialization();
-        } catch (error) {
-            initHelper.failInitialization(error);
-            throw error;
-        }
-    }
+      /**
+       * 加载临时订单
+       */
+      async function loadTempOrder(id: string): Promise<TempOrder | null> {
+            if (!userStore.isLoggedIn) {
+                  toast.warning('请先登录');
+                  return null;
+            }
 
-    // 立即初始化事件监听
-    setupEventListeners();
+            try {
+                  loading.value = true;
+                  error.value = null;
 
-    return {
-        // 状态
-        tempOrder,
-        loading,
+                  // 尝试从缓存获取
+                  const cachedOrder = storage.getTempOrder<TempOrder>();
+                  if (cachedOrder && cachedOrder.id === id) {
+                        tempOrder.value = cachedOrder;
+                        return cachedOrder;
+                  }
 
-        // Getters
-        hasActiveTempOrder,
-        tempOrderId,
-        tempOrderItems,
-        tempOrderTotal,
-        tempOrderDiscount,
-        tempOrderPaymentAmount,
-        tempOrderExpiration,
+                  // 从API获取
+                  const order = await tempOrderApi.getTempOrder(id);
+                  tempOrder.value = order;
 
-        // 状态管理方法
-        setTempOrder,
-        setLoading,
-        clearTempOrder,
+                  // 缓存到本地
+                  saveToLocalStorage();
 
-        // 业务逻辑方法
-        createTempOrder,
-        updateTempOrder,
-        confirmTempOrder,
-        getTempOrder,
-        refreshTempOrder,
-        restoreTempOrderFromStorage,
-        checkTempOrderExpiration,
-        init,
-        isInitialized: initHelper.isInitialized,
-        ensureInitialized
-    };
+                  return order;
+            } catch (err: any) {
+                  handleError(err, '加载临时订单失败');
+                  return null;
+            } finally {
+                  loading.value = false;
+            }
+      }
+
+      /**
+       * 更新临时订单
+       */
+      async function updateTempOrder(params: {
+            addressId?: number;
+            paymentType?: string;
+            remark?: string;
+      }): Promise<TempOrder | null> {
+            if (!tempOrder.value) {
+                  toast.warning('没有临时订单可更新');
+                  return null;
+            }
+
+            try {
+                  loading.value = true;
+                  error.value = null;
+
+                  const updatedOrder = await tempOrderApi.updateTempOrder(tempOrder.value.id, params);
+                  tempOrder.value = updatedOrder;
+
+                  // 缓存到本地
+                  saveToLocalStorage();
+
+                  return updatedOrder;
+            } catch (err: any) {
+                  handleError(err, '更新临时订单失败');
+                  return null;
+            } finally {
+                  loading.value = false;
+            }
+      }
+
+      /**
+       * 确认临时订单，转换为正式订单
+       */
+      async function confirmTempOrder(): Promise<CreateOrderResponse | null> {
+            if (!tempOrder.value) {
+                  toast.warning('没有临时订单可确认');
+                  return null;
+            }
+
+            try {
+                  confirming.value = true;
+                  error.value = null;
+
+                  const result = await tempOrderApi.confirmTempOrder(tempOrder.value.id);
+                  
+                  // 清理临时订单
+                  clearTempOrder();
+                  
+                  toast.success('订单创建成功');
+                  return result;
+            } catch (err: any) {
+                  handleError(err, '确认订单失败');
+                  return null;
+            } finally {
+                  confirming.value = false;
+            }
+      }
+
+      /**
+       * 刷新临时订单有效期
+       */
+      async function refreshTempOrder(): Promise<TempOrder | null> {
+            if (!tempOrder.value) {
+                  return null;
+            }
+
+            try {
+                  loading.value = true;
+                  error.value = null;
+
+                  const refreshedOrder = await tempOrderApi.refreshTempOrder(tempOrder.value.id);
+                  tempOrder.value = refreshedOrder;
+
+                  // 缓存到本地
+                  saveToLocalStorage();
+
+                  return refreshedOrder;
+            } catch (err: any) {
+                  handleError(err, '刷新临时订单有效期失败');
+                  return null;
+            } finally {
+                  loading.value = false;
+            }
+      }
+
+      /**
+       * 保存到本地存储
+       */
+      function saveToLocalStorage(): void {
+            if (tempOrder.value) {
+                  storage.saveTempOrder(tempOrder.value);
+            }
+      }
+
+      /**
+       * 从本地存储加载
+       */
+      function loadFromLocalStorage(): boolean {
+            const data = storage.getTempOrder<TempOrder>();
+            if (data) {
+                  tempOrder.value = data;
+                  return true;
+            }
+            return false;
+      }
+
+      /**
+       * 清除临时订单
+       */
+      function clearTempOrder(): void {
+            tempOrder.value = null;
+            error.value = null;
+            
+            // 清除本地缓存
+            storage.remove(storage.STORAGE_KEYS.TEMP_ORDER);
+      }
+
+      /**
+       * 初始化
+       */
+      async function init(force: boolean = false): Promise<void> {
+            if (!initHelper.canInitialize(force)) {
+                  return;
+            }
+
+            initHelper.startInitialization();
+
+            try {
+                  if (userStore.isLoggedIn) {
+                        // 尝试从本地存储加载临时订单
+                        loadFromLocalStorage();
+                  }
+                  
+                  initHelper.completeInitialization();
+            } catch (err) {
+                  initHelper.failInitialization(err);
+                  throw err;
+            }
+      }
+
+      /**
+       * 重置状态
+       */
+      function resetState(): void {
+            tempOrder.value = null;
+            error.value = null;
+            initHelper.resetInitialization();
+            
+            // 清除本地缓存
+            storage.remove(storage.STORAGE_KEYS.TEMP_ORDER);
+      }
+
+      // 初始化事件监听
+      setupEventListeners();
+
+      return {
+            // 状态
+            tempOrder,
+            loading,
+            creating,
+            confirming,
+            error,
+            
+            // 计算属性
+            orderItems,
+            totalAmount,
+            discountAmount,
+            paymentAmount,
+            promotion,
+            expireTime,
+            isExpired,
+            
+            // 方法
+            createTempOrder,
+            loadTempOrder,
+            updateTempOrder,
+            confirmTempOrder,
+            refreshTempOrder,
+            saveToLocalStorage,
+            loadFromLocalStorage,
+            clearTempOrder,
+            init,
+            resetState,
+            
+            // 初始化状态
+            isInitialized: initHelper.isInitialized,
+            ensureInitialized
+      };
 });

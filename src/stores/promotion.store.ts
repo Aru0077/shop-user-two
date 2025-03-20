@@ -1,72 +1,60 @@
 // src/stores/promotion.store.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { api } from '@/api/index.api';
-import { storage } from '@/utils/storage'; 
+import { promotionApi } from '@/api/promotion.api';
+import { storage, STORAGE_VERSIONS } from '@/utils/storage';
+import { createInitializeHelper } from '@/utils/store-helpers';
 import { toast } from '@/utils/toast.service';
 import type { Promotion, EligiblePromotionResponse } from '@/types/promotion.type';
 import type { ApiError } from '@/types/common.type';
-import { createInitializeHelper } from '@/utils/store-helpers';
 
 /**
- * 促销规则状态存储与服务
- * 集成状态管理和业务逻辑
+ * 促销管理Store
+ * 负责促销规则的管理和计算
  */
 export const usePromotionStore = defineStore('promotion', () => {
-    // 创建初始化助手
+    // 初始化助手
     const initHelper = createInitializeHelper('PromotionStore');
 
-    // ==================== 状态 ====================
+    // 状态
     const promotions = ref<Promotion[]>([]);
-    const loading = ref<boolean>(false);
+    const currentEligiblePromotion = ref<EligiblePromotionResponse | null>(null);
+    const loading = ref(false);
+    const error = ref<string | null>(null);
 
-    // ==================== Getters ====================
-    const activePromotions = computed(() => 
-        promotions.value.filter(promo => promo.isActive)
-    );
+    // 计算属性
+    const activePromotions = computed(() => {
+        return promotions.value.filter(promotion => promotion.isActive);
+    });
+
+    const amountOffPromotions = computed(() => {
+        return activePromotions.value.filter(promotion => promotion.type === 'AMOUNT_OFF')
+            .sort((a, b) => a.thresholdAmount - b.thresholdAmount);
+    });
+
+    const percentOffPromotions = computed(() => {
+        return activePromotions.value.filter(promotion => promotion.type === 'PERCENT_OFF')
+            .sort((a, b) => a.thresholdAmount - b.thresholdAmount);
+    });
 
     // ==================== 内部工具方法 ====================
     /**
      * 处理API错误
-     * @param error API错误
-     * @param customMessage 自定义错误消息
      */
     function handleError(error: ApiError, customMessage?: string): void {
         console.error(`[PromotionStore] Error:`, error);
-
-        // 显示错误提示
         const message = customMessage || error.message || '发生未知错误';
         toast.error(message);
     }
 
     /**
-     * 设置事件监听
+     * 确保已初始化
      */
-    function setupEventListeners(): void {
-        // 可以在这里添加事件监听，如订单金额变化等
-    }
-
-    // ==================== 状态管理方法 ====================
-    /**
-     * 设置促销规则列表
-     */
-    function setPromotions(promotionList: Promotion[]) {
-        promotions.value = promotionList;
-    }
-
-    /**
-     * 设置加载状态
-     */
-    function setLoading(isLoading: boolean) {
-        loading.value = isLoading;
-    }
-
-    /**
-     * 清除促销数据
-     */
-    function clearPromotions() {
-        promotions.value = [];
-        storage.remove(storage.STORAGE_KEYS.PROMOTIONS);
+    async function ensureInitialized(): Promise<void> {
+        if (!initHelper.isInitialized()) {
+            console.info('[PromotionStore] 数据未初始化，正在初始化...');
+            await init();
+        }
     }
 
     // ==================== 业务逻辑方法 ====================
@@ -74,35 +62,35 @@ export const usePromotionStore = defineStore('promotion', () => {
      * 获取可用促销规则
      */
     async function getAvailablePromotions(): Promise<Promotion[]> {
-        if (loading.value) {
-            return promotions.value;
-        }
-
-        setLoading(true);
-
         try {
+            loading.value = true;
+            error.value = null;
+
             // 尝试从缓存获取
-            const cachedPromotions = storage.get<Promotion[]>(storage.STORAGE_KEYS.PROMOTIONS, null);
+            const cachedPromotions = storage.get<Promotion[]>(storage.STORAGE_KEYS.PROMOTIONS, null, STORAGE_VERSIONS.PROMOTIONS);
             if (cachedPromotions) {
-                setPromotions(cachedPromotions);
+                promotions.value = cachedPromotions;
                 return cachedPromotions;
             }
 
             // 从API获取
-            const fetchedPromotions = await api.promotionApi.getAvailablePromotions();
+            const availablePromotions = await promotionApi.getAvailablePromotions();
+            promotions.value = availablePromotions;
 
-            // 缓存促销列表
-            storage.set(storage.STORAGE_KEYS.PROMOTIONS, fetchedPromotions, storage.STORAGE_EXPIRY.PROMOTIONS);
+            // 缓存到本地
+            storage.set(
+                storage.STORAGE_KEYS.PROMOTIONS, 
+                availablePromotions, 
+                storage.STORAGE_EXPIRY.PROMOTIONS, 
+                STORAGE_VERSIONS.PROMOTIONS
+            );
 
-            // 更新状态
-            setPromotions(fetchedPromotions);
-
-            return fetchedPromotions;
-        } catch (error: any) {
-            handleError(error, '获取促销规则失败');
+            return availablePromotions;
+        } catch (err: any) {
+            handleError(err, '获取促销规则失败');
             return [];
         } finally {
-            setLoading(false);
+            loading.value = false;
         }
     }
 
@@ -111,34 +99,107 @@ export const usePromotionStore = defineStore('promotion', () => {
      * @param amount 订单金额
      */
     async function checkEligiblePromotion(amount: number): Promise<EligiblePromotionResponse | null> {
-        if (loading.value) {
-            return null; // 这里返回null，因为这个方法没有保存中间结果
-        }
-        setLoading(true);
-
         try {
-            const eligiblePromotion = await api.promotionApi.checkEligiblePromotion(amount);
-            return eligiblePromotion;
-        } catch (error: any) {
-            handleError(error, '检查满减规则失败');
+            loading.value = true;
+            error.value = null;
+
+            const response = await promotionApi.checkEligiblePromotion(amount);
+            currentEligiblePromotion.value = response;
+
+            return response;
+        } catch (err: any) {
+            handleError(err, '检查可用促销规则失败');
             return null;
         } finally {
-            setLoading(false);
+            loading.value = false;
         }
+    }
+
+    /**
+     * 获取下一个可用的满减规则（用于提示用户）
+     * @param amount 当前订单金额
+     */
+    function getNextAvailablePromotion(amount: number): Promotion | null {
+        // 确保按门槛金额排序
+        const sortedPromotions = [...amountOffPromotions.value].sort((a, b) => a.thresholdAmount - b.thresholdAmount);
+        
+        // 查找下一个可用的满减规则
+        for (const promotion of sortedPromotions) {
+            if (promotion.thresholdAmount > amount) {
+                return promotion;
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * 计算当前金额能获得的最大优惠
+     * @param amount 订单金额
+     */
+    function calculateBestPromotion(amount: number): { 
+        promotion: Promotion | null; 
+        discountAmount: number; 
+        finalAmount: number;
+    } {
+        let bestPromotion: Promotion | null = null;
+        let maxDiscount = 0;
+        
+        // 检查所有可用的促销规则
+        for (const promotion of activePromotions.value) {
+            if (amount >= promotion.thresholdAmount) {
+                let discount = 0;
+                
+                if (promotion.type === 'AMOUNT_OFF') {
+                    discount = promotion.discountAmount;
+                } else if (promotion.type === 'PERCENT_OFF') {
+                    discount = amount * (promotion.discountAmount / 100);
+                }
+                
+                // 更新最佳优惠
+                if (discount > maxDiscount) {
+                    maxDiscount = discount;
+                    bestPromotion = promotion;
+                }
+            }
+        }
+        
+        // 计算最终金额
+        const finalAmount = Math.max(0, amount - maxDiscount);
+        
+        return {
+            promotion: bestPromotion,
+            discountAmount: maxDiscount,
+            finalAmount
+        };
+    }
+
+    /**
+     * 清除促销状态
+     */
+    function clearPromotionState(): void {
+        promotions.value = [];
+        currentEligiblePromotion.value = null;
+        error.value = null;
+
+        // 清除本地缓存
+        storage.remove(storage.STORAGE_KEYS.PROMOTIONS);
     }
 
     /**
      * 初始化促销模块
      */
-    async function init(): Promise<void> {
-        if (!initHelper.canInitialize()) {
+    async function init(force: boolean = false): Promise<void> {
+        if (!initHelper.canInitialize(force)) {
             return;
         }
 
         initHelper.startInitialization();
 
         try {
+            // 加载促销规则
             await getAvailablePromotions();
+
             // 初始化成功
             initHelper.completeInitialization();
         } catch (error) {
@@ -147,26 +208,28 @@ export const usePromotionStore = defineStore('promotion', () => {
         }
     }
 
-    // 立即初始化事件监听
-    setupEventListeners();
-
     return {
         // 状态
         promotions,
+        currentEligiblePromotion,
         loading,
+        error,
 
-        // Getters
+        // 计算属性
         activePromotions,
-
-        // 状态管理方法
-        setPromotions,
-        setLoading,
-        clearPromotions,
+        amountOffPromotions,
+        percentOffPromotions,
 
         // 业务逻辑方法
         getAvailablePromotions,
         checkEligiblePromotion,
+        getNextAvailablePromotion,
+        calculateBestPromotion,
+        clearPromotionState,
         init,
-        isInitialized: initHelper.isInitialized
+
+        // 初始化状态
+        isInitialized: initHelper.isInitialized,
+        ensureInitialized
     };
 });

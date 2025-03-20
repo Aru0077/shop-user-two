@@ -1,264 +1,309 @@
 // src/stores/user.store.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { api } from '@/api/index.api';
+import { userApi } from '@/api/user.api';
 import { storage } from '@/utils/storage';
+import { createInitializeHelper } from '@/utils/store-helpers';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import { toast } from '@/utils/toast.service';
-import type { User, RegisterParams, LoginParams, DeleteAccountParams, LoginResponse } from '@/types/user.type';
+import type { User, RegisterParams, LoginParams, LoginResponse, DeleteAccountParams } from '@/types/user.type';
 import type { ApiError } from '@/types/common.type';
-import { createInitializeHelper } from '@/utils/store-helpers';
 
 /**
- * 用户状态存储与服务
- * 集成状态管理和业务逻辑
+ * 用户状态管理
+ * 负责用户认证、信息管理、登录状态维护
  */
 export const useUserStore = defineStore('user', () => {
-      // 创建初始化助手
+      // 初始化助手
       const initHelper = createInitializeHelper('UserStore');
 
-      // ==================== 状态 ====================
+      // 状态
       const user = ref<User | null>(null);
       const token = ref<string | null>(null);
-      const loading = ref<boolean>(false);
+      const loading = ref(false);
+      const loginLoading = ref(false);
+      const registerLoading = ref(false);
+      const error = ref<string | null>(null);
 
-      // ==================== Getters ====================
-      const isLoggedIn = computed(() => !!token.value);
-      const username = computed(() => user.value?.username || '');
+      // 计算属性
+      const isLoggedIn = computed(() => {
+            return !!token.value && !!user.value;
+      });
+
+      const username = computed(() => {
+            return user.value?.username || '';
+      });
+
+      const userId = computed(() => {
+            return user.value?.id || '';
+      });
 
       // ==================== 内部工具方法 ====================
       /**
        * 处理API错误
-       * @param error API错误
-       * @param customMessage 自定义错误消息
        */
       function handleError(error: ApiError, customMessage?: string): void {
             console.error(`[UserStore] Error:`, error);
-
-            // 显示错误提示
             const message = customMessage || error.message || '发生未知错误';
             toast.error(message);
       }
 
       /**
-       * 设置事件监听
+       * 保存用户数据到本地存储
        */
-      function setupEventListeners(): void {
-            // 监听全局初始化事件
-            eventBus.on(EVENT_NAMES.APP_INIT, () => {
-                  // 系统初始化时可以进行的操作，例如恢复用户会话
-                  restoreUserSession();
-            });
-      }
+      function saveUserDataToStorage(): void {
+            if (token.value) {
+                  storage.saveUserToken(token.value);
+            }
 
-      // ==================== 状态管理方法 ====================
-      /**
-       * 设置用户信息
-       */
-      function setUser(userData: User | null) {
-            user.value = userData;
-      }
-
-      /**
-       * 设置用户令牌
-       */
-      function setToken(newToken: string | null) {
-            token.value = newToken;
-      }
-
-      /**
-       * 设置加载状态
-       */
-      function setLoading(isLoading: boolean) {
-            loading.value = isLoading;
-      }
-
-      /**
-       * 清除用户状态
-       */
-      function clearUserState() {
-            user.value = null;
-            token.value = null;
-
-            // 清除本地存储中的用户信息
-            storage.remove(storage.STORAGE_KEYS.TOKEN);
-            storage.remove(storage.STORAGE_KEYS.USER_INFO);
-      }
-
-      // ==================== 业务逻辑方法（原服务方法）====================
-      /**
-       * 恢复用户会话
-       */
-      async function restoreUserSession(): Promise<void> {
-            const storedToken = storage.getUserToken();
-            const userInfo = storage.getUserInfo<User>();
-
-            if (storedToken && userInfo) {
-                  setToken(storedToken);
-                  setUser(userInfo);
-
-                  // 发布用户登录事件，通知其他模块用户已登录 
-                  eventBus.emit(EVENT_NAMES.USER_LOGIN, { user: userInfo, token: storedToken });
-                  // 增加日志帮助调试
-                  console.info('已恢复用户登录状态:', userInfo.username);
+            if (user.value) {
+                  storage.saveUserInfo(user.value);
             }
       }
 
       /**
+       * 从本地存储加载用户数据
+       */
+      function loadUserDataFromStorage(): boolean {
+            const storedToken = storage.getUserToken();
+            const storedUser = storage.getUserInfo<User>();
+
+            if (storedToken && storedUser) {
+                  token.value = storedToken;
+                  user.value = storedUser;
+                  return true;
+            }
+
+            return false;
+      }
+
+      /**
+       * 清除本地存储中的用户数据
+       */
+      function clearUserDataFromStorage(): void {
+            storage.remove(storage.STORAGE_KEYS.TOKEN);
+            storage.remove(storage.STORAGE_KEYS.USER_INFO);
+      }
+
+      // ==================== 业务逻辑方法 ====================
+      /**
        * 用户注册
-       * @param params 注册参数
        */
       async function register(params: RegisterParams): Promise<User | null> {
-            setLoading(true);
-
             try {
-                  const newUser = await api.userApi.register(params);
+                  registerLoading.value = true;
+                  error.value = null;
 
-                  // 发布用户注册事件
-                  eventBus.emit(EVENT_NAMES.USER_REGISTER, { user: newUser });
+                  const newUser = await userApi.register(params);
+
+                  // 注册成功后自动登录
+                  await login({
+                        username: params.username,
+                        password: params.password
+                  });
+
+                  // 发布注册成功事件
+                  eventBus.emit(EVENT_NAMES.USER_REGISTER, newUser);
 
                   toast.success('注册成功');
                   return newUser;
-            } catch (error: any) {
-                  handleError(error, '注册失败');
+            } catch (err: any) {
+                  handleError(err, '注册失败');
                   return null;
             } finally {
-                  setLoading(false);
+                  registerLoading.value = false;
             }
       }
 
       /**
        * 用户登录
-       * @param params 登录参数
        */
       async function login(params: LoginParams): Promise<LoginResponse | null> {
-            if (loading.value) {
-                  return null; // 登录操作不应重复，直接返回null
-            }
-            setLoading(true);
-
             try {
-                  const response = await api.userApi.login(params);
+                  loginLoading.value = true;
+                  error.value = null;
 
-                  // 保存用户信息和令牌到本地存储
-                  storage.saveUserToken(response.token);
-                  storage.saveUserInfo(response.user);
+                  const response = await userApi.login(params);
 
-                  // 更新状态
-                  setUser(response.user);
-                  setToken(response.token);
+                  // 保存登录状态
+                  token.value = response.token;
+                  user.value = response.user;
 
-                  // 发布用户登录事件
-                  eventBus.emit(EVENT_NAMES.USER_LOGIN, { user: response.user, token: response.token });
+                  // 保存到本地存储
+                  saveUserDataToStorage();
+
+                  // 发布登录成功事件
+                  eventBus.emit(EVENT_NAMES.USER_LOGIN, response.user);
 
                   toast.success('登录成功');
                   return response;
-            } catch (error: any) {
-                  handleError(error, '登录失败');
+            } catch (err: any) {
+                  handleError(err, '登录失败');
                   return null;
             } finally {
-                  setLoading(false);
+                  loginLoading.value = false;
             }
       }
 
       /**
-       * 用户退出登录
+       * 用户登出
        */
       async function logout(): Promise<boolean> {
-            setLoading(true);
+            if (!isLoggedIn.value) {
+                  return true;
+            }
 
             try {
-                  await api.userApi.logout();
+                  loading.value = true;
+                  error.value = null;
 
-                  // 清除用户状态
+                  // 调用API登出
+                  await userApi.logout();
+
+                  // 清除状态
                   clearUserState();
 
-                  // 发布用户登出事件
+                  // 发布登出事件
                   eventBus.emit(EVENT_NAMES.USER_LOGOUT);
 
                   toast.success('已退出登录');
                   return true;
-            } catch (error: any) {
-                  handleError(error, '退出登录失败');
+            } catch (err: any) {
+                  handleError(err, '退出登录失败');
                   return false;
             } finally {
-                  setLoading(false);
+                  loading.value = false;
             }
       }
 
       /**
-       * 删除用户账号
-       * @param params 删除账号参数
+       * 删除账号
        */
       async function deleteAccount(params: DeleteAccountParams): Promise<boolean> {
-            setLoading(true);
+            if (!isLoggedIn.value) {
+                  toast.warning('请先登录');
+                  return false;
+            }
 
             try {
-                  await api.userApi.deleteAccount(params);
+                  loading.value = true;
+                  error.value = null;
 
-                  // 清除用户状态
+                  // 调用API删除账号
+                  await userApi.deleteAccount(params);
+
+                  // 清除状态
                   clearUserState();
 
-                  // 发布用户登出事件
+                  // 发布登出事件
                   eventBus.emit(EVENT_NAMES.USER_LOGOUT);
 
                   toast.success('账号已删除');
                   return true;
-            } catch (error: any) {
-                  handleError(error, '删除账号失败');
+            } catch (err: any) {
+                  handleError(err, '删除账号失败');
                   return false;
             } finally {
-                  setLoading(false);
+                  loading.value = false;
             }
+      }
+
+      /**
+       * 清除用户状态
+       */
+      function clearUserState(): void {
+            user.value = null;
+            token.value = null;
+
+            // 清除本地存储
+            clearUserDataFromStorage();
+      }
+
+      /**
+       * 检查当前登录状态是否有效
+       */
+      function checkAuthState(): boolean {
+            if (!token.value || !user.value) {
+                  return false;
+            }
+
+            // 可以添加Token有效期检查等逻辑
+            return true;
       }
 
       /**
        * 初始化用户模块
        */
-      async function init(): Promise<void> {
-            if (!initHelper.canInitialize()) {
+      async function init(force: boolean = false): Promise<void> {
+            if (!initHelper.canInitialize(force)) {
                   return;
             }
 
             initHelper.startInitialization();
 
             try {
-                  await restoreUserSession();
-                  // 初始化成功
+                  // 从本地存储加载用户数据
+                  const hasUserData = loadUserDataFromStorage();
+
+                  if (hasUserData) {
+                        // 验证登录状态有效性
+                        const isValid = checkAuthState();
+
+                        if (!isValid) {
+                              clearUserState();
+                        } else {
+                              // 发布登录事件，通知其他模块用户已登录
+                              eventBus.emit(EVENT_NAMES.USER_LOGIN, user.value);
+                        }
+                  }
+
                   initHelper.completeInitialization();
-            } catch (error) {
-                  initHelper.failInitialization(error);
-                  throw error;
+            } catch (err) {
+                  initHelper.failInitialization(err);
+                  throw err;
             }
       }
 
+      /**
+       * 重置状态
+       */
+      function resetState(): void {
+            user.value = null;
+            token.value = null;
+            error.value = null;
+            initHelper.resetInitialization();
 
-      // 立即初始化存储和事件监听
-      setupEventListeners();
+            // 清除本地缓存
+            clearUserDataFromStorage();
+      }
 
       return {
             // 状态
             user,
             token,
             loading,
+            loginLoading,
+            registerLoading,
+            error,
 
-            // Getters
+            // 计算属性
             isLoggedIn,
             username,
+            userId,
 
-            // 状态管理方法
-            setUser,
-            setToken,
-            setLoading,
-            clearUserState,
-
-            // 业务逻辑方法
+            // 方法
             register,
             login,
             logout,
             deleteAccount,
-            restoreUserSession,
+            clearUserState,
+            checkAuthState,
+            saveUserDataToStorage,
+            loadUserDataFromStorage,
             init,
+            resetState,
+
+            // 初始化状态
             isInitialized: initHelper.isInitialized
       };
 });
