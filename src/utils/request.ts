@@ -86,6 +86,8 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
       (response: AxiosResponse<ApiResponse>) => {
+            console.log('成功结果', response);
+            
             // 请求完成后，从pendingRequests中移除
             removePendingRequest(response.config);
 
@@ -106,6 +108,8 @@ service.interceptors.response.use(
             return response.data;
       },
       (error) => {
+            console.log('错误结果', error);
+            
             // 如果请求被取消，不处理错误
             if (axios.isCancel(error)) {
                   console.log('Request canceled:', error.message);

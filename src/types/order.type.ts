@@ -139,4 +139,4 @@ export interface PayOrderResponse {
       orderItems: OrderItem[];
       paymentLogs: PaymentLog[];
       shippingAddress: ShippingAddress;
-}
+} 

@@ -44,9 +44,9 @@ export const favoriteApi = {
        * 取消收藏
        * @param productId 商品ID
        */
-      removeFavorite(productId: number): Promise<{ id: number, productId: number, product: Partial<Product> }> {
+      removeFavorite(productId: number): Promise<null> {
             return http.delete(`/favorites/${productId}`);
-      },
+        },
 
       /**
        * 批量取消收藏
