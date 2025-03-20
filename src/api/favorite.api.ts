@@ -4,8 +4,10 @@ import type {
       AddFavoriteParams,
       BatchRemoveFavoritesParams,
       FavoritesResponse,
-      FavoriteIdsResponse
+      FavoriteIdsResponse,
+      UserFavorite,
 } from '@/types/favorite.type';
+import type { Product } from '@/types/product.type';
 
 /**
  * 收藏API
@@ -34,7 +36,7 @@ export const favoriteApi = {
        * 添加收藏
        * @param params 添加收藏参数
        */
-      addFavorite(params: AddFavoriteParams): Promise<null> {
+      addFavorite(params: AddFavoriteParams): Promise<UserFavorite> {
             return http.post('/favorites', params);
       },
 
@@ -42,7 +44,7 @@ export const favoriteApi = {
        * 取消收藏
        * @param productId 商品ID
        */
-      removeFavorite(productId: number): Promise<null> {
+      removeFavorite(productId: number): Promise<{ id: number, productId: number, product: Partial<Product> }> {
             return http.delete(`/favorites/${productId}`);
       },
 

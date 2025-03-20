@@ -37,12 +37,13 @@ export interface AddToCartParams {
       productId: number;
       skuId: number;
       quantity?: number;
-      optimistic?: boolean; 
+      optimistic?: boolean;
 }
 
 /**
  * 添加到购物车响应
  */
+// 更新 AddToCartResponse 接口以匹配更完整的后端返回
 export interface AddToCartResponse {
       cartItem: {
             id: number;
@@ -53,11 +54,25 @@ export interface AddToCartResponse {
             product: {
                   id: number;
                   name: string;
+                  mainImage: string;
+                  productCode: string;
+                  status: string;
+                  is_promotion: number;
+                  categoryId: number;
+                  category: {
+                        id: number;
+                        name: string;
+                  };
             };
             sku: {
                   id: number;
                   price: number;
+                  promotion_price: number | null;
                   stock: number;
+                  sku_specs: Array<{
+                        spec: { id: number; name: string };
+                        specValue: { id: number; value: string };
+                  }>;
             };
       };
       cartItemCount: number;

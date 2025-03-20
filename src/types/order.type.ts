@@ -94,8 +94,10 @@ export interface CreateOrderResponse {
       paymentAmount: number;
       orderStatus: number | null;
       paymentStatus: number | null;
+      shippingAddress: ShippingAddress;
       createdAt: string;
       timeoutSeconds: number;
+      orderItems: OrderItem[]; // 添加订单项
       promotion: {
             id: number;
             name: string;
@@ -128,5 +130,13 @@ export interface PayOrderParams {
  */
 export interface PayOrderResponse {
       orderId: string;
-      status: string;
+      orderNo: string;
+      paymentStatus: number;
+      orderStatus: number;
+      transactionId: string;
+      totalAmount: number;
+      paymentAmount: number;
+      orderItems: OrderItem[];
+      paymentLogs: PaymentLog[];
+      shippingAddress: ShippingAddress;
 }
