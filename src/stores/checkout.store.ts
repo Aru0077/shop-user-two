@@ -93,7 +93,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
      */
     function handleError(error: ApiError, customMessage?: string): void {
         console.error(`[CheckoutStore] Error:`, error);
-        const message = customMessage || error.message || '发生未知错误';
+        const message = customMessage || error.message || 'An unknown error occurred';
         toast.error(message);
     }
 
@@ -182,7 +182,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
 
             return info;
         } catch (err: any) {
-            handleError(err, '获取结算信息失败');
+            handleError(err, 'Failed to get checkout information');
             return null;
         } finally {
             loading.value = false;
@@ -194,7 +194,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
      */
     async function createTempOrder(params: CreateTempOrderParams): Promise<TempOrder | null> {
         if (!userStore.isLoggedIn) {
-            toast.warning('请先登录后再创建订单');
+            toast.warning('Please log in before creating an order');
             return null;
         }
 
@@ -227,7 +227,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
 
             return order;
         } catch (err: any) {
-            handleError(err, '创建临时订单失败');
+            handleError(err, 'Failed to create temporary order');
             return null;
         } finally {
             creatingOrder.value = false;
@@ -239,7 +239,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
      */
     async function loadTempOrder(id: string): Promise<TempOrder | null> {
         if (!userStore.isLoggedIn) {
-            toast.warning('请先登录');
+            toast.warning('Please log in');
             return null;
         }
 
@@ -290,7 +290,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
 
             return order;
         } catch (err: any) {
-            handleError(err, '加载临时订单失败');
+            handleError(err, 'Failed to load temporary order');
             return null;
         } finally {
             loading.value = false;
@@ -302,7 +302,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
      */
     async function updateTempOrder(): Promise<TempOrder | null> {
         if (!tempOrder.value) {
-            toast.warning('没有临时订单可更新');
+            toast.warning('No temporary order to update');
             return null;
         }
 
@@ -324,7 +324,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
 
             return updatedOrder;
         } catch (err: any) {
-            handleError(err, '更新临时订单失败');
+            handleError(err, 'Failed to update temporary order');
             return null;
         } finally {
             loading.value = false;
@@ -351,7 +351,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
 
             return refreshedOrder;
         } catch (err: any) {
-            handleError(err, '刷新临时订单有效期失败');
+            handleError(err, 'Failed to refresh temporary order expiration');
             return null;
         } finally {
             loading.value = false;
@@ -363,17 +363,17 @@ export const useCheckoutStore = defineStore('checkout', () => {
      */
     async function confirmOrder(): Promise<CreateOrderResponse | null> {
         if (!tempOrder.value) {
-            toast.warning('没有临时订单可提交');
+            toast.warning('No temporary order to submit');
             return null;
         }
 
         if (!selectedAddressId.value) {
-            toast.warning('请选择收货地址');
+            toast.warning('Please select a shipping address');
             return null;
         }
 
         if (!selectedPaymentType.value) {
-            toast.warning('请选择支付方式');
+            toast.warning('Please select a payment method');
             return null;
         }
 
@@ -391,10 +391,10 @@ export const useCheckoutStore = defineStore('checkout', () => {
             tempOrder.value = null;
             storage.remove(storage.STORAGE_KEYS.TEMP_ORDER);
 
-            toast.success('订单创建成功');
+            toast.success('Order created successfully');
             return result;
         } catch (err: any) {
-            handleError(err, '提交订单失败');
+            handleError(err, 'Failed to submit order');
             return null;
         } finally {
             confirmingOrder.value = false;

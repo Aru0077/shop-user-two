@@ -65,7 +65,7 @@ export function useCartPage() {
                   processingIds.value.push(id);
                   await cartStore.updateCartItem(id, { quantity });
             } catch (error: any) {
-                  toast.error(error.message || '更新数量失败');
+                  toast.error(error.message || 'Failed to update quantity');
             } finally {
                   processingIds.value = processingIds.value.filter(itemId => itemId !== id);
             }
@@ -79,7 +79,7 @@ export function useCartPage() {
                   processingIds.value.push(id);
                   await cartStore.deleteCartItem(id);
             } catch (error: any) {
-                  toast.error(error.message || '删除失败');
+                  toast.error(error.message || 'Failed to delete');
             } finally {
                   processingIds.value = processingIds.value.filter(itemId => itemId !== id);
             }
@@ -89,7 +89,7 @@ export function useCartPage() {
       const batchRemove = async () => {
             if (selectedItems.value.length === 0) return;
 
-            const confirmed = window.confirm(`确认删除选中的 ${selectedItems.value.length} 件商品?`);
+            const confirmed = window.confirm(`Confirm to delete selected ${selectedItems.value.length} items?`);
             if (!confirmed) return;
 
             loading.value = true;
@@ -107,12 +107,12 @@ export function useCartPage() {
                   }
 
                   if (hasError) {
-                        toast.warning('部分商品删除失败，请重试');
+                        toast.warning('Some items failed to delete, please try again');
                   } else {
-                        toast.success('已删除选中商品');
+                        toast.success('Selected items deleted');
                   }
             } catch (error: any) {
-                  toast.error(error.message || '批量删除失败');
+                  toast.error(error.message || 'Batch delete failed');
             } finally {
                   loading.value = false;
             }
@@ -121,13 +121,13 @@ export function useCartPage() {
       // 去结算 创建临时订单
       const checkout = async () => {
             if (selectedItems.value.length === 0) {
-                  toast.error('请选择要结算的商品');
+                  toast.error('Please select items to checkout');
                   return;
             }
 
             // 检查用户是否登录
             if (!userStore.isLoggedIn) {
-                  toast.info('请先登录');
+                  toast.info('Please log in first');
                   router.push({
                         path: '/login',
                         query: { redirect: '/cart' }
@@ -146,7 +146,7 @@ export function useCartPage() {
                   });
 
                   if (!tempOrder) {
-                        throw new Error('创建临时订单失败');
+                        throw new Error('Failed to create temporary order');
                   }
 
                   // 跳转到结账页面
@@ -157,7 +157,7 @@ export function useCartPage() {
                         }
                   });
             } catch (error: any) {
-                  toast.error(error.message || '创建订单失败，请重试');
+                  toast.error(error.message || 'Failed to create order, please try again');
                   console.error('创建临时订单失败:', error);
             } finally {
                   loading.value = false;
@@ -174,7 +174,7 @@ export function useCartPage() {
             loading.value = true;
             try {
                   // 确保购物车已初始化
-                  await cartStore.isInitialized();
+                  cartStore.isInitialized();
 
                   // 刷新购物车数据
                   if (userStore.isLoggedIn) {
@@ -184,7 +184,7 @@ export function useCartPage() {
                   // 编辑模式初始状态
                   isEditMode.value = false;
             } catch (error: any) {
-                  toast.error('加载购物车失败，请刷新页面重试');
+                  toast.error('Failed to load the cart, please refresh the page');
                   console.error('初始化购物车失败:', error);
             } finally {
                   loading.value = false;

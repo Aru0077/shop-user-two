@@ -173,7 +173,7 @@ export const useCartStore = defineStore('cart', () => {
             }
 
             totalCount.value = cartItemCount;
-            toast.success('成功添加到购物车');
+            toast.success('Successfully added to cart');
             // 保存到本地缓存
             saveToLocalStorage();
 
@@ -183,7 +183,7 @@ export const useCartStore = defineStore('cart', () => {
 
             // 显示提示（非乐观更新时）
             if (!params.optimistic) {
-                toast.success('成功添加到购物车');
+                toast.success('Successfully added to cart');
             }
 
             return response;
@@ -192,7 +192,7 @@ export const useCartStore = defineStore('cart', () => {
             console.error('添加到购物车失败:', err);
 
             // 显示错误提示
-            toast.error(error.value || '添加到购物车失败');
+            toast.error(error.value || 'Failed to add to cart ');
 
             // 如果是乐观更新，需要回滚本地状态
             if (params.optimistic) {
@@ -259,7 +259,7 @@ export const useCartStore = defineStore('cart', () => {
             console.error('更新购物车失败:', err);
 
             // 显示错误提示
-            toast.error(error.value || '更新购物车失败');
+            toast.error(error.value || 'Failed to update cart ');
             throw err;
         }
     }
@@ -300,7 +300,7 @@ export const useCartStore = defineStore('cart', () => {
                 eventBus.emit(EVENT_NAMES.CART_UPDATED, items.value);
 
                 // 显示提示
-                toast.success('已从购物车中移除');
+                toast.success('Successfully removed from cart');
 
                 return true;
             } catch (err: any) {
@@ -319,7 +319,7 @@ export const useCartStore = defineStore('cart', () => {
             console.error('删除购物车项失败:', err);
 
             // 显示错误提示
-            toast.error(error.value || '删除购物车项失败');
+            toast.error(error.value || 'Failed to remove cart item');
             throw err;
         }
     }
@@ -345,7 +345,7 @@ export const useCartStore = defineStore('cart', () => {
             eventBus.emit(EVENT_NAMES.CART_UPDATED, []);
 
             // 显示提示
-            toast.success('购物车已清空');
+            toast.success('Cart has been cleared');
 
             return true;
         } catch (err: any) {
@@ -353,7 +353,7 @@ export const useCartStore = defineStore('cart', () => {
             console.error('清空购物车失败:', err);
 
             // 显示错误提示
-            toast.error(error.value || '清空购物车失败');
+            toast.error(error.value || 'Failed to clear cart');
             throw err;
         } finally {
             loading.value = false;

@@ -20,7 +20,7 @@
                 </div>
                 <!-- 如果没有子分类则显示提示 -->
                 <div v-if="!category.children || category.children.length === 0" class="py-3 italic text-gray-400">
-                    该分类下暂无子分类
+                    No subcategories available
                 </div>
             </DisclosurePanel>
         </Disclosure>

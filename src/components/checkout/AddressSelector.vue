@@ -3,9 +3,9 @@
     <div class="bg-white rounded-xl p-4 mb-4 shadow-sm">
         <!-- 标题 -->
         <div class="flex justify-between items-center mb-3">
-            <h3 class="text-[16px] font-bold">收货地址</h3>
+            <h3 class="text-[16px] font-bold">Shipping Address</h3>
             <div @click="goToAddressList" class="flex items-center text-xs text-gray-500 cursor-pointer">
-                <span>管理地址</span>
+                <span>Manage Addresses</span>
                 <ChevronRight :size="16" class="ml-1" />
             </div>
         </div>
@@ -13,14 +13,14 @@
         <!-- 加载状态 -->
         <div v-if="loading" class="py-2 flex items-center text-gray-500">
             <div class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-gray-500 border-r-transparent mr-2"></div>
-            <span>加载地址中...</span>
+            <span>Loading Addresses...</span>
         </div>
 
         <!-- 没有地址 -->
         <div v-else-if="addresses.length === 0" class="py-2 flex flex-col items-center justify-center text-gray-500">
             <MapPin :size="28" class="text-gray-400 mb-2" />
-            <span class="mb-2">您还没有收货地址</span>
-            <button @click="goToAddressList" class="px-4 py-2 bg-gray-100 rounded-full text-sm">添加地址</button>
+            <span class="mb-2">You have no shipping addresses</span>
+            <button @click="goToAddressList" class="px-4 py-2 bg-gray-100 rounded-full text-sm">Add Address</button>
         </div>
 
         <!-- 地址列表 -->
@@ -35,14 +35,14 @@
                     {{ `${selectedAddress.province} ${selectedAddress.city} ${selectedAddress.detailAddress}` }}
                 </div>
                 <div v-if="selectedAddress.isDefault === 1" class="mt-2">
-                    <span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">默认</span>
+                    <span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">Default</span>
                 </div>
             </div>
 
             <!-- 切换地址按钮 - 修改逻辑：不论地址数量都显示按钮 -->
             <div class="flex justify-center">
                 <button @click="showAddressModal = true" class="px-4 py-2 bg-gray-100 rounded-full text-sm">
-                    {{ addresses.length > 1 ? '切换地址' : '选择地址' }}
+                    {{ addresses.length > 1 ? 'Switch Address' : 'Select Address' }}
                 </button>
             </div>
         </div>
@@ -51,7 +51,7 @@
         <div v-if="showAddressModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
             <div class="bg-white rounded-lg w-11/12 max-w-md max-h-[80vh] flex flex-col">
                 <div class="p-4 border-b border-gray-200 flex justify-between items-center">
-                    <h3 class="font-bold">选择收货地址</h3>
+                    <h3 class="font-bold">Select Shipping Address</h3>
                     <X @click="showAddressModal = false" class="cursor-pointer" />
                 </div>
                 <div class="overflow-y-auto flex-1 p-4">
@@ -67,13 +67,13 @@
                             {{ `${address.province} ${address.city} ${address.detailAddress}` }}
                         </div>
                         <div v-if="address.isDefault === 1" class="mt-2">
-                            <span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">默认</span>
+                            <span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">Default</span>
                         </div>
                     </div>
                 </div>
                 <div class="p-4 border-t border-gray-200 flex justify-between">
-                    <button @click="goToAddressList" class="px-4 py-2 bg-gray-100 text-black rounded-lg">添加新地址</button>
-                    <button @click="showAddressModal = false" class="px-4 py-2 bg-black text-white rounded-lg">确定</button>
+                    <button @click="goToAddressList" class="px-4 py-2 bg-gray-100 text-black rounded-lg">Add New Address</button>
+                    <button @click="showAddressModal = false" class="px-4 py-2 bg-black text-white rounded-lg">Confirm</button>
                 </div>
             </div>
         </div>

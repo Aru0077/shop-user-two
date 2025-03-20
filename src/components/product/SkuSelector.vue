@@ -55,7 +55,7 @@
 
                     <!-- 数量选择 -->
                     <div class="mt-4">
-                        <div class="font-medium mb-2">数量</div>
+                        <div class="font-medium mb-2">Quantity</div>
                         <div class="flex items-center border border-gray-300 rounded-lg w-fit">
                             <button type="button" @click="decreaseQuantity"
                                 class="w-10 h-10 flex items-center justify-center text-gray-600"
@@ -79,8 +79,8 @@
                     <button type="button" @click="handleAction"
                         class="w-full h-12 rounded-xl bg-black text-white font-medium"
                         :disabled="!selectedSkuId || isSubmitting || actionDisabled">
-                        <span v-if="!isSubmitting">{{ mode === 'cart' ? '加入购物车' : '立即购买' }}</span>
-                        <span v-else>处理中...</span>
+                        <span v-if="!isSubmitting">{{ mode === 'cart' ? 'Add to Cart' : 'Buy Now' }}</span>
+                        <span v-else>Processing...</span>
                     </button>
                 </div>
             </div>
@@ -239,7 +239,7 @@ const updateSelectedSku = () => {
 
 // 方法：获取已选规格的文本描述
 const getSelectedSpecsText = (): string => {
-    if (!props.product || selectedSpecs.value.size === 0) return '请选择规格';
+    if (!props.product || selectedSpecs.value.size === 0) return 'Please select specifications';
 
     return Array.from(selectedSpecs.value.entries())
         .map(([specId, valueId]) => {
@@ -272,7 +272,7 @@ const decreaseQuantity = () => {
 // 方法：处理加入购物车或立即购买操作
 const handleAction = async () => {
     if (!props.product || !selectedSkuId.value) {
-        toast.error('请选择商品规格');
+        toast.error('Please select product specifications');
         return;
     }
 
