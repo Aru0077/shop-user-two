@@ -1,79 +1,84 @@
 <template>
-    <div class="pageContent">
+    <div class="flex flex-col h-full overflow-hidden p-4">
         <!-- 页面标题 -->
-        <div class="flex justify-between items-center">
+        <div class="flex justify-between items-center z-10">
             <PageTitle mainTitle="My Favorites" />
             <div v-if="favorites.length > 0" @click="toggleEditMode" class="text-sm font-medium">
                 {{ isEditMode ? 'Done' : 'Edit' }}
             </div>
         </div>
 
-        <!-- 间距占位符 -->
-        <div class="w-full h-4"></div>
+        <div class="flex-1 overflow-y-auto">
+            <!-- 间距占位符 -->
+            <div class="w-full h-4"></div>
 
-        <!-- 加载状态 -->
-        <div v-if="loading" class="flex justify-center items-center h-40">
-            <div
-                class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-black border-r-transparent align-middle">
-            </div>
-        </div>
-
-        <!-- 空收藏状态 -->
-        <EmptyFavorites v-else-if="favorites.length === 0" @shop-now="goToHome" />
-
-        <!-- 收藏列表 -->
-        <div v-else>
-            <!-- 编辑模式下的全选控制 -->
-            <div v-if="isEditMode" class="flex items-center mb-4 bg-white p-3 rounded-lg shadow-sm">
-                <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll"
-                    class="w-5 h-5 accent-black mr-2" />
-                <span class="text-sm">Select All</span>
-                <span class="text-sm text-gray-500 ml-2">({{ selectedItems.length }}/{{ favorites.length }})</span>
-            </div>
-
-            <!-- 网格布局展示收藏商品 -->
-            <div class="grid grid-cols-2 gap-4">
-                <div v-for="item in favorites" :key="item.id"
-                    class="bg-white rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.08)] overflow-hidden relative">
-                    <!-- 商品选择器 (编辑模式下) -->
-                    <div v-if="isEditMode" class="absolute top-2 left-2 z-10">
-                        <input type="checkbox" :checked="isItemSelected(item.id)" @change="toggleSelectItem(item.id)"
-                            class="w-5 h-5 accent-black" />
-                    </div>
-
-                    <!-- 商品图片 -->
-                    <div class="aspect-square relative" @click="!isEditMode && goToProductDetail(item.productId)">
-                        <img :src="item.product?.mainImage || 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png'"
-                            :alt="item.product?.name || 'Product image'" class="w-full h-full object-cover" />
-                    </div>
-
-                    <!-- 商品信息 -->
-                    <div class="p-3">
-                        <div class="text-sm font-medium line-clamp-1">{{ item.product?.name || 'Product name' }}</div>
-                        <div class="flex justify-between items-center mt-1">
-                            <!-- 价格 -->
-                            <div class="text-sm font-bold text-red-500">
-                                {{ formatPrice(item.product) }}
-                            </div>
-                            <!-- 操作按钮 -->
-                            <button v-if="!isEditMode" @click="removeFavorite(item.productId)"
-                                class="p-1 rounded-full hover:bg-gray-100">
-                                <Trash2 class="w-4 h-4 text-gray-500" />
-                            </button>
-                        </div>
-                    </div>
+            <!-- 加载状态 -->
+            <div v-if="loading" class="flex justify-center items-center h-40">
+                <div
+                    class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-black border-r-transparent align-middle">
                 </div>
             </div>
 
-            <!-- 批量操作浮动按钮 (编辑模式下) -->
-            <div v-if="isEditMode && selectedItems.length > 0" class="fixed bottom-10 inset-x-0 px-4">
-                <button @click="batchRemoveFavorites"
-                    class="w-full py-3 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg">
-                    <Trash2 class="w-5 h-5 mr-2" />
-                    Remove Selected ({{ selectedItems.length }})
-                </button>
+            <!-- 空收藏状态 -->
+            <EmptyFavorites v-else-if="favorites.length === 0" @shop-now="goToHome" />
+
+            <!-- 收藏列表 -->
+            <div v-else>
+                <!-- 编辑模式下的全选控制 -->
+                <div v-if="isEditMode" class="flex items-center mb-4 bg-white p-3 rounded-lg shadow-sm">
+                    <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll"
+                        class="w-5 h-5 accent-black mr-2" />
+                    <span class="text-sm">Select All</span>
+                    <span class="text-sm text-gray-500 ml-2">({{ selectedItems.length }}/{{ favorites.length }})</span>
+                </div>
+
+                <!-- 网格布局展示收藏商品 -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div v-for="item in favorites" :key="item.id"
+                        class="bg-white rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.08)] overflow-hidden relative">
+                        <!-- 商品选择器 (编辑模式下) -->
+                        <div v-if="isEditMode" class="absolute top-2 left-2 z-10">
+                            <input type="checkbox" :checked="isItemSelected(item.id)"
+                                @change="toggleSelectItem(item.id)" class="w-5 h-5 accent-black" />
+                        </div>
+
+                        <!-- 商品图片 -->
+                        <div class="aspect-square relative" @click="!isEditMode && goToProductDetail(item.productId)">
+                            <img :src="item.product?.mainImage || 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png'"
+                                :alt="item.product?.name || 'Product image'" class="w-full h-full object-cover" />
+                        </div>
+
+                        <!-- 商品信息 -->
+                        <div class="p-3">
+                            <div class="text-sm font-medium line-clamp-1">{{ item.product?.name || 'Product name' }}
+                            </div>
+                            <div class="flex justify-between items-center mt-1">
+                                <!-- 价格 -->
+                                <div class="text-sm font-bold text-red-500">
+                                    {{ formatPrice(item.product) }}
+                                </div>
+                                <!-- 操作按钮 -->
+                                <button v-if="!isEditMode" @click="removeFavorite(item.productId)"
+                                    class="p-1 rounded-full hover:bg-gray-100">
+                                    <Trash2 class="w-4 h-4 text-gray-500" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 批量操作浮动按钮 (编辑模式下) -->
+                <div v-if="isEditMode && selectedItems.length > 0" class="fixed bottom-10 inset-x-0 px-4">
+                    <button @click="batchRemoveFavorites"
+                        class="w-full py-3 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg">
+                        <Trash2 class="w-5 h-5 mr-2" />
+                        Remove Selected ({{ selectedItems.length }})
+                    </button>
+                </div>
             </div>
+
         </div>
+
     </div>
 </template>
 

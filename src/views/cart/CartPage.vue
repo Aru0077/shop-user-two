@@ -1,6 +1,6 @@
 <!-- src/views/cart/CartPage.vue -->
 <template>
-    <div class="flex flex-col h-full">
+    <div class="flex flex-col h-full overflow-hidden">
         <!-- 顶部标题栏（固定） -->
         <div class="z-10 bg-white px-4 pt-4">
             <div class="flex justify-between items-center">

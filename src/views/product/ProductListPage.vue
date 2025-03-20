@@ -1,43 +1,46 @@
 <template>
-    <div class="pageContent pb-20">
+    <div class="flex flex-col overflow-hidden h-full p-4">
         <!-- 页面标题 -->
-        <PageTitle :mainTitle="pageTitle" />
+        <PageTitle :mainTitle="pageTitle" class="z-10"/>
 
-        <!-- 间距占位符 -->
-        <div class="w-full h-4"></div>
+        <div class="flex-1 overflow-y-auto"> 
+            <!-- 间距占位符 -->
+            <div class="w-full h-4"></div>
 
-        <!-- 加载状态 -->
-        <div v-if="loading && products.length === 0" class="flex justify-center items-center h-40">
-            <div
-                class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-black border-r-transparent align-middle">
+            <!-- 加载状态 -->
+            <div v-if="loading && products.length === 0" class="flex justify-center items-center h-40">
+                <div
+                    class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-black border-r-transparent align-middle">
+                </div>
             </div>
-        </div>
 
-        <!-- 商品列表 -->
-        <div v-else-if="products.length > 0">
-            <ProductGrid :products="products" :maxItems="1000" />
+            <!-- 商品列表 -->
+            <div v-else-if="products.length > 0">
+                <ProductGrid :products="products" :maxItems="1000" />
 
-            <!-- 底部加载更多 -->
-            <div v-if="hasMore" class="mt-4 flex justify-center">
-                <button @click="loadMore" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg"
-                    :disabled="loadingMore">
-                    <div v-if="loadingMore"
-                        class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-gray-500 border-r-transparent align-middle mr-2">
-                    </div>
-                    {{ loadingMore ? '加载中...' : '加载更多' }}
+                <!-- 底部加载更多 -->
+                <div v-if="hasMore" class="mt-4 flex justify-center">
+                    <button @click="loadMore" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg"
+                        :disabled="loadingMore">
+                        <div v-if="loadingMore"
+                            class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-gray-500 border-r-transparent align-middle mr-2">
+                        </div>
+                        {{ loadingMore ? '加载中...' : '加载更多' }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- 空结果 -->
+            <div v-else class="flex flex-col items-center justify-center h-60">
+                <Package class="w-12 h-12 text-gray-300 mb-2" />
+                <div class="text-gray-500 mb-4">暂无商品</div>
+                <button @click="goToHome" class="bg-black text-white py-2 px-6 rounded-full flex items-center">
+                    <Home class="w-4 h-4 mr-1" />
+                    返回首页
                 </button>
             </div>
         </div>
 
-        <!-- 空结果 -->
-        <div v-else class="flex flex-col items-center justify-center h-60">
-            <Package class="w-12 h-12 text-gray-300 mb-2" />
-            <div class="text-gray-500 mb-4">暂无商品</div>
-            <button @click="goToHome" class="bg-black text-white py-2 px-6 rounded-full flex items-center">
-                <Home class="w-4 h-4 mr-1" />
-                返回首页
-            </button>
-        </div>
     </div>
 </template>
 

@@ -1,4 +1,4 @@
-<!-- src/components/checkout/AddressSelector.vue -->
+<!-- src/components/checkout/AddressSelector.vue --> 
 <template>
     <div class="bg-white rounded-xl p-4 mb-4 shadow-sm">
         <!-- 标题 -->
@@ -39,9 +39,11 @@
                 </div>
             </div>
 
-            <!-- 切换地址按钮 -->
-            <div v-if="addresses.length > 1" @click="showAddressModal = true" class="flex justify-center">
-                <button class="px-4 py-2 bg-gray-100 rounded-full text-sm">切换地址</button>
+            <!-- 切换地址按钮 - 修改逻辑：不论地址数量都显示按钮 -->
+            <div class="flex justify-center">
+                <button @click="showAddressModal = true" class="px-4 py-2 bg-gray-100 rounded-full text-sm">
+                    {{ addresses.length > 1 ? '切换地址' : '选择地址' }}
+                </button>
             </div>
         </div>
 
@@ -69,8 +71,9 @@
                         </div>
                     </div>
                 </div>
-                <div class="p-4 border-t border-gray-200">
-                    <button @click="showAddressModal = false" class="w-full py-2 bg-black text-white rounded-lg">确定</button>
+                <div class="p-4 border-t border-gray-200 flex justify-between">
+                    <button @click="goToAddressList" class="px-4 py-2 bg-gray-100 text-black rounded-lg">添加新地址</button>
+                    <button @click="showAddressModal = false" class="px-4 py-2 bg-black text-white rounded-lg">确定</button>
                 </div>
             </div>
         </div>
@@ -84,7 +87,6 @@ import { MapPin, ChevronRight, X } from 'lucide-vue-next';
 import { useAddressStore } from '@/stores/address.store';
 import { useTempOrderStore } from '@/stores/temp-order.store';
 import { useToast } from '@/composables/useToast';
-// import type { UserAddress } from '@/types/address.type';
 
 // 组件属性
 const props = defineProps<{
@@ -112,7 +114,7 @@ const selectedAddressId = computed({
 // 地址数据
 const addresses = computed(() => addressStore.addresses);
 const loading = computed(() => addressStore.loading);
-const selectedAddress = computed(() => 
+const selectedAddress = computed(() =>
     addresses.value.find(addr => addr.id === selectedAddressId.value) || null
 );
 
@@ -121,7 +123,9 @@ const selectAddress = (addressId: number) => {
     selectedAddressId.value = addressId;
     // 更新临时订单中的地址
     if (tempOrderStore.tempOrder) {
-        tempOrderStore.setSelectedAddress(addressId);
+        tempOrderStore.updateTempOrder({
+            addressId: addressId
+        });
     }
 };
 
@@ -137,8 +141,8 @@ const goToAddressList = () => {
 onMounted(async () => {
     if (addresses.value.length === 0) {
         try {
-            await addressStore.fetchAddresses();
-            
+            await addressStore.loadAddresses();
+
             // 如果有默认地址且没有选中的地址，则选择默认地址
             if (!selectedAddressId.value && addressStore.defaultAddress) {
                 selectAddress(addressStore.defaultAddress.id);
