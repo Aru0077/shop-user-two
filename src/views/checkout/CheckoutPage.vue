@@ -151,7 +151,7 @@ const countdownTimer = ref<number | null>(null);
 
 // 表单状态
 const selectedAddressId = ref<number | null>(null);
-const selectedPaymentType = ref<string | null>('QPAY');
+const selectedPaymentType = ref<string>('QPAY');
 const orderRemark = ref<string>('');
 
 // 临时订单信息
@@ -171,8 +171,8 @@ const calculateTimeRemaining = () => {
 
 // 监听地址ID变化
 watch(selectedAddressId, (newValue) => {
-    if (newValue !== null && tempOrder.value) {
-        tempOrderStore.updateTempOrder(tempOrder.value.id, {
+    if (newValue !== null) {
+        tempOrderStore.updateTempOrder({
             addressId: newValue
         });
     }
@@ -180,8 +180,8 @@ watch(selectedAddressId, (newValue) => {
 
 // 监听支付方式变化
 watch(selectedPaymentType, (newValue) => {
-    if (newValue && tempOrder.value) {
-        tempOrderStore.updateTempOrder(tempOrder.value.id, {
+    if (newValue) {
+        tempOrderStore.updateTempOrder({
             paymentType: newValue
         });
     }
@@ -189,11 +189,9 @@ watch(selectedPaymentType, (newValue) => {
 
 // 监听备注变化
 watch(orderRemark, (newValue) => {
-    if (tempOrder.value) {
-        tempOrderStore.updateTempOrder(tempOrder.value.id, {
-            remark: newValue
-        });
-    }
+    tempOrderStore.updateTempOrder({
+        remark: newValue
+    });
 });
 
 // 是否可以提交订单
@@ -216,7 +214,7 @@ const loadTempOrder = async () => {
         }
 
         // 获取临时订单
-        const order = await tempOrderStore.getTempOrder(tempOrderId);
+        const order = await tempOrderStore.loadTempOrder(tempOrderId);
 
         if (!order) {
             error.value = '未找到订单信息';
@@ -237,7 +235,7 @@ const loadTempOrder = async () => {
 
         // 确保地址信息已加载
         if (addressStore.addresses.length === 0) {
-            await addressStore.getAddresses();
+            await addressStore.loadAddresses();
         }
 
         // 启动倒计时更新
@@ -281,7 +279,7 @@ const refreshTempOrder = async () => {
     if (!tempOrder.value || timeRemaining.value <= 0) return;
 
     try {
-        await tempOrderStore.refreshTempOrder(tempOrder.value.id);
+        await tempOrderStore.refreshTempOrder();
         // 更新倒计时
         timeRemaining.value = calculateTimeRemaining();
     } catch (err) {
@@ -298,7 +296,7 @@ const formatCountdown = (seconds: number): string => {
 
 // 提交订单
 const submitOrder = async () => {
-    if (!isReadyToSubmit.value || isSubmitting.value || !tempOrder.value) return;
+    if (!isReadyToSubmit.value || isSubmitting.value) return;
 
     if (!selectedAddressId.value) {
         toast.error('请选择收货地址');
@@ -309,7 +307,7 @@ const submitOrder = async () => {
 
     try {
         // 确认临时订单
-        const order = await tempOrderStore.confirmTempOrder(tempOrder.value.id);
+        const order = await tempOrderStore.confirmTempOrder();
 
         if (!order) {
             throw new Error('提交订单失败');
@@ -337,7 +335,7 @@ const goBack = () => {
 onMounted(async () => {
     // 初始化store
     await Promise.all([
-        tempOrderStore.init(),
+        tempOrderStore.ensureInitialized(),
         addressStore.init()
     ]);
 

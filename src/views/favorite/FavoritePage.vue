@@ -80,7 +80,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Heart, ShoppingCart, Trash2 } from 'lucide-vue-next';
+import { Trash2 } from 'lucide-vue-next';
 import { useFavoriteStore } from '@/stores/favorite.store';
 import { useToast } from '@/composables/useToast';
 import PageTitle from '@/components/common/PageTitle.vue';
@@ -184,7 +184,7 @@ const batchRemoveFavorites = async () => {
 
         if (productIds.length === 0) return;
 
-        const success = await favoriteStore.batchRemoveFavorites({ productIds });
+        const success = await favoriteStore.batchRemoveFavorites(productIds);
         if (success) {
             toast.success(`已移除${productIds.length}项收藏`);
             // 清空选择
@@ -218,7 +218,7 @@ onMounted(async () => {
     loading.value = true;
     try {
         // 确保 favoriteStore 已初始化
-        await favoriteStore.init();
+        await favoriteStore.ensureInitialized();
         await fetchFavorites(1);
     } catch (error) {
         console.error('获取收藏列表失败:', error);
