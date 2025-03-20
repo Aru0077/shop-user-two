@@ -1,7 +1,7 @@
 <template>
     <div class="pageContent">
         <!-- 页面标题 -->
-        <PageTitle :mainTitle="isEdit ? 'Edit Address' : 'Add New Address'" />
+        <PageTitle :mainTitle="isEdit ? '编辑地址' : '添加新地址'" />
 
         <!-- 间距占位符 -->
         <div class="w-full h-4"></div>
@@ -10,36 +10,36 @@
         <form @submit.prevent="handleSubmit" class="space-y-5">
             <!-- 收件人姓名 -->
             <div>
-                <label for="receiverName" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <label for="receiverName" class="block text-sm font-medium text-gray-700 mb-1">姓名</label>
                 <input type="text" id="receiverName" v-model="form.receiverName"
                     class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-black"
-                    placeholder="Enter recipient's full name" required />
+                    placeholder="请输入收件人姓名" required />
                 <div v-if="errors.receiverName" class="text-red-500 text-xs mt-1">{{ errors.receiverName }}</div>
             </div>
 
             <!-- 收件人电话 -->
             <div>
-                <label for="receiverPhone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <label for="receiverPhone" class="block text-sm font-medium text-gray-700 mb-1">手机号码</label>
                 <input type="tel" id="receiverPhone" v-model="form.receiverPhone"
                     class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-black"
-                    placeholder="Enter phone number" required />
+                    placeholder="请输入手机号码" required />
                 <div v-if="errors.receiverPhone" class="text-red-500 text-xs mt-1">{{ errors.receiverPhone }}</div>
             </div>
 
             <!-- 省份 (固定为 Ulaanbaatar) -->
             <div>
-                <label for="province" class="block text-sm font-medium text-gray-700 mb-1">State/Province</label>
+                <label for="province" class="block text-sm font-medium text-gray-700 mb-1">省份/自治区</label>
                 <input type="text" id="province" v-model="form.province"
                     class="w-full p-3 border border-gray-200 bg-gray-50 rounded-lg" disabled />
             </div>
 
             <!-- 城市 -->
             <div>
-                <label for="city" class="block text-sm font-medium text-gray-700 mb-1">City</label>
+                <label for="city" class="block text-sm font-medium text-gray-700 mb-1">城市</label>
                 <select id="city" v-model="form.city"
                     class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-black"
                     required>
-                    <option value="" disabled>Select a city</option>
+                    <option value="" disabled>请选择城市</option>
                     <option v-for="city in cities" :key="city.id" :value="city.name">
                         {{ city.name }}
                     </option>
@@ -49,17 +49,17 @@
 
             <!-- 详细地址 -->
             <div>
-                <label for="detailAddress" class="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
+                <label for="detailAddress" class="block text-sm font-medium text-gray-700 mb-1">详细地址</label>
                 <textarea id="detailAddress" v-model="form.detailAddress"
                     class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-black resize-none"
-                    rows="3" placeholder="Enter street address, apartment, suite, etc." required></textarea>
+                    rows="3" placeholder="请输入详细地址，如街道、小区、楼栋号、单元室等" required></textarea>
                 <div v-if="errors.detailAddress" class="text-red-500 text-xs mt-1">{{ errors.detailAddress }}</div>
             </div>
 
             <!-- 设为默认地址 -->
             <div class="flex items-center mb-3">
                 <input type="checkbox" id="isDefault" v-model="form.isDefault" class="w-4 h-4 accent-black" />
-                <label for="isDefault" class="ml-2 text-sm text-gray-700">Set as default address</label>
+                <label for="isDefault" class="ml-2 text-sm text-gray-700">设为默认地址</label>
             </div>
 
             <!-- 提交按钮 -->
@@ -67,14 +67,14 @@
                 <button type="submit"
                     class="w-full py-3 bg-black text-white rounded-lg flex items-center justify-center"
                     :disabled="loading">
-                    <span v-if="!loading">{{ isEdit ? 'Save Changes' : 'Save Address' }}</span>
+                    <span v-if="!loading">{{ isEdit ? '保存修改' : '保存地址' }}</span>
                     <div v-else class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin">
                     </div>
                 </button>
 
                 <button type="button" @click="handleCancel" class="w-full py-3 bg-gray-100 text-gray-800 rounded-lg"
                     :disabled="loading">
-                    Cancel
+                    取消
                 </button>
             </div>
         </form>
@@ -87,7 +87,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useAddressStore } from '@/stores/address.store';
 import { useToast } from '@/composables/useToast';
 import PageTitle from '@/components/common/PageTitle.vue';
-import type { UserAddress, CreateAddressParams, UpdateAddressParams } from '@/types/address.type';
+import type { CreateAddressParams, UpdateAddressParams } from '@/types/address.type';
 
 const router = useRouter();
 const route = useRoute();
@@ -141,23 +141,25 @@ const addressId = computed(() => route.query.id ? parseInt(route.query.id as str
 
 // 组件挂载时，如果是编辑模式，则获取地址数据
 onMounted(async () => {
-    // 初始化地址数据
-    await addressStore.init();
-    
+    if (!addressStore.isInitialized()) {
+        // 确保地址 store 已初始化
+        await addressStore.init();
+    }
+
     if (isEdit.value && addressId.value) {
         // 如果是编辑模式且有地址 ID，查找当前编辑的地址
         const address = addressStore.addresses.find(addr => addr.id === addressId.value);
         if (address) {
             fillFormWithAddress(address);
         } else {
-            toast.error('Address not found');
+            toast.error('未找到地址信息');
             router.push('/address');
         }
     }
 });
 
 // 填充表单数据
-const fillFormWithAddress = (address: UserAddress) => {
+const fillFormWithAddress = (address:any) => {
     form.receiverName = address.receiverName;
     form.receiverPhone = address.receiverPhone;
     form.province = address.province;
@@ -177,28 +179,28 @@ const validateForm = (): boolean => {
 
     // 验证收件人姓名
     if (!form.receiverName.trim()) {
-        errors.receiverName = 'Please enter a name';
+        errors.receiverName = '请输入收件人姓名';
         isValid = false;
     }
 
     // 验证收件人电话
     if (!form.receiverPhone.trim()) {
-        errors.receiverPhone = 'Please enter a phone number';
+        errors.receiverPhone = '请输入手机号码';
         isValid = false;
     } else if (!/^\d{8,11}$/.test(form.receiverPhone)) {
-        errors.receiverPhone = 'Please enter a valid 8 digit phone number';
+        errors.receiverPhone = '请输入8-11位有效的手机号码';
         isValid = false;
     }
 
     // 验证城市
     if (!form.city) {
-        errors.city = 'Please select a city';
+        errors.city = '请选择城市';
         isValid = false;
     }
 
     // 验证详细地址
     if (!form.detailAddress.trim()) {
-        errors.detailAddress = 'Please enter a street address';
+        errors.detailAddress = '请输入详细地址';
         isValid = false;
     }
 
@@ -222,13 +224,13 @@ const handleSubmit = async () => {
         };
 
         if (isEdit.value && addressId.value) {
-            // 编辑地址 - 使用 updateExistingAddress 而不是 updateAddress
-            await addressStore.updateExistingAddress(addressId.value, params);
-            toast.success('Address updated successfully');
+            // 编辑地址 - 使用 updateAddress 而不是 updateExistingAddress
+            await addressStore.updateAddress(addressId.value, params);
+            toast.success('地址更新成功');
         } else {
             // 新建地址
             await addressStore.createAddress(params);
-            toast.success('Address added successfully');
+            toast.success('地址添加成功');
         }
 
         router.replace({
@@ -236,7 +238,7 @@ const handleSubmit = async () => {
             query: { from: 'editor' }  // 添加来源标记
         });
     } catch (error: any) {
-        toast.error(error.message || 'Failed to save address');
+        toast.error(error.message || '保存地址失败');
     }
 };
 

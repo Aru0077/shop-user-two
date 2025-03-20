@@ -8,8 +8,6 @@
         <div class="bg-white rounded-t-2xl h-auto z-10 relative -mt-6 py-4">
             <!-- 文字区域 -->
             <div class="px-4">
-
-
                 <!-- 价格+销量 -->
                 <div class="flex items-end justify-between">
                     <div class="flex items-end">
@@ -29,7 +27,6 @@
                     <div v-if="!product.skus?.length" class="h-[14px] w-[80px] bg-gray-200 animate-pulse rounded"></div>
                     <div v-else class="font-bold text-[14px]">Sales:{{ product.salesCount || 0 }}</div>
                 </div>
-
 
                 <!-- 标题骨架屏 -->
                 <div v-if="!product.name" class="h-[24px] w-full bg-gray-200 animate-pulse rounded mt-2"></div>
@@ -59,7 +56,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { getFormattedPrice } from '@/utils/price.utils';
+import { formatPrice } from '@/utils/price.utils';
 import type { Product } from '@/types/product.type';
 
 // 定义组件属性
@@ -72,9 +69,14 @@ const detailImagesList = computed(() => {
     if (!props.product?.detailImages) return [];
 
     try {
-        return typeof props.product.detailImages === 'string'
-            ? JSON.parse(props.product.detailImages)
-            : [];
+        // 处理可能是字符串或已经是数组的情况
+        if (typeof props.product.detailImages === 'string') {
+            return JSON.parse(props.product.detailImages);
+        } else if (Array.isArray(props.product.detailImages)) {
+            return props.product.detailImages;
+        } else {
+            return [];
+        }
     } catch (error) {
         console.error('解析商品详情图片失败:', error);
         return [];
@@ -83,7 +85,14 @@ const detailImagesList = computed(() => {
 
 // 获取格式化后的价格
 const formattedPrice = computed(() => {
-    return getFormattedPrice(props.product);
+    if (!props.product?.skus?.length) return formatPrice(0);
+    
+    const sku = props.product.skus[0];
+    // 判断是否有促销价
+    if (props.product.is_promotion === 1 && sku.promotion_price !== undefined && sku.promotion_price !== null) {
+        return formatPrice(sku.promotion_price);
+    }
+    return formatPrice(sku.price);
 });
 
 // 获取原价（用于显示划线价）
@@ -95,12 +104,13 @@ const originalPrice = computed(() => {
 // 格式化原价
 const formattedOriginalPrice = computed(() => {
     if (!originalPrice.value) return '';
-    return originalPrice.value.toLocaleString('mn-MN') + ' ₮';
+    return formatPrice(originalPrice.value);
 });
 
 // 是否显示促销价
 const showPromotion = computed(() => {
     return props.product?.is_promotion === 1 &&
-        props.product?.skus?.[0]?.promotion_price !== undefined;
+        props.product?.skus?.[0]?.promotion_price !== undefined &&
+        props.product?.skus?.[0]?.promotion_price !== null;
 });
 </script>

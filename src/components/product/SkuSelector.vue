@@ -95,7 +95,7 @@ import { useRouter } from 'vue-router';
 import { useCartStore } from '@/stores/cart.store';
 import { useUserStore } from '@/stores/user.store';
 import { useTempOrderStore } from '@/stores/temp-order.store';
-import { toast } from '@/utils/toast.service';
+import { useToast } from '@/composables/useToast';
 import { formatPrice } from '@/utils/price.utils';
 import type { ProductDetail, Sku } from '@/types/product.type';
 import type { AddToCartParams } from '@/types/cart.type';
@@ -113,11 +113,12 @@ const emit = defineEmits<{
     'update:is-open': [value: boolean];
 }>();
 
-// 引入stores
+// 引入stores和工具
 const router = useRouter();
 const userStore = useUserStore();
 const cartStore = useCartStore();
 const tempOrderStore = useTempOrderStore();
+const toast = useToast();
 
 // 内部状态
 const quantity = ref(1);
@@ -126,30 +127,36 @@ const selectedSkuId = ref<number | null>(null);
 const isSubmitting = ref(false);
 const loading = ref(false);
 
-// 计算属性
+// 计算属性：根据选择的规格获取对应的SKU
 const selectedSku = computed<Sku | null>(() => {
     if (!selectedSkuId.value || !props.product?.skus) return null;
     return props.product.skus.find(sku => sku.id === selectedSkuId.value) || null;
 });
 
+// 当前显示的图片
 const currentImage = computed((): string => {
+    // 如果选中的SKU有图片，显示SKU图片
     if (selectedSku.value?.image) return selectedSku.value.image;
+    // 否则显示商品主图
     if (props.product?.mainImage) return props.product.mainImage;
     return '';
 });
 
+// 最大可选数量（库存）
 const maxStock = computed(() => {
     if (!selectedSku.value) return 10;
     return selectedSku.value.stock || 10;
 });
 
+// 计算总价
 const formattedTotalPrice = computed((): string => {
-    if (!selectedSku.value) return formatPrice(null);
+    if (!selectedSku.value) return formatPrice(0);
 
-    let unitPrice;
-    if (selectedSku.value.promotion_price !== undefined &&
-        selectedSku.value.promotion_price !== null &&
-        props.product?.is_promotion === 1) {
+    // 判断是否有促销价
+    let unitPrice: number;
+    if (props.product?.is_promotion === 1 &&
+        selectedSku.value.promotion_price !== undefined &&
+        selectedSku.value.promotion_price !== null) {
         unitPrice = selectedSku.value.promotion_price;
     } else {
         unitPrice = selectedSku.value.price;
@@ -160,7 +167,7 @@ const formattedTotalPrice = computed((): string => {
     return formatPrice(totalPrice);
 });
 
-// 判断是否禁用操作按钮 - 已删除ProductStatus相关判断
+// 判断是否禁用操作按钮
 const actionDisabled = computed(() => {
     if (!props.product) return true;
     if (!selectedSku.value) return true;
@@ -168,58 +175,68 @@ const actionDisabled = computed(() => {
     return false;
 });
 
-// 方法
+// 方法：关闭选择器
 const closeSelector = () => {
     emit('update:is-open', false);
 };
 
+// 方法：选择规格
 const selectSpec = (specId: number, valueId: number) => {
+    // 创建新的Map避免直接修改引用
     const newSpecs = new Map(selectedSpecs.value);
     newSpecs.set(specId, valueId);
     selectedSpecs.value = newSpecs;
 
+    // 更新选中的SKU
     updateSelectedSku();
 };
 
-// 修复的SKU选择逻辑，适应新的validSpecCombinations格式
+// 方法：根据选择的规格更新SKU
 const updateSelectedSku = () => {
     if (!props.product || !props.product.specs) return;
 
     // 如果所有规格都已选择
     if (selectedSpecs.value.size === props.product.specs.length) {
-        // 获取所有已选的specValueIds
         const selectedValueIds = Array.from(selectedSpecs.value.values());
 
-        // 尝试所有可能的排列组合找到匹配的SKU
-        // 由于我们不确定validSpecCombinations中键的顺序，所以尝试不同排列
-        for (let i = 0; i < selectedValueIds.length; i++) {
-            for (let j = 0; j < selectedValueIds.length; j++) {
-                if (i !== j) {
-                    // 构建可能的键格式
-                    const possibleKey = `${selectedValueIds[i]}_${selectedValueIds[j]}`;
-                    const combinationInfo = props.product.validSpecCombinations[possibleKey];
+        // 在validSpecCombinations中查找匹配的SKU
+        for (const key in props.product.validSpecCombinations) {
+            // 检查键是否包含所有选中的规格值ID
+            const allValuesIncluded = selectedValueIds.every(valueId =>
+                key.includes(`${valueId}`)
+            );
 
-                    if (combinationInfo && combinationInfo.skuId) {
-                        selectedSkuId.value = combinationInfo.skuId;
+            if (allValuesIncluded) {
+                const combinationInfo = props.product.validSpecCombinations[key];
+                if (combinationInfo && combinationInfo.skuId) {
+                    selectedSkuId.value = combinationInfo.skuId;
+                    return;
+                }
+            }
+        }
+
+        // 尝试其他方法查找SKU
+        // 1. 直接遍历SKUs列表查找匹配的规格组合
+        if (props.product.skus && props.product.skus.length > 0) {
+            for (const sku of props.product.skus) {
+                if (sku.sku_specs) {
+                    const specMatches = Array.from(selectedSpecs.value.entries()).every(([specId, valueId]) => {
+                        return sku.sku_specs?.some(skuSpec =>
+                            skuSpec.spec?.id === specId && skuSpec.specValue?.id === valueId
+                        );
+                    });
+
+                    if (specMatches) {
+                        selectedSkuId.value = sku.id;
                         return;
                     }
                 }
             }
         }
-
-        // 如果上面没有找到，再尝试单个值作为键
-        for (const valueId of selectedValueIds) {
-            const singleKey = `${valueId}`;
-            const combinationInfo = props.product.validSpecCombinations[singleKey];
-
-            if (combinationInfo && combinationInfo.skuId) {
-                selectedSkuId.value = combinationInfo.skuId;
-                return;
-            }
-        }
     }
 };
 
+// 方法：获取已选规格的文本描述
 const getSelectedSpecsText = (): string => {
     if (!props.product || selectedSpecs.value.size === 0) return '请选择规格';
 
@@ -232,23 +249,26 @@ const getSelectedSpecsText = (): string => {
         .join(', ');
 };
 
+// 方法：判断规格值是否已选择
 const isSpecValueSelected = (specId: number, valueId: number): boolean => {
     return selectedSpecs.value.get(specId) === valueId;
 };
 
+// 方法：增加数量
 const increaseQuantity = () => {
     if (quantity.value < maxStock.value) {
         quantity.value++;
     }
 };
 
+// 方法：减少数量
 const decreaseQuantity = () => {
     if (quantity.value > 1) {
         quantity.value--;
     }
 };
 
-// 处理加入购物车或立即购买操作
+// 方法：处理加入购物车或立即购买操作
 const handleAction = async () => {
     if (!props.product || !selectedSkuId.value) {
         toast.error('请选择商品规格');
@@ -272,7 +292,7 @@ const handleAction = async () => {
     }
 };
 
-// 加入购物车
+// 方法：加入购物车
 const handleAddToCart = async () => {
     if (!props.product || !selectedSkuId.value) {
         toast.error('请选择商品规格');
@@ -295,23 +315,23 @@ const handleAddToCart = async () => {
             await cartStore.init();
         }
 
-        // 1. 先关闭弹窗提供良好的用户体验
+        // 先关闭弹窗提供良好的用户体验
         closeSelector();
 
-        // 2. 显示加载中的提示
+        // 显示加载中的提示
         toast.info('正在添加到购物车...');
 
-        // 3. 构造添加到购物车的参数
+        // 构造添加到购物车的参数
         const params: AddToCartParams = {
             productId: props.product.id,
             skuId: selectedSkuId.value,
             quantity: quantity.value
         };
 
-        // 4. 调用购物车store的方法
+        // 调用购物车store的方法
         const response = await cartStore.addToCart(params);
 
-        // 5. 处理响应结果
+        // 处理响应结果
         if (response) {
             if (response.isLowStock) {
                 toast.warning(`已加入购物车，但库存不足，仅剩${response.cartItem.sku.stock}件`);
@@ -325,7 +345,7 @@ const handleAddToCart = async () => {
     }
 };
 
-// 立即购买
+// 方法：立即购买
 const handleBuyNow = async () => {
     if (!props.product || !selectedSkuId.value) return;
 
@@ -347,7 +367,7 @@ const handleBuyNow = async () => {
             await tempOrderStore.init();
         }
 
-        // 1. 构造临时订单参数
+        // 构造临时订单参数
         const params: CreateTempOrderParams = {
             mode: 'quick-buy',
             productInfo: {
@@ -357,7 +377,7 @@ const handleBuyNow = async () => {
             }
         };
 
-        // 2. 创建临时订单
+        // 创建临时订单
         const tempOrder = await tempOrderStore.createTempOrder(params);
 
         // 如果临时订单创建失败，提示用户并返回
@@ -366,7 +386,7 @@ const handleBuyNow = async () => {
             return;
         }
 
-        // 3. 跳转到结账页面，带上临时订单ID
+        // 跳转到结账页面，带上临时订单ID
         router.push({
             path: '/checkout',
             query: {
@@ -382,7 +402,7 @@ const handleBuyNow = async () => {
     }
 };
 
-// 智能地为每个规格选择最佳的默认值
+// 方法：为规格选择最佳的默认值
 const initializeDefaultSelection = () => {
     if (!props.product || !props.product.skus || props.product.skus.length === 0) return;
 
@@ -400,13 +420,13 @@ const initializeDefaultSelection = () => {
     if (availableSku.sku_specs && availableSku.sku_specs.length > 0) {
         availableSku.sku_specs.forEach(skuSpec => {
             if (skuSpec.spec && skuSpec.specValue) {
-                selectedSpecs.value.set(skuSpec.specId, skuSpec.specValueId);
+                selectedSpecs.value.set(skuSpec.spec.id, skuSpec.specValue.id);
             }
         });
     }
 };
 
-// 当商品数据变化时重置选择
+// 监听商品数据变化时重置选择
 watch(() => props.product, (newProduct) => {
     if (newProduct && newProduct.skus && newProduct.skus.length > 0) {
         initializeDefaultSelection();
@@ -442,7 +462,7 @@ onMounted(async () => {
         }
     }
 
-    // 初始化选择
+    // 初始化规格选择
     initializeDefaultSelection();
 });
 </script>

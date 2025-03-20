@@ -54,19 +54,18 @@ const toast = useToast();
 
 // 计算属性：是否已收藏
 const isFavorite = computed(() => {
-    if (!props.product || !props.product.id || !userStore.isLoggedIn) {
+    if (!props.product?.id || !userStore.isLoggedIn) {
         return false;
     }
-    // 直接使用store中的方法判断
     return favoriteStore.isFavorite(props.product.id);
 });
 
-// 切换收藏状态 
+// 切换收藏状态
 const toggleFavorite = async () => {
     // 如果产品不存在，直接返回
-    if (!props.product || !props.product.id) return;
+    if (!props.product?.id) return;
 
-    // 如果用户未登录或 token 已过期，跳转到登录页
+    // 检查用户登录状态
     if (!userStore.isLoggedIn) {
         router.push({
             path: '/login',
@@ -77,14 +76,15 @@ const toggleFavorite = async () => {
 
     try {
         const productId = props.product.id;
-        const currentlyFavorited = isFavorite.value;
 
-        // 调用store方法处理收藏/取消收藏逻辑
-        let success: boolean;
+        // 确保收藏store已初始化
+        if (!favoriteStore.isInitialized()) {
+            await favoriteStore.init();
+        }
 
-        if (currentlyFavorited) {
+        if (isFavorite.value) {
             // 取消收藏
-            success = await favoriteStore.removeFavorite(productId);
+            const success = await favoriteStore.removeFavorite(productId);
             if (success) {
                 toast.success('已取消收藏');
             } else {
@@ -92,14 +92,8 @@ const toggleFavorite = async () => {
             }
         } else {
             // 添加收藏
-            success = await favoriteStore.addFavorite({ productId });
-            if (success) {
-                // 收藏操作成功后刷新状态
-                await favoriteStore.getFavoriteIds();
-                toast.success('收藏成功');
-            } else {
-                toast.error('收藏失败，请重试');
-            }
+            await favoriteStore.addFavorite(productId);
+            toast.success('收藏成功');
         }
     } catch (error) {
         console.error('收藏操作失败:', error);

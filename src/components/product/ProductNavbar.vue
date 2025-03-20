@@ -10,9 +10,9 @@
             <ShoppingCart class="w-6 h-6 text-black" @click="goCart" />
             <!-- 购物车数量角标 -->
             <transition name="badge-pop">
-                <span v-if="displayCartCount > 0"
+                <span v-if="cartItemCount > 0"
                     class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center px-1 transform origin-center">
-                    {{ displayCartCount > 99 ? '99+' : displayCartCount }}
+                    {{ displayCartCount }}
                 </span>
             </transition>
         </div>
@@ -20,21 +20,37 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
 import { ArrowLeft, ShoppingCart } from 'lucide-vue-next'
 import { useRouter } from 'vue-router';
 import { useCartStore } from '@/stores/cart.store';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 
+// 定义组件属性
+defineProps({
+    loading: {
+        type: Boolean,
+        default: false
+    }
+});
+
 const router = useRouter();
 const cartStore = useCartStore();
 
-// 创建响应式变量跟踪购物车数量
-const displayCartCount = ref(0);
+// 购物车数量计算属性
+const cartItemCount = computed(() => cartStore.totalCount);
 
-// 更新显示的购物车数量
+// 显示的购物车数量
+const displayCartCount = computed(() => {
+    return cartItemCount.value > 99 ? '99+' : cartItemCount.value;
+});
+
+// 更新购物车数量
 const updateCartCount = () => {
-    displayCartCount.value = cartStore.cartItemCount;
+    // 确保购物车store已初始化
+    if (!cartStore.isInitialized()) {
+        cartStore.init();
+    }
 };
 
 // 监听购物车事件
@@ -55,10 +71,7 @@ const cleanupCartEventListeners = () => {
 
 // 组件挂载时初始化
 onMounted(() => {
-    // 初始化显示数量
     updateCartCount();
-    
-    // 设置事件监听
     setupCartEventListeners();
 });
 
@@ -80,16 +93,18 @@ const goCart = () => {
 
 <style scoped>
 /* 角标弹出动画 */
-.badge-pop-enter-active, 
+.badge-pop-enter-active,
 .badge-pop-leave-active {
-  transition: all 0.3s ease;
+    transition: all 0.3s ease;
 }
+
 .badge-pop-enter-from {
-  opacity: 0;
-  transform: scale(0.5) translateY(10px);
+    opacity: 0;
+    transform: scale(0.5) translateY(10px);
 }
+
 .badge-pop-leave-to {
-  opacity: 0;
-  transform: scale(0.5) translateY(-10px);
+    opacity: 0;
+    transform: scale(0.5) translateY(-10px);
 }
 </style>

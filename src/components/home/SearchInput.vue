@@ -1,3 +1,4 @@
+<!-- src/components/home/SearchInput.vue -->
 <template>
     <!-- 搜索框以及按钮 -->
     <div class="flex justify-between items-center w-auto h-[50px]">
@@ -10,17 +11,13 @@
             <X />
         </div>
         <div class="">
-            <div class=" bg-black text-white flex justify-center items-center w-[50px] h-[50px] rounded-full">
+            <div class="bg-black text-white flex justify-center items-center w-[50px] h-[50px] rounded-full">
                 <Search />
             </div>
         </div>
     </div>
 </template>
 
-<script setup> 
+<script setup lang="ts">
 import { Search, X } from 'lucide-vue-next';
-
-
-
 </script>
-
