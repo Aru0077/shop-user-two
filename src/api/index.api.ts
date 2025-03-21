@@ -8,6 +8,7 @@ import { orderApi } from '@/api/order.api';
 import { promotionApi } from '@/api/promotion.api';
 import { checkoutApi } from '@/api/checkout.api';
 import { tempOrderApi } from '@/api/temp-order.api';
+import { qpayApi } from '@/api/qpay.api';
 
 
 /**
@@ -22,7 +23,8 @@ export const api = {
       orderApi, 
       promotionApi, 
       checkoutApi,
-      tempOrderApi
+      tempOrderApi,
+      qpayApi
 };
  
 

@@ -348,6 +348,12 @@ export const EVENT_NAMES = {
       FAVORITE_ADDED: 'favorite:added',
       FAVORITE_REMOVED: 'favorite:removed',
 
+      // QPay支付相关事件
+      QPAY_PAYMENT_SUCCESS: 'qpay:payment_success',
+      QPAY_PAYMENT_FAILED: 'qpay:payment_failed',
+      QPAY_PAYMENT_CANCELLED: 'qpay:payment_cancelled',
+      QPAY_PAYMENT_EXPIRED: 'qpay:payment_expired',
+
       // 全局事件
       CORE_SERVICES_READY: 'core:services-ready',
       APP_INIT: 'app:init',
