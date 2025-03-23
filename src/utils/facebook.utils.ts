@@ -104,7 +104,7 @@ export const facebookUtils = {
       /**
        * 获取用户信息
        */
-      getUserInfo(fields = 'name,email'): Promise<any> {
+      getUserInfo(fields = 'name'): Promise<any> {
             return new Promise((resolve, reject) => {
                   if (!window.FB) {
                         reject(new Error('Facebook SDK未初始化'));

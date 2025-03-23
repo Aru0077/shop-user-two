@@ -53,7 +53,7 @@ export const useFacebookStore = defineStore('facebook', () => {
       /**
        * 使用弹窗方式登录
        */
-      async function loginWithPopup(options: FacebookLoginOptions = { scope: 'public_profile,email' }): Promise<boolean> {
+      async function loginWithPopup(options: FacebookLoginOptions = { scope: 'public_profile' }): Promise<boolean> {
             if (!initialized.value) {
                   await init();
             }
