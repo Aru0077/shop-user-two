@@ -9,6 +9,7 @@ import { promotionApi } from '@/api/promotion.api';
 import { checkoutApi } from '@/api/checkout.api';
 import { tempOrderApi } from '@/api/temp-order.api';
 import { qpayApi } from '@/api/qpay.api';
+import { facebookApi } from '@/api/facebook.api'; 
 
 
 /**
@@ -24,7 +25,8 @@ export const api = {
       promotionApi, 
       checkoutApi,
       tempOrderApi,
-      qpayApi
+      qpayApi,
+      facebookApi
 };
  
 
