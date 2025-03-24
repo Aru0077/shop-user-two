@@ -1,21 +1,59 @@
 // src/utils/facebook.utils.ts
 import { toast } from '@/utils/toast.service';
-import type { FacebookAuthResponse, FacebookLoginOptions } from '@/types/facebook.type';
 
-// 声明全局FB对象
+// Facebook SDK 类型定义
 declare global {
       interface Window {
-            FB: any;
             fbAsyncInit: () => void;
+            FB: {
+                  init: (options: {
+                        appId: string;
+                        cookie?: boolean;
+                        xfbml?: boolean;
+                        version: string;
+                  }) => void;
+                  login: (
+                        callback: (response: FacebookAuthResponse) => void,
+                        options?: FacebookLoginOptions
+                  ) => void;
+                  getLoginStatus: (
+                        callback: (response: FacebookAuthResponse) => void
+                  ) => void;
+                  logout: (callback: (response: any) => void) => void;
+                  api: (
+                        path: string,
+                        params: any,
+                        callback: (response: any) => void
+                  ) => void;
+            };
       }
 }
 
+// Facebook 响应类型定义
+export interface FacebookAuthResponse {
+      status: 'connected' | 'not_authorized' | 'unknown';
+      authResponse?: {
+            accessToken: string;
+            expiresIn: string;
+            reauthorize_required_in: string;
+            signedRequest: string;
+            userID: string;
+      };
+}
+
+// Facebook 登录选项类型定义
+export interface FacebookLoginOptions {
+      scope?: string;
+      auth_type?: 'rerequest';
+      return_scopes?: boolean;
+}
+
 /**
- * Facebook SDK工具类
+ * Facebook SDK 工具类
  */
 export const facebookUtils = {
       /**
-       * 加载Facebook SDK
+       * 加载 Facebook SDK
        */
       loadSDK(): Promise<void> {
             return new Promise((resolve) => {
@@ -36,16 +74,16 @@ export const facebookUtils = {
                         resolve();
                   };
 
-                  // 加载Facebook SDK
+                  // 加载 Facebook SDK
                   (function (d, s, id) {
-                        var js, fjs = d.getElementsByTagName(s)[0];
+                        const fjs = d.getElementsByTagName(s)[0];
                         if (d.getElementById(id)) return;
 
-                        js = d.createElement(s) as HTMLScriptElement; // 添加类型断言
+                        const js = d.createElement(s) as HTMLScriptElement;
                         js.id = id;
-                        js.src = "https://connect.facebook.net/zh_CN/sdk.js";
+                        js.src = "https://connect.facebook.net/en_US/sdk.js";
 
-                        if (fjs && fjs.parentNode) { // 添加空值检查
+                        if (fjs && fjs.parentNode) {
                               fjs.parentNode.insertBefore(js, fjs);
                         }
                   }(document, 'script', 'facebook-jssdk'));
@@ -62,26 +100,30 @@ export const facebookUtils = {
                         return;
                   }
 
-                  window.FB.getLoginStatus(function (response: FacebookAuthResponse) {
+                  window.FB.getLoginStatus((response) => {
                         resolve(response);
                   });
             });
       },
 
       /**
-       * 登录Facebook
+       * 登录 Facebook
        */
-      login(options: FacebookLoginOptions = {}): Promise<FacebookAuthResponse> {
-            return new Promise((resolve) => {
+      login(options: FacebookLoginOptions = { scope: 'public_profile' }): Promise<FacebookAuthResponse> {
+            return new Promise((resolve, reject) => {
                   if (!window.FB) {
-                        toast.error('Facebook SDK未初始化');
+                        toast.error('Facebook SDK 未初始化');
                         resolve({ status: 'unknown' });
                         return;
                   }
 
-                  window.FB.login(function (response: FacebookAuthResponse) {
-                        resolve(response);
-                  }, options);
+                  try {
+                        window.FB.login((response) => {
+                              resolve(response);
+                        }, options);
+                  } catch (error) {
+                        reject(error);
+                  }
             });
       },
 
@@ -89,29 +131,33 @@ export const facebookUtils = {
        * 退出登录
        */
       logout(): Promise<void> {
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                   if (!window.FB) {
                         resolve();
                         return;
                   }
 
-                  window.FB.logout(function () {
-                        resolve();
-                  });
+                  try {
+                        window.FB.logout(() => {
+                              resolve();
+                        });
+                  } catch (error) {
+                        reject(error);
+                  }
             });
       },
 
       /**
        * 获取用户信息
        */
-      getUserInfo(fields = 'name'): Promise<any> {
+      getUserInfo(fields = 'id,name'): Promise<any> {
             return new Promise((resolve, reject) => {
                   if (!window.FB) {
-                        reject(new Error('Facebook SDK未初始化'));
+                        reject(new Error('Facebook SDK 未初始化'));
                         return;
                   }
 
-                  window.FB.api('/me', { fields }, function (response: any) {
+                  window.FB.api('/me', { fields }, (response) => {
                         if (response && !response.error) {
                               resolve(response);
                         } else {

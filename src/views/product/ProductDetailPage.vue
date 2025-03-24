@@ -2,11 +2,10 @@
     <div class="flex flex-col overflow-hidden h-screen w-screen">
         <!-- 顶部导航和内容区域 -->
         <div class="flex-1 w-full relative">
-            <div v-if="currentProduct">
-                <!-- 内容区域 -->
-                <div v-show="currentProduct" class="overflow-y-auto absolute top-0 left-0 right-0 bottom-[60px]">
-                    <ProductDetailCard :product="currentProduct" />
-                </div>
+            <!-- 内容区域 --> 
+            <!-- 根据加载状态决定显示内容 -->
+            <div class="overflow-y-auto absolute top-0 left-0 right-0 bottom-[60px]">
+                <ProductDetailCard :product="isLoading ? emptyProduct : currentProduct || emptyProduct" />
             </div>
 
             <!-- 顶部导航栏 -->
@@ -39,6 +38,36 @@ import ProductNavbar from '@/components/product/ProductNavbar.vue';
 import ProductDetailCard from '@/components/product/ProductDetailCard.vue';
 import ProductTabbar from '@/components/product/ProductTabbar.vue';
 import SkuSelector from '@/components/product/SkuSelector.vue';
+import type { ProductStatus } from '@/types/common.type';
+
+// 定义一个空的产品对象，用于显示骨架屏
+const emptyProduct = ref<ProductDetail>({
+    // Product 基本属性
+    id: 0,
+    categoryId: 0,
+    name: '',
+    content: '',
+    mainImage: '',
+    detailImages: [],
+    is_promotion: null,
+    status: 'published' as ProductStatus, // 假设 ProductStatus 有 'published' 枚举值
+    productCode: '',
+    salesCount: 0,
+    createdAt: '',
+    updatedAt: '',
+
+    // 可选的分类信息
+    category: {
+        id: 0,
+        name: ''
+    },
+
+    // ProductDetail 特有属性
+    specs: [],
+    validSpecCombinations: {},
+    loadingSkus: true, // 设置为 true 表示正在加载中
+    skus: [] // 在 ProductDetail 中这是必需的
+});
 
 // 初始化store和工具
 const route = useRoute();

@@ -13,9 +13,9 @@
                 <div class="p-8">
                     <!-- Social Login Options -->
                     <div class="mb-6">
-                        <button @click="handleFacebookLogin" :disabled="fbLoading || !isFbInitialized"
+                        <button @click="handleFacebookLogin" :disabled="facebookStore.loading"
                             class="w-full flex items-center justify-center py-3 px-4 bg-[#1877F2] text-white font-medium rounded-lg hover:bg-[#166FE5] transition-colors duration-200">
-                            <div v-if="fbLoading" class="animate-spin mr-2">
+                            <div v-if="facebookStore.loading" class="animate-spin mr-2">
                                 <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
                                         stroke-width="4"></circle>
@@ -29,8 +29,7 @@
                                 <path
                                     d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                             </svg>
-                            <span v-if="!isFbInitialized">Loading Facebook...</span>
-                            <span v-else>Continue with Facebook</span>
+                            Continue with Facebook
                         </button>
                     </div>
 
@@ -122,8 +121,8 @@
                     </div>
 
                     <!-- Facebook Error Message -->
-                    <div v-if="fbError" class="mt-4 text-red-500 text-sm bg-red-50 p-3 rounded-lg">
-                        {{ fbError }}
+                    <div v-if="facebookStore.error" class="mt-4 text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+                        {{ facebookStore.error }}
                     </div>
                 </div>
             </div>
@@ -136,12 +135,14 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { User, Lock, Eye, EyeOff } from 'lucide-vue-next';
 import { useUserStore } from '@/stores/user.store';
+import { useFacebookStore } from '@/stores/facebook.store';
 import { useToast } from '@/composables/useToast';
 
 // Initialize router, state management and toast
 const router = useRouter();
 const route = useRoute();
 const userStore = useUserStore();
+const facebookStore = useFacebookStore();
 const toast = useToast();
 
 // Component state
@@ -151,47 +152,14 @@ const showPassword = ref(false);
 const isLoading = computed(() => userStore.loginLoading);
 const error = ref('');
 
-// Facebook specific state
-const isFbInitialized = ref(false);
-const fbLoading = ref(false);
-const fbError = ref('');
-
-// Initialize Facebook SDK
-onMounted(() => {
-    initializeFacebookSDK();
-});
-
-const initializeFacebookSDK = () => {
-    // Check if we're on HTTPS
-    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-        fbError.value = 'Facebook Login requires HTTPS. Please use a secure connection.';
-        return;
+// Initialize Facebook SDK on component mount
+onMounted(async () => {
+    try {
+        await facebookStore.init();
+    } catch (err) {
+        console.error('Failed to initialize Facebook SDK:', err);
     }
-
-    // Load Facebook SDK
-    (function (d, s, id) {
-        const fjs = d.getElementsByTagName(s)[0];
-        if (d.getElementById(id)) return;
-        const js = d.createElement(s) as HTMLScriptElement;
-        js.id = id;
-        js.src = 'https://connect.facebook.net/en_US/sdk.js';
-        js.onload = () => {
-            // Initialize FB SDK after it's loaded
-            if (window.FB) {
-                window.FB.init({
-                    appId: import.meta.env.VITE_FACEBOOK_APP_ID,
-                    cookie: true,
-                    xfbml: true,
-                    version: 'v22.0'
-                });
-                isFbInitialized.value = true;
-            }
-        };
-        if (fjs && fjs.parentNode) {
-            fjs.parentNode.insertBefore(js, fjs);
-        }
-    }(document, 'script', 'facebook-jssdk'));
-};
+});
 
 // Handle traditional login
 const handleLogin = async () => {
@@ -224,92 +192,20 @@ const handleLogin = async () => {
 
 // Handle Facebook login
 const handleFacebookLogin = async () => {
-    if (!isFbInitialized.value) {
-        fbError.value = 'Facebook SDK is not initialized yet. Please try again.';
-        return;
-    }
-
-    fbError.value = ''; // Clear previous errors
-    fbLoading.value = true;
-
     try {
-        // Direct SDK usage instead of using facebookStore
-        window.FB.login(
-            async function (response) {
-                if (response.status === 'connected' && response.authResponse) {
-                    try {
-                        // Get access token
-                        const accessToken = response.authResponse.accessToken;
+        const success = await facebookStore.loginWithPopup({ scope: 'public_profile' });
 
-                        // Call your server to validate and login
-                        // Here we would normally use facebookStore.loginWithToken but
-                        // since we're avoiding intermediate abstractions, we'll call API directly
-                        const result = await loginWithFacebookToken(accessToken);
+        if (success) {
+            toast.success('Facebook login successful');
 
-                        if (result) {
-                            toast.success('Facebook login successful');
-
-                            // Redirect to source page or homepage
-                            const redirectPath = route.query.redirect as string || '/home';
-                            router.replace(redirectPath);
-                        }
-                    } catch (error: any) {
-                        console.error('Error processing Facebook login:', error);
-                        fbError.value = error.message || 'Failed to process Facebook login';
-                        toast.error(fbError.value);
-                    }
-                } else {
-                    fbError.value = 'Facebook login was cancelled or failed';
-                }
-                fbLoading.value = false;
-            },
-            { scope: 'public_profile' }
-        );
-    } catch (err: any) {
-        console.error('Facebook login error:', err);
-        fbError.value = err.message || 'Facebook login failed. Please try again.';
-        toast.error(fbError.value);
-        fbLoading.value = false;
-    }
-};
-
-// Login with Facebook token function (direct API call)
-const loginWithFacebookToken = async (accessToken: string) => {
-    try {
-        // We're using fetch directly instead of the facebookApi abstraction
-        const response = await fetch('/shop/facebook/token-login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ accessToken }),
-        });
-
-        if (!response.ok) {
-            throw new Error('Server error during Facebook login');
+            // Redirect to source page or homepage
+            const redirectPath = route.query.redirect as string || '/home';
+            router.replace(redirectPath);
         }
-
-        const data = await response.json();
-
-        // Update user store directly
-        userStore.token = data.token;
-        userStore.user = data.user;
-        userStore.saveUserDataToStorage();
-
-        return true;
-    } catch (err) {
-        console.error('Token login failed:', err);
-        throw err;
+    } catch (err: any) {
+        console.error('Facebook login failed:', err);
+        error.value = err.message || 'Facebook login failed. Please try again.';
+        toast.error(error.value);
     }
 };
-
-// Add FB typing
-declare global {
-    interface Window {
-        FB: {
-            init: (options: any) => void;
-            login: (callback: (response: any) => void, options?: any) => void;
-        }; 
-    }
-}
 </script>

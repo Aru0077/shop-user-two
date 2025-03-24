@@ -1,9 +1,9 @@
 <template>
     <div class="flex flex-col overflow-hidden h-full p-4">
         <!-- 页面标题 -->
-        <PageTitle :mainTitle="pageTitle" class="z-10"/>
+        <PageTitle :mainTitle="pageTitle" class="z-10" />
 
-        <div class="flex-1 overflow-y-auto"> 
+        <div class="flex-1 overflow-y-auto">
             <!-- 间距占位符 -->
             <div class="w-full h-4"></div>
 
@@ -72,6 +72,9 @@ const hasMore = ref(true);
 // 列表类型和标题
 const listType = computed(() => route.params.type as string);
 
+// 添加搜索关键词状态
+const keyword = ref('');
+
 // 页面标题处理
 const pageTitle = computed(() => {
     switch (listType.value) {
@@ -81,6 +84,8 @@ const pageTitle = computed(() => {
             return 'Best Sellers';
         case 'promotion':
             return 'On Sale';
+        case 'search':
+            return `Search: ${keyword.value}`;
         default:
             // 处理分类商品显示
             if (listType.value?.startsWith('category-')) {
@@ -132,6 +137,20 @@ const loadProducts = async (isLoadMore = false) => {
                 break;
             case 'promotion':
                 response = await productStore.getPromotionProducts(currentPage.value, pageSize.value);
+                break;
+            case 'search':
+                // 确保关键词不为空
+                if (keyword.value && keyword.value.trim() !== '') {
+                    const searchResponse = await productStore.searchProducts({
+                        keyword: keyword.value.trim(), // 确保提供有效的关键词
+                        page: currentPage.value,
+                        limit: pageSize.value
+                    });
+                    response = searchResponse;
+                } else {
+                    // 不调用API，而是显示提示
+                    toast.warning('请输入搜索关键词');
+                }
                 break;
             default:
                 if (listType.value?.startsWith('category-')) {
@@ -188,6 +207,21 @@ const goToHome = () => {
 watch(() => route.params.type, () => {
     resetAndLoad();
 });
+
+// 监听路由变化，获取搜索关键词
+// 监听路由查询参数的变化，获取搜索关键词 - 添加到组件的watch部分
+watch(() => route.query.keyword, (newKeyword) => {
+    if (newKeyword && typeof newKeyword === 'string') {
+        keyword.value = newKeyword;
+    } else {
+        keyword.value = '';
+    }
+
+    // 如果是搜索类型，则重新加载
+    if (listType.value === 'search') {
+        resetAndLoad();
+    }
+}, { immediate: true });
 
 // 组件挂载时初始化
 onMounted(async () => {

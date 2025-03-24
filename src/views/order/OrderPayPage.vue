@@ -241,8 +241,7 @@ const orderId = computed(() => route.params.id as string);
 const orderDetail = computed(() => orderStore.currentOrder);
 const selectedPaymentType = ref('QPAY');
 const qPayInvoice = computed(() => qPayStore.currentInvoice);
-const paymentStatus = computed(() => qPayStore.paymentStatus);
-const paymentMessage = computed(() => qPayStore.paymentMessage);
+const paymentStatus = computed(() => qPayStore.paymentStatus); 
 
 // 倒计时相关
 const countdown = ref(1800); // 默认30分钟

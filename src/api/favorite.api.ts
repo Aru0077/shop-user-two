@@ -6,8 +6,7 @@ import type {
       FavoritesResponse,
       FavoriteIdsResponse,
       UserFavorite,
-} from '@/types/favorite.type';
-import type { Product } from '@/types/product.type';
+} from '@/types/favorite.type'; 
 
 /**
  * 收藏API
