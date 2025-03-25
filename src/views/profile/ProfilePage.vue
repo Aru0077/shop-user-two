@@ -120,7 +120,7 @@ const icons = {
 
 // 菜单点击处理
 const handleMenuClick = async (item) => {
-    if (item.name === '退出登录') {
+    if (item.name === 'Log Out') {
         try {
             loading.value = true;
             const success = await userStore.logout();

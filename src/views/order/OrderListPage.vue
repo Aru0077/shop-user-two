@@ -1,56 +1,42 @@
 <template>
     <div class="page-container pb-16">
-        <!-- 页面标题 -->
+        <!-- Page Title -->
         <div class="flex justify-between items-center mb-4">
-            <PageTitle mainTitle="我的订单" />
+            <PageTitle mainTitle="My Orders" />
             <div @click="refreshOrders" class="text-sm font-medium cursor-pointer flex items-center">
                 <RefreshCw :size="16" class="mr-1" :class="{ 'animate-spin': loading }" />
-                刷新
+                Refresh
             </div>
         </div>
 
-        <!-- 订单状态筛选 Tabs -->
-        <div class="mb-4 border-b border-gray-200">
-            <div class="flex space-x-8 overflow-x-auto hide-scrollbar">
-                <button v-for="tab in orderTabs" :key="tab.status" @click="setActiveTab(tab.status)"
-                    class="py-2 px-1 relative font-medium text-sm whitespace-nowrap" :class="[
-                        activeTab === tab.status
-                            ? 'text-black'
-                            : 'text-gray-500 hover:text-gray-700'
-                    ]">
-                    {{ tab.label }}
-                    <div v-if="activeTab === tab.status" class="absolute bottom-0 left-0 right-0 h-0.5 bg-black"></div>
-                </button>
-            </div>
-        </div>
-
-        <!-- 加载状态 -->
+        <!-- Loading State -->
         <div v-if="loading && orders.length === 0" class="flex justify-center items-center h-40">
             <div
                 class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-black border-r-transparent align-middle">
             </div>
         </div>
 
-        <!-- 空订单状态 -->
+        <!-- Empty Order State -->
         <div v-else-if="orders.length === 0" class="flex flex-col items-center justify-center py-16">
             <div class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                 <ShoppingBag :size="36" class="text-gray-400" />
             </div>
-            <div class="text-gray-500 mb-6">暂无订单</div>
+            <div class="text-gray-500 mb-6">No Orders</div>
             <button @click="goToHome" class="bg-black text-white py-3 px-8 rounded-full flex items-center">
                 <ShoppingBag :size="16" class="mr-2" />
-                去购物
+                Shop Now
             </button>
         </div>
 
-        <!-- 订单列表 -->
+        <!-- Order List -->
         <div v-else class="space-y-4">
-            <div v-for="order in orders" :key="order.id" class="bg-white rounded-xl shadow-sm overflow-hidden"
+            <div v-for="order in orders" :key="order.id"
+                class="bg-white rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.08)] overflow-hidden cursor-pointer"
                 @click="viewOrderDetail(order.id)">
-                <!-- 订单头部：订单号和状态 -->
-                <div class="flex justify-between items-center p-4 border-b border-gray-100">
+                <!-- Order Header: Order Number and Status -->
+                <div class="flex justify-between items-center px-4 pt-4">
                     <div class="text-sm">
-                        <span class="text-gray-500">订单号：</span>
+                        <span class="text-gray-500">Order No: </span>
                         <span class="font-medium">{{ order.orderNo }}</span>
                     </div>
                     <div class="text-sm font-medium" :class="getStatusColor(order.orderStatus)">
@@ -58,9 +44,9 @@
                     </div>
                 </div>
 
-                <!-- 订单内容 -->
+                <!-- Order Content -->
                 <div class="p-4">
-                    <!-- 订单商品列表 -->
+                    <!-- Order Items List -->
                     <div class="space-y-3">
                         <div v-for="(item, index) in getOrderItems(order)" :key="index" class="flex items-center">
                             <div class="w-16 h-16 rounded-lg overflow-hidden border border-gray-100 mr-3">
@@ -80,85 +66,76 @@
                         </div>
                     </div>
 
-                    <!-- 订单总计 -->
-                    <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-100">
+                    <!-- Order Total -->
+                    <div class="flex justify-between items-center mt-4 pt-2">
                         <div class="text-sm text-gray-500">
-                            共{{ getOrderItemsCount(order) }}件商品
+                            {{ getOrderItemsCount(order) }} items in total
                         </div>
                         <div class="text-sm">
-                            <span class="mr-1">实付：</span>
+                            <span class="mr-1">Total: </span>
                             <span class="font-bold text-red-500">{{ formatPrice(order.paymentAmount) }}</span>
                         </div>
                     </div>
 
-                    <!-- 订单操作 -->
-                    <div class="flex justify-end mt-3 pt-3 border-t border-gray-100 space-x-2">
-                        <!-- 待付款状态 -->
+                    <!-- Order Actions -->
+                    <div class="flex justify-end mt-3 pt-3 space-x-2" v-if="order.orderStatus !== OrderStatus.CANCELLED">
+                        <!-- Pending Payment Status -->
                         <template v-if="order.orderStatus === OrderStatus.PENDING_PAYMENT">
                             <button @click.stop="cancelOrder(order.id)"
                                 class="px-4 py-1.5 text-sm border border-gray-300 rounded-full">
-                                取消订单
+                                Cancel Order
                             </button>
                             <button @click.stop="payOrder(order.id)"
                                 class="px-4 py-1.5 text-sm bg-red-500 text-white rounded-full">
-                                去支付
+                                Pay Now
                             </button>
                         </template>
 
-                        <!-- 待发货状态 -->
+                        <!-- Pending Shipment Status -->
                         <template v-else-if="order.orderStatus === OrderStatus.PENDING_SHIPMENT">
-                            <button @click.stop="viewOrderDetail(order.id)"
-                                class="px-4 py-1.5 text-sm border border-gray-300 rounded-full">
-                                查看详情
-                            </button>
+                            <!-- Removed the "View Details" button as requested -->
                         </template>
 
-                        <!-- 已发货状态 -->
+                        <!-- Shipped Status -->
                         <template v-else-if="order.orderStatus === OrderStatus.SHIPPED">
                             <button @click.stop="confirmReceipt(order.id)"
                                 class="px-4 py-1.5 text-sm bg-black text-white rounded-full">
-                                确认收货
+                                Confirm Receipt
                             </button>
                         </template>
 
-                        <!-- 已完成状态 -->
+                        <!-- Completed Status -->
                         <template v-else-if="order.orderStatus === OrderStatus.COMPLETED">
-                            <button @click.stop="viewOrderDetail(order.id)"
-                                class="px-4 py-1.5 text-sm border border-gray-300 rounded-full">
-                                查看详情
-                            </button>
+                            <!-- Removed the "View Details" button as requested -->
                         </template>
 
-                        <!-- 已取消状态 -->
+                        <!-- Cancelled Status -->
                         <template v-else-if="order.orderStatus === OrderStatus.CANCELLED">
-                            <button @click.stop="viewOrderDetail(order.id)"
-                                class="px-4 py-1.5 text-sm border border-gray-300 rounded-full">
-                                查看详情
-                            </button>
+                            <!-- Removed the "View Details" button as requested -->
                         </template>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 加载更多 -->
+        <!-- Load More -->
         <div v-if="hasMoreOrders && !loading" class="flex justify-center mt-6">
             <button @click="loadMoreOrders" class="px-6 py-2 text-sm border border-gray-300 rounded-full">
-                加载更多
+                Load More
             </button>
         </div>
 
-        <!-- 加载中提示 -->
+        <!-- Loading Indicator -->
         <div v-if="loading && orders.length > 0" class="flex justify-center mt-6">
             <div
                 class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-gray-500 border-r-transparent mr-2 align-middle">
             </div>
-            <span class="text-sm text-gray-500">加载中...</span>
+            <span class="text-sm text-gray-500">Loading...</span>
         </div>
 
-        <!-- 全部加载完成提示 -->
+        <!-- All Orders Loaded Indicator -->
         <div v-if="!hasMoreOrders && orders.length > 0" class="text-center text-sm text-gray-500 mt-6">
-            已显示全部订单
+            All orders have been displayed
         </div>
     </div>
 </template>
@@ -188,28 +165,12 @@ const pageSize = ref(10);
 const hasMoreOrders = ref(true);
 const activeTab = ref<number | undefined>(undefined); // undefined 表示全部订单
 
-// 订单状态Tab
-const orderTabs = [
-    { status: undefined, label: '全部' },
-    { status: OrderStatus.PENDING_PAYMENT, label: '待付款' },
-    { status: OrderStatus.PENDING_SHIPMENT, label: '待发货' },
-    { status: OrderStatus.SHIPPED, label: '已发货' },
-    { status: OrderStatus.COMPLETED, label: '已完成' },
-    { status: OrderStatus.CANCELLED, label: '已取消' }
-];
+
 
 // 获取订单列表
 const orders = computed(() => orderStore.orders);
 
-// 切换订单状态Tab
-const setActiveTab = (status: number | undefined) => {
-    if (activeTab.value === status) return;
 
-    activeTab.value = status;
-    currentPage.value = 1;
-    hasMoreOrders.value = true;
-    fetchOrders(true);
-};
 
 // 获取订单
 const fetchOrders = async (reset: boolean = false) => {
@@ -255,6 +216,7 @@ const loadMoreOrders = () => {
 
 // 刷新订单列表
 const refreshOrders = () => {
+    orderStore.clearOrders(); // 添加此行，显式清空当前订单列表
     currentPage.value = 1;
     hasMoreOrders.value = true;
     fetchOrders(true);
@@ -262,15 +224,15 @@ const refreshOrders = () => {
 
 // 获取订单状态文本
 const getStatusText = (status: number | null): string => {
-    if (status === null) return '未知状态';
+    if (status === null) return 'Unknown Status';
 
     switch (status) {
-        case OrderStatus.PENDING_PAYMENT: return '待付款';
-        case OrderStatus.PENDING_SHIPMENT: return '待发货';
-        case OrderStatus.SHIPPED: return '已发货';
-        case OrderStatus.COMPLETED: return '已完成';
-        case OrderStatus.CANCELLED: return '已取消';
-        default: return '未知状态';
+        case OrderStatus.PENDING_PAYMENT: return 'Pending Payment';
+        case OrderStatus.PENDING_SHIPMENT: return 'Pending Shipment';
+        case OrderStatus.SHIPPED: return 'Shipped';
+        case OrderStatus.COMPLETED: return 'Completed';
+        case OrderStatus.CANCELLED: return 'Cancelled';
+        default: return 'Unknown Status';
     }
 };
 

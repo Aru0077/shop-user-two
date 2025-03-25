@@ -187,6 +187,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   // 如果已加载详情列表，则添加到列表中
                   if (favorites.value.length > 0) {
                         favorites.value.unshift(newFavorite);
+                        storage.saveFavoritesList({ data: favorites.value, total: totalCount.value + 1 });
                   }
 
                   // 发布添加收藏事件

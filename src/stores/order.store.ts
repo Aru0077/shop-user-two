@@ -386,6 +386,13 @@ export const useOrderStore = defineStore('order', () => {
         }
     }
 
+    /**
+ * 清空订单列表
+ */
+    function clearOrders(): void {
+        orders.value = [];
+    }
+
     // 初始化事件监听
     setupEventListeners();
 
@@ -416,6 +423,7 @@ export const useOrderStore = defineStore('order', () => {
         confirmReceipt,
         clearOrderState,
         init,
+        clearOrders,
 
         // 初始化状态
         isInitialized: initHelper.isInitialized,
