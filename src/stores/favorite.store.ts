@@ -184,11 +184,10 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   const params: AddFavoriteParams = { productId };
                   const newFavorite = await favoriteApi.addFavorite(params);
 
-                  // 如果已加载详情列表，则添加到列表中
-                  if (favorites.value.length > 0) {
-                        favorites.value.unshift(newFavorite);
-                        storage.saveFavoritesList({ data: favorites.value, total: totalCount.value + 1 });
-                  }
+                  // 无论列表是否已加载，都更新收藏列表和缓存
+                  favorites.value.unshift(newFavorite);
+                  totalCount.value += 1;
+                  storage.saveFavoritesList({ data: favorites.value, total: totalCount.value });
 
                   // 发布添加收藏事件
                   eventBus.emit(EVENT_NAMES.FAVORITE_ADDED, newFavorite);
@@ -240,6 +239,8 @@ export const useFavoriteStore = defineStore('favorite', () => {
 
                   // 更新本地缓存
                   storage.saveFavoriteIds(favoriteIds.value);
+                  // 更新favorites_list缓存
+                  storage.saveFavoritesList({ data: favorites.value, total: totalCount.value - 1 });
 
                   // 发布事件
                   eventBus.emit(EVENT_NAMES.FAVORITE_REMOVED, productId);
@@ -305,6 +306,8 @@ export const useFavoriteStore = defineStore('favorite', () => {
 
                   // 更新本地缓存
                   storage.saveFavoriteIds(favoriteIds.value);
+                  // 更新favorites_list缓存
+                  storage.saveFavoritesList({ data: favorites.value, total: totalCount.value - idsToRemove.length  });
 
                   // 发布事件
                   eventBus.emit(EVENT_NAMES.FAVORITE_UPDATED, favoriteIds.value);
