@@ -1,6 +1,6 @@
 <template>
     <nav class="h-[60px] flex justify-between items-center px-4 z-50 transition-colors duration-300 border-b"
-        :class="{ 'bg-white/80 backdrop-blur-sm': navbarOptions.showBackground, 'bg-transparent': !navbarOptions.showBackground }">
+        :class="{ 'bg-[#FEFEFE] backdrop-blur-sm': navbarOptions.showBackground, 'bg-transparent': !navbarOptions.showBackground }">
         <!-- 左侧按钮 Button -->
         <div v-if="navbarOptions.leftButton"
             class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer"

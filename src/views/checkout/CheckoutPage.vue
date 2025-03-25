@@ -1,138 +1,144 @@
 <template>
-    <div class="flex flex-col h-full overflow-hidden"> 
-        <div class="z-10 p-4">
-            <!-- 标题栏 -->
-            <PageTitle mainTitle="确认订单" />
-        </div>
-
-
-        <!-- 中间滚动 -->
-        <div class="flex-1 overflow-y-auto p-4">
-            <!-- 加载状态 -->
+    <div class="flex flex-col h-full bg-[#F4F4F6]">
+        <!-- Main Content Scrollable Area -->
+        <div class="flex-1 overflow-y-auto px-0 py-4">
+            <!-- Loading State -->
             <div v-if="isLoading" class="flex flex-col items-center justify-center h-60">
                 <div
-                    class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-gray-500 border-r-transparent align-middle mb-4">
+                    class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-gray-300 border-r-transparent align-middle mb-4">
                 </div>
-                <div class="text-gray-500">加载订单信息...</div>
+                <div class="text-gray-500">Loading order information...</div>
             </div>
 
             <template v-else-if="tempOrder">
-                <!-- 地址选择 -->
+                <!-- Address Selector Component -->
                 <AddressSelector v-model:value="selectedAddressId" />
 
-                <div class="p-2">
-                    <!-- 商品列表 -->
-                    <div class="bg-white rounded-xl mb-4 shadow-sm">
-                        <h3 class="text-[16px] font-bold mb-3">商品信息</h3>
-                        <div v-for="item in tempOrder.items" :key="`${item.productId}-${item.skuId}`"
-                            class="flex mb-3 pb-3 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
-                            <!-- 商品图片 -->
-                            <div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border border-gray-100">
-                                <img :src="item.mainImage" :alt="item.productName" class="w-full h-full object-cover">
-                            </div>
+                <!-- Divider -->
+                <div class="h-px my-1"></div>
 
-                            <!-- 商品信息 -->
-                            <div class="ml-3 flex-1 min-w-0">
+                <!-- Product Information -->
+                <div class="bg-white p-4">
+                    <h2 class="text-lg font-medium mb-4">Product Information</h2>
+                    <div v-for="item in tempOrder.items" :key="`${item.productId}-${item.skuId}`"
+                        class="flex mb-4 pb-4 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
+                        <!-- Product Image -->
+                        <div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50">
+                            <img :src="item.mainImage" :alt="item.productName" class="w-full h-full object-cover">
+                        </div>
+
+                        <!-- Product Details -->
+                        <div class="ml-4 flex-1 min-w-0 flex flex-col justify-between">
+                            <div>
                                 <div class="text-sm font-medium line-clamp-2">{{ item.productName }}</div>
-
-                                <!-- 规格信息 -->
+                                <!-- Specifications -->
                                 <div v-if="item.skuSpecs && item.skuSpecs.length > 0"
                                     class="text-xs text-gray-500 mt-1 line-clamp-1">
                                     {{item.skuSpecs.map(spec => `${spec.specName}: ${spec.specValue}`).join(', ')}}
                                 </div>
-
-                                <!-- 价格和数量 -->
-                                <div class="flex justify-between items-end mt-2">
-                                    <div class="text-red-500 font-bold">{{ formatPrice(item.unitPrice) }}</div>
-                                    <div class="text-sm text-gray-500">x{{ item.quantity }}</div>
-                                </div>
+                            </div>
+                            <!-- Price and Quantity -->
+                            <div class="flex justify-between items-end">
+                                <div class="text-gray-900 font-medium">{{ formatPrice(item.unitPrice) }}</div>
+                                <div class="text-sm text-gray-500">Qty: {{ item.quantity }}</div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- 支付方式 -->
-                    <div class="bg-white rounded-xl mb-4 shadow-sm">
-                        <h3 class="text-[16px] font-bold mb-3">支付方式</h3>
-                        <div class="flex items-center p-2 border border-black rounded-lg bg-gray-50">
-                            <input type="radio" id="qpay" value="QPAY" v-model="selectedPaymentType"
-                                class="w-4 h-4 accent-black" checked />
-                            <label for="qpay" class="ml-2 flex items-center">
-                                <span class="font-medium">QPAY</span>
-                            </label>
-                        </div>
+                <!-- Divider -->
+                <div class="h-px my-1"></div>
+
+                <!-- Payment Method -->
+                <div class="bg-white p-4">
+                    <h2 class="text-lg font-medium mb-4">Payment Method</h2>
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <input type="radio" id="qpay" value="QPAY" v-model="selectedPaymentType"
+                            class="w-4 h-4 accent-black" checked />
+                        <label for="qpay" class="ml-3 flex items-center w-full">
+                            <span class="font-medium">QPAY</span>
+                        </label>
                     </div>
+                </div>
 
-                    <!-- 备注 -->
-                    <div class="bg-white rounded-xl mb-4 shadow-sm">
-                        <h3 class="text-[16px] font-bold mb-3">订单备注</h3>
-                        <textarea v-model="orderRemark" placeholder="请输入备注信息（选填）"
-                            class="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:border-black resize-none"
-                            rows="2"></textarea>
-                    </div>
+                <!-- Divider -->
+                <div class="h-px my-1"></div>
 
-                    <!-- 金额明细 -->
-                    <div class="bg-white rounded-xl mb-4 shadow-sm">
-                        <h3 class="text-[16px] font-bold mb-3">金额明细</h3>
+                <!-- Order Notes -->
+                <div class="bg-white p-4">
+                    <h2 class="text-lg font-medium mb-4">Order Notes</h2>
+                    <textarea v-model="orderRemark" placeholder="Add notes to your order (optional)"
+                        class="w-full p-3 bg-gray-50 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-400 resize-none"
+                        rows="2"></textarea>
+                </div>
 
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-gray-500">商品金额</span>
+                <!-- Divider -->
+                <div class="h-px my-1"></div>
+
+                <!-- Order Summary -->
+                <div class="bg-white p-4">
+                    <h2 class="text-lg font-medium mb-4">Order Summary</h2>
+
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-500">Subtotal</span>
                             <span>{{ formatPrice(tempOrder.totalAmount) }}</span>
                         </div>
 
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-gray-500">优惠金额</span>
-                            <span class="text-red-500">-{{ formatPrice(tempOrder.discountAmount) }}</span>
-                        </div>
-
-                        <div class="border-t border-gray-100 my-2"></div>
-
-                        <div class="flex justify-between items-center text-[16px] font-bold">
-                            <span>实付金额</span>
-                            <span class="text-red-500">{{ formatPrice(tempOrder.paymentAmount) }}</span>
-                        </div>
-                    </div>
-
-                    <!-- 订单倒计时 -->
-                    <div v-if="timeRemaining > 0" class="bg-white rounded-xl p-4 mb-4 shadow-sm">
                         <div class="flex justify-between items-center">
-                            <div class="text-gray-500">订单倒计时</div>
-                            <div class="text-red-500 font-medium">{{ formatCountdown(timeRemaining) }}</div>
+                            <span class="text-gray-500">Discount</span>
+                            <span class="text-gray-900">-{{ formatPrice(tempOrder.discountAmount) }}</span>
+                        </div>
+
+                        <div class="border-t border-gray-100 my-3 pt-3">
+                            <div class="flex justify-between items-center text-lg font-medium">
+                                <span>Total</span>
+                                <span>{{ formatPrice(tempOrder.paymentAmount) }}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- Divider -->
+                <div class="h-px my-1"></div>
+
+                <!-- Order Timer -->
+                <div v-if="timeRemaining > 0" class="bg-white p-4">
+                    <div class="flex justify-between items-center">
+                        <div class="text-gray-500">Order expires in</div>
+                        <div class="text-red-500 font-medium">{{ formatCountdown(timeRemaining) }}</div>
+                    </div>
+                </div>
             </template>
 
-            <!-- 错误状态 -->
+            <!-- Error State -->
             <div v-else-if="error" class="flex flex-col items-center justify-center h-60 text-center">
                 <AlertCircle class="w-12 h-12 text-red-500 mb-4" />
-                <div class="text-red-500 mb-4">{{ error }}</div>
-                <button @click="goBack" class="px-4 py-2 bg-black text-white rounded-lg">返回</button>
+                <div class="text-gray-900 mb-4">{{ error }}</div>
+                <button @click="goBack"
+                    class="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors">
+                    Back
+                </button>
             </div>
-
         </div>
 
-
-        <!-- 底部提交区域 -->
-        <div v-if="tempOrder"
-            class="h-[120px] bg-white border-t border-gray-200 shadow-md p-4 safe-area-bottom box-border">
-            <div class="flex justify-between items-center mb-3">
-                <div class="font-medium">实付金额：</div>
-                <div class="text-red-500 font-bold text-xl">{{ formatPrice(tempOrder.paymentAmount) }}</div>
+        <!-- Footer Checkout Area -->
+        <div v-if="tempOrder" class="bg-white border-t border-gray-100 p-4 safe-area-bottom">
+            <div class="flex justify-between items-center pb-4">
+                <div class="text-xl font-medium">{{ formatPrice(tempOrder.paymentAmount) }}</div>
+                <button @click="submitOrder"
+                    class="py-3 px-6 bg-black text-white rounded-lg flex items-center justify-center hover:bg-gray-800 transition-colors"
+                    :disabled="!isReadyToSubmit || isSubmitting"
+                    :class="{ 'opacity-50 cursor-not-allowed': !isReadyToSubmit || isSubmitting }">
+                    <div v-if="isSubmitting"
+                        class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-r-transparent mr-2">
+                    </div>
+                    <span>{{ isSubmitting ? 'Processing...' : 'Place Order' }}</span>
+                </button>
             </div>
-            <button @click="submitOrder"
-                class="w-full py-3 bg-black text-white rounded-lg flex items-center justify-center"
-                :disabled="!isReadyToSubmit || isSubmitting"
-                :class="{ 'opacity-50': !isReadyToSubmit || isSubmitting }">
-                <div v-if="isSubmitting"
-                    class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-r-transparent mr-2">
-                </div>
-                <span>{{ isSubmitting ? '处理中...' : '提交订单' }}</span>
-            </button>
         </div>
 
     </div>
-
 </template>
 
 <script setup lang="ts">

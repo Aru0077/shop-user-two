@@ -1,6 +1,6 @@
 <template>
     <nav
-        class="w-full h-[70px] bg-white rounded-tl-[30px] rounded-tr-[30px] shadow-[0px_-2px_7px_rgba(0,0,0,0.1)] safe-area-bottom">
+        class="w-full h-[70px] bg-[#F7F7F7] rounded-tl-[30px] rounded-tr-[30px] shadow-[0px_-2px_7px_rgba(0,0,0,0.1)] safe-area-bottom">
         <div class="flex h-full">
             <div @click="navigateTo('/home')" class="flex-1 flex items-center justify-center relative"
                 :class="{ 'active': activeStates.home }">

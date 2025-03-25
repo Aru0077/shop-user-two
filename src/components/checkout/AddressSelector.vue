@@ -1,79 +1,109 @@
-<!-- src/components/checkout/AddressSelector.vue --> 
+<!-- src/components/checkout/AddressSelector.vue -->
 <template>
-    <div class="bg-white rounded-xl p-4 mb-4 shadow-sm">
-        <!-- 标题 -->
-        <div class="flex justify-between items-center mb-3">
-            <h3 class="text-[16px] font-bold">Shipping Address</h3>
-            <div @click="goToAddressList" class="flex items-center text-xs text-gray-500 cursor-pointer">
-                <span>Manage Addresses</span>
+    <div class="bg-white p-4">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-medium">Shipping Address</h2>
+            <div @click="goToAddressList" class="flex items-center text-sm text-gray-500 cursor-pointer hover:text-black transition-colors">
+                <span>Manage</span>
                 <ChevronRight :size="16" class="ml-1" />
             </div>
         </div>
 
-        <!-- 加载状态 -->
-        <div v-if="loading" class="py-2 flex items-center text-gray-500">
-            <div class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-gray-500 border-r-transparent mr-2"></div>
-            <span>Loading Addresses...</span>
+        <!-- Loading State -->
+        <div v-if="loading" class="py-3 flex items-center text-gray-500">
+            <div class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-gray-300 border-r-transparent mr-2"></div>
+            <span>Loading addresses...</span>
         </div>
 
-        <!-- 没有地址 -->
-        <div v-else-if="addresses.length === 0" class="py-2 flex flex-col items-center justify-center text-gray-500">
-            <MapPin :size="28" class="text-gray-400 mb-2" />
-            <span class="mb-2">You have no shipping addresses</span>
-            <button @click="goToAddressList" class="px-4 py-2 bg-gray-100 rounded-full text-sm">Add Address</button>
+        <!-- No Addresses State -->
+        <div v-else-if="addresses.length === 0" class="py-6 flex flex-col items-center justify-center text-gray-500">
+            <MapPin :size="32" class="text-gray-400 mb-3" />
+            <span class="mb-3">No shipping addresses found</span>
+            <button @click="goToAddressList" class="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors">
+                Add Address
+            </button>
         </div>
 
-        <!-- 地址列表 -->
+        <!-- Address Display -->
         <div v-else>
-            <!-- 选中的地址 -->
-            <div v-if="selectedAddress" class="p-3 border border-gray-200 rounded-lg mb-3">
-                <div class="flex justify-between">
-                    <div class="font-medium">{{ selectedAddress.receiverName }}</div>
-                    <div>{{ selectedAddress.receiverPhone }}</div>
-                </div>
-                <div class="mt-1 text-gray-600 text-sm">
-                    {{ `${selectedAddress.province} ${selectedAddress.city} ${selectedAddress.detailAddress}` }}
-                </div>
-                <div v-if="selectedAddress.isDefault === 1" class="mt-2">
-                    <span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">Default</span>
-                </div>
-            </div>
-
-            <!-- 切换地址按钮 - 修改逻辑：不论地址数量都显示按钮 -->
-            <div class="flex justify-center">
-                <button @click="showAddressModal = true" class="px-4 py-2 bg-gray-100 rounded-full text-sm">
-                    {{ addresses.length > 1 ? 'Switch Address' : 'Select Address' }}
-                </button>
-            </div>
-        </div>
-
-        <!-- 地址选择弹窗 -->
-        <div v-if="showAddressModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div class="bg-white rounded-lg w-11/12 max-w-md max-h-[80vh] flex flex-col">
-                <div class="p-4 border-b border-gray-200 flex justify-between items-center">
-                    <h3 class="font-bold">Select Shipping Address</h3>
-                    <X @click="showAddressModal = false" class="cursor-pointer" />
-                </div>
-                <div class="overflow-y-auto flex-1 p-4">
-                    <div v-for="address in addresses" :key="address.id" 
-                         @click="selectAddress(address.id)"
-                         class="p-3 border border-gray-200 rounded-lg mb-3"
-                         :class="{'border-black': selectedAddressId === address.id}">
-                        <div class="flex justify-between">
-                            <div class="font-medium">{{ address.receiverName }}</div>
-                            <div>{{ address.receiverPhone }}</div>
-                        </div>
-                        <div class="mt-1 text-gray-600 text-sm">
-                            {{ `${address.province} ${address.city} ${address.detailAddress}` }}
-                        </div>
-                        <div v-if="address.isDefault === 1" class="mt-2">
-                            <span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">Default</span>
+            <!-- Selected Address Card -->
+            <div v-if="selectedAddress" class="p-4 bg-gray-50 rounded-lg mb-4">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="font-medium">{{ selectedAddress.receiverName }}</div>
+                        <div class="text-gray-500 mt-1">{{ selectedAddress.receiverPhone }}</div>
+                        <div class="mt-2 text-gray-600 text-sm">
+                            {{ `${selectedAddress.province} ${selectedAddress.city} ${selectedAddress.detailAddress}` }}
                         </div>
                     </div>
+                    <div v-if="selectedAddress.isDefault === 1" class="ml-2">
+                        <span class="text-xs px-2 py-1 bg-white text-gray-500 rounded-full">Default</span>
+                    </div>
                 </div>
-                <div class="p-4 border-t border-gray-200 flex justify-between">
-                    <button @click="goToAddressList" class="px-4 py-2 bg-gray-100 text-black rounded-lg">Add New Address</button>
-                    <button @click="showAddressModal = false" class="px-4 py-2 bg-black text-white rounded-lg">Confirm</button>
+            </div>
+
+            <!-- Address Selection Button -->
+            <button @click="showAddressModal = true" 
+                class="w-full py-2 px-4 bg-gray-50 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors flex items-center justify-center">
+                <span>{{ addresses.length > 1 ? 'Change Address' : 'Select Address' }}</span>
+            </button>
+        </div>
+
+        <!-- Address Selection Modal -->
+        <div v-if="showAddressModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div class="bg-white rounded-xl w-11/12 max-w-md max-h-[80vh] flex flex-col overflow-hidden">
+                <!-- Modal Header -->
+                <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <h3 class="text-lg font-medium">Select Shipping Address</h3>
+                    <button @click="showAddressModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <X :size="20" />
+                    </button>
+                </div>
+                
+                <!-- Modal Content -->
+                <div class="overflow-y-auto flex-1 p-6">
+                    <div v-for="address in addresses" :key="address.id" 
+                         @click="selectAddress(address.id)"
+                         class="p-4 rounded-lg mb-3 cursor-pointer transition-all"
+                         :class="selectedAddressId === address.id ? 
+                            'bg-gray-50' : 
+                            'hover:bg-gray-50'">
+                        
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="font-medium">{{ address.receiverName }}</div>
+                                <div class="text-gray-500 mt-1">{{ address.receiverPhone }}</div>
+                                <div class="mt-2 text-gray-600 text-sm">
+                                    {{ `${address.province} ${address.city} ${address.detailAddress}` }}
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-col items-end">
+                                <div v-if="selectedAddressId === address.id" class="w-5 h-5 rounded-full bg-black flex items-center justify-center mb-2">
+                                    <div class="w-2 h-2 rounded-full bg-white"></div>
+                                </div>
+                                <div v-if="address.isDefault === 1">
+                                    <span class="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded-full">Default</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Divider line between addresses -->
+                        <div v-if="address.id !== addresses[addresses.length-1].id" class="h-px bg-gray-100 mt-4"></div>
+                    </div>
+                </div>
+                
+                <!-- Modal Footer -->
+                <div class="p-6 border-t border-gray-100 flex justify-between">
+                    <button @click="goToAddressList" 
+                        class="px-4 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+                        Add New Address
+                    </button>
+                    <button @click="showAddressModal = false" 
+                        class="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors">
+                        Confirm
+                    </button>
                 </div>
             </div>
         </div>

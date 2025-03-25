@@ -28,11 +28,11 @@
             <!-- 地址列表 -->
             <div v-else class="space-y-4">
                 <div v-for="address in sortedAddresses" :key="address.id"
-                    class="bg-white p-4 rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.08)]">
+                    class="pb-6 px-1 border-b border-gray-100">
                     <div class="flex justify-between items-start mb-2">
-                        <div class="flex items-center">
-                            <span class="font-medium text-gray-800">{{ address.receiverName }} ,</span>
-                            <span class="text-gray-500 ml-1">{{ address.receiverPhone }}</span>
+                        <div class="flex items-center font-medium text-black text-base">
+                            <span class="">{{ address.receiverName }}</span>
+                            <span class="ml-2">{{ address.receiverPhone }}</span>
                         </div>
                         <div class="flex space-x-2">
                             <button @click="handleEdit(address)" class="p-1 rounded-full hover:bg-gray-100">
@@ -43,12 +43,12 @@
                             </button>
                         </div>
                     </div>
-                    <div class="text-gray-600 text-sm mb-3">
+                    <div class="text-gray-600 text-xs mb-3">
                         {{ address.province }} , {{ address.city }} , {{ address.detailAddress }}
                     </div>
                     <div class="flex justify-between items-center">
                         <div v-if="address.isDefault === 1"
-                            class="inline-flex items-center text-xs px-2 py-1 bg-black text-white rounded-full">
+                            class="inline-flex items-center text-xs px-4 py-1 bg-black text-white rounded-full">
                             默认地址
                         </div>
                         <button v-else @click="handleSetDefault(address.id)" class="text-xs text-gray-500 underline">
