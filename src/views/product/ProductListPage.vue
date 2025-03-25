@@ -68,6 +68,8 @@ const loadingMore = ref(false);
 const currentPage = ref(1);
 const pageSize = ref(10);
 const hasMore = ref(true);
+// 1. 添加一个标志变量，防止重复请求
+const isInitialLoadCompleted = ref(false);
 
 // 列表类型和标题
 const listType = computed(() => route.params.type as string);
@@ -191,37 +193,39 @@ const loadMore = async () => {
     await loadProducts(true);
 };
 
-// 重置并重新加载
-const resetAndLoad = () => {
-    currentPage.value = 1;
-    hasMore.value = true;
-    loadProducts();
-};
+
 
 // 返回首页
 const goToHome = () => {
     router.push('/home');
 };
 
-// 监听路由变化，切换不同类型的列表
-watch(() => route.params.type, () => {
-    resetAndLoad();
+// 创建一个计算属性，同时包含路由类型和关键词
+const routeSignature = computed(() => {
+    return {
+        type: route.params.type,
+        keyword: route.query.keyword
+    };
 });
 
-// 监听路由变化，获取搜索关键词
-// 监听路由查询参数的变化，获取搜索关键词 - 添加到组件的watch部分
-watch(() => route.query.keyword, (newKeyword) => {
-    if (newKeyword && typeof newKeyword === 'string') {
-        keyword.value = newKeyword;
+
+// 使用一个 watch 监听路由变化
+watch(routeSignature, (newValue) => {
+    // 处理关键词更新
+    if (newValue.keyword && typeof newValue.keyword === 'string') {
+        keyword.value = newValue.keyword;
     } else {
         keyword.value = '';
     }
-
-    // 如果是搜索类型，则重新加载
-    if (listType.value === 'search') {
-        resetAndLoad();
-    }
-}, { immediate: true });
+    
+    // 重置并加载数据
+    currentPage.value = 1;
+    hasMore.value = true;
+    loadProducts();
+    
+    // 标记初始加载已完成
+    isInitialLoadCompleted.value = true;
+}, { deep: true, immediate: true });
 
 // 组件挂载时初始化
 onMounted(async () => {
@@ -236,6 +240,6 @@ onMounted(async () => {
     }
 
     // 加载产品列表
-    resetAndLoad();
+    // resetAndLoad();
 });
 </script>
