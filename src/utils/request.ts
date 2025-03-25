@@ -87,7 +87,7 @@ service.interceptors.request.use(
 service.interceptors.response.use(
       (response: AxiosResponse<ApiResponse>) => {
             console.log('成功结果', response);
-            
+
             // 请求完成后，从pendingRequests中移除
             removePendingRequest(response.config);
 
@@ -109,7 +109,7 @@ service.interceptors.response.use(
       },
       (error) => {
             console.log('错误结果', error);
-            
+
             // 如果请求被取消，不处理错误
             if (axios.isCancel(error)) {
                   console.log('Request canceled:', error.message);
@@ -190,6 +190,13 @@ const request = <T = any>(config: RequestConfig): Promise<T> => {
 export const http = {
       // 支持请求缓存的GET方法
       get: <T = any>(url: string, params?: any, config?: RequestConfig): Promise<T> => {
+            // // 无论URL是否包含查询参数，都添加params对象
+            // return request<T>({
+            //       ...config,
+            //       method: 'get',
+            //       url,
+            //       params,
+            // });
             // 检查URL是否已包含查询参数
             const hasQueryParams = url.includes('?');
 

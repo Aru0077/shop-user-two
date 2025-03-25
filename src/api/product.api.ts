@@ -88,7 +88,7 @@ export const productApi = {
        * @param params 搜索参数
        */
       searchProducts(params: SearchProductsParams): Promise<SearchProductsResponse> {
-            return http.get('/products/search', { params });
+            return http.get('/products/search', params);
       },
 
       /**
