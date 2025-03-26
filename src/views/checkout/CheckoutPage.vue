@@ -330,7 +330,12 @@ const submitOrder = async () => {
 
         // 跳转到支付页面
         router.push({
-            path: `/order/${order.id}/pay`
+            path: `/payment`,
+            query: {
+                id: order.id,
+                type: 'order',
+                amount: order.paymentAmount
+            }
         });
 
         toast.success('订单创建成功');

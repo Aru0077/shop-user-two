@@ -295,7 +295,13 @@ const cancelOrder = async (orderId: string) => {
 
 // 支付订单
 const payOrder = (orderId: string) => {
-    router.push(`/order/${orderId}/pay`);
+    router.push({
+    path: `/payment`,
+    query: { 
+        id: orderId,
+        type: 'order'
+    }
+});
 };
 
 // 确认收货

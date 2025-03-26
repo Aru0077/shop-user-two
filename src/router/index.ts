@@ -94,7 +94,7 @@ const routes: Array<RouteRecordRaw> = [
                   navbar: {
                         leftButton: 'back',
                   },
-                  requiresAuth: true 
+                  requiresAuth: true
             }
       },
       // ... 其他路由保持不变，只需更新meta信息中的showTabBar
@@ -238,6 +238,33 @@ const routes: Array<RouteRecordRaw> = [
                   },
             }
       },
+      // 支付相关
+      {
+            path: '/payment',
+            name: 'Payment',
+            component: () => import('@/views/payment/PaymentPage.vue'),
+            meta: {
+                  title: '支付',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back'
+                  },
+                  requiresAuth: true
+            }
+      },
+      {
+            path: '/payment/result',
+            name: 'PaymentResult',
+            component: () => import('@/views/payment/PaymentResultPage.vue'),
+            meta: {
+                  title: '支付结果',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back'
+                  },
+                  requiresAuth: true
+            }
+      },
       // 404页面
       {
             path: '/:pathMatch(.*)*',
@@ -268,37 +295,37 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
       // 检查页面是否需要登录
       if (to.meta.requiresAuth) {
-          const userStore = useUserStore();
-          // 使用isLoggedIn计算属性替代不存在的checkTokenExpiry方法
-          if (!userStore.isLoggedIn) {
-              // 跳转到登录页面，并记录来源页面
-              next({
-                  path: '/login',
-                  query: { redirect: to.fullPath }
-              });
-              return;
-          }
+            const userStore = useUserStore();
+            // 使用isLoggedIn计算属性替代不存在的checkTokenExpiry方法
+            if (!userStore.isLoggedIn) {
+                  // 跳转到登录页面，并记录来源页面
+                  next({
+                        path: '/login',
+                        query: { redirect: to.fullPath }
+                  });
+                  return;
+            }
       }
-  
+
       // 设置页面标题
       if (to.meta.title) {
-          document.title = `${to.meta.title} - 购物商城`;
+            document.title = `${to.meta.title} - 购物商城`;
       }
-  
+
       // 预加载逻辑保持不变
       if (to.name === 'Home') {
-          preloadComponent(CategoryPage);
-          preloadComponent(ProfilePage);
+            preloadComponent(CategoryPage);
+            preloadComponent(ProfilePage);
       } else if (to.name === 'Category') {
-          preloadComponent(HomePage);
-          preloadComponent(ProfilePage);
+            preloadComponent(HomePage);
+            preloadComponent(ProfilePage);
       } else if (to.name === 'Profile') {
-          preloadComponent(HomePage);
-          preloadComponent(CategoryPage);
+            preloadComponent(HomePage);
+            preloadComponent(CategoryPage);
       }
-  
+
       next();
-  });
+});
 
 // 添加组件预加载
 const preloadComponent = (component: any) => {

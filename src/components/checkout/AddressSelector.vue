@@ -114,8 +114,15 @@ onMounted(async () => {
 });
 
 // 选择地址
+// 选择地址
 const selectAddress = (addressId: number) => {
+    // 如果当前已经选择了该地址，则不需要再次更新
+    if (selectedAddressId.value === addressId) {
+        return;
+    }
+    
     selectedAddressId.value = addressId;
+    
     // 更新临时订单中的地址
     if (tempOrderStore.tempOrder) {
         tempOrderStore.updateTempOrder({

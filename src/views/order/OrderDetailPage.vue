@@ -72,7 +72,7 @@
                                 <div class="flex justify-between items-end mt-2">
                                     <div class="text-sm">
                                         <span class="text-red-500 font-semibold">{{ formatPrice(item.unitPrice)
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                     <div class="text-xs text-gray-500">x{{ item.quantity }}</div>
                                 </div>
@@ -422,7 +422,14 @@ const cancelOrder = async () => {
 // 去支付
 const goToPay = () => {
     if (!orderDetail.value) return;
-    router.push(`/order/${orderDetail.value.id}/pay`);
+    router.push({
+        path: `/payment`,
+        query: {
+            id: orderDetail.value.id,
+            type: 'order',
+            amount: orderDetail.value.paymentAmount
+        }
+    });
 };
 
 // 确认收货
