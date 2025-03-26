@@ -1,6 +1,5 @@
 <template>
     <div class="flex flex-col overflow-hidden h-full p-4">
-
         <!-- 页面标题 -->
         <PageTitle mainTitle="我的地址" />
 
@@ -28,17 +27,20 @@
             <!-- 地址列表 -->
             <div v-else class="space-y-4">
                 <div v-for="address in sortedAddresses" :key="address.id"
-                    class="pb-6 px-1 border-b border-gray-100">
+                    class="pb-6 px-1 border-b border-gray-100"
+                    :class="{'bg-gray-50 rounded-lg p-2': isAddressSelected(address.id)}"
+                    @click="handleAddressSelect(address.id)">
                     <div class="flex justify-between items-start mb-2">
                         <div class="flex items-center font-medium text-black text-base">
-                            <span class="">{{ address.receiverName }}</span>
+                            <span>{{ address.receiverName }}</span>
                             <span class="ml-2">{{ address.receiverPhone }}</span>
+                            <span v-if="isAddressSelected(address.id)" class="ml-2 text-xs px-2 py-1 bg-black text-white rounded-full">Selected</span>
                         </div>
                         <div class="flex space-x-2">
-                            <button @click="handleEdit(address)" class="p-1 rounded-full hover:bg-gray-100">
+                            <button @click.stop="handleEdit(address)" class="p-1 rounded-full hover:bg-gray-100">
                                 <Pencil class="w-4 h-4 text-gray-500" />
                             </button>
-                            <button @click="confirmDelete(address.id)" class="p-1 rounded-full hover:bg-gray-100">
+                            <button @click.stop="confirmDelete(address.id)" class="p-1 rounded-full hover:bg-gray-100">
                                 <Trash2 class="w-4 h-4 text-gray-500" />
                             </button>
                         </div>
@@ -51,7 +53,7 @@
                             class="inline-flex items-center text-xs px-4 py-1 bg-black text-white rounded-full">
                             默认地址
                         </div>
-                        <button v-else @click="handleSetDefault(address.id)" class="text-xs text-gray-500 underline">
+                        <button v-else @click.stop="handleSetDefault(address.id)" class="text-xs text-gray-500 underline">
                             设为默认地址
                         </button>
 
@@ -79,10 +81,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { MapPin, Plus, Pencil, Trash2 } from 'lucide-vue-next';
 import { useAddressStore } from '@/stores/address.store';
+import { useTempOrderStore } from '@/stores/temp-order.store';
 import { useToast } from '@/composables/useToast';
 import PageTitle from '@/components/common/PageTitle.vue';
 import type { UserAddress } from '@/types/address.type';
@@ -90,12 +93,45 @@ import type { UserAddress } from '@/types/address.type';
 const router = useRouter();
 const route = useRoute();
 const addressStore = useAddressStore();
+const tempOrderStore = useTempOrderStore();
 const toast = useToast();
 
 // 计算属性
 const addresses = computed(() => addressStore.addresses);
 const sortedAddresses = computed(() => addressStore.sortedAddresses);
 const loading = computed(() => addressStore.loading);
+
+// 获取URL参数
+const selectedId = ref<number | null>(route.query.selectedId ? parseInt(route.query.selectedId as string) : null);
+const redirectPath = route.query.redirect as string || '/checkout';
+const fromCheckout = route.query.from === 'checkout';
+
+// 判断地址是否被选中
+const isAddressSelected = (id: number): boolean => {
+    return selectedId.value === id;
+};
+
+// 处理地址选择
+const handleAddressSelect = async (id: number) => {
+    if (fromCheckout) {
+        selectedId.value = id;
+        
+        // 如果来自结账页面，更新临时订单并返回
+        if (tempOrderStore.tempOrder) {
+            try {
+                await tempOrderStore.updateTempOrder({
+                    addressId: id
+                });
+                toast.success('地址已更新');
+                router.push(redirectPath);
+            } catch (error: any) {
+                toast.error(error.message || '更新地址失败');
+            }
+        } else {
+            router.push(redirectPath);
+        }
+    }
+};
 
 // 在组件挂载时获取地址数据
 onMounted(async () => {
@@ -105,6 +141,11 @@ onMounted(async () => {
     } else if (route.query.from === 'editor') {
         // 如果是从编辑页面返回，刷新数据
         await addressStore.loadAddresses();
+    }
+    
+    // 如果来自结账页面且需要初始化临时订单 store
+    if (fromCheckout && !tempOrderStore.isInitialized()) {
+        await tempOrderStore.ensureInitialized();
     }
 });
 
@@ -117,7 +158,13 @@ const formatDate = (dateString: string): string => {
 
 // 新增地址
 const handleAddAddress = () => {
-    router.push('/new-address');
+    router.push({
+        path: '/new-address',
+        query: {
+            redirect: redirectPath,
+            from: 'address'
+        }
+    });
 };
 
 // 编辑地址
@@ -126,7 +173,9 @@ const handleEdit = (address: UserAddress) => {
         path: '/new-address',
         query: {
             id: address.id.toString(),
-            edit: 'true'
+            edit: 'true',
+            redirect: redirectPath,
+            from: 'address'
         }
     });
 };

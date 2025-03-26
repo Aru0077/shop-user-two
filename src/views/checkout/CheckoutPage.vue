@@ -19,7 +19,7 @@
 
                 <!-- Product Information -->
                 <div class="bg-white p-4">
-                    <h2 class="text-lg font-medium mb-4">Product Information</h2>
+                    <!-- <h2 class="text-lg font-medium mb-4">Product Information</h2> -->
                     <div v-for="item in tempOrder.items" :key="`${item.productId}-${item.skuId}`"
                         class="flex mb-4 pb-4 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
                         <!-- Product Image -->
@@ -51,7 +51,7 @@
 
                 <!-- Payment Method -->
                 <div class="bg-white p-4">
-                    <h2 class="text-lg font-medium mb-4">Payment Method</h2>
+                    <!-- <h2 class="text-lg font-medium mb-4">Payment Method</h2> -->
                     <div class="flex items-center p-3 bg-gray-50 rounded-lg">
                         <input type="radio" id="qpay" value="QPAY" v-model="selectedPaymentType"
                             class="w-4 h-4 accent-black" checked />
@@ -66,7 +66,7 @@
 
                 <!-- Order Notes -->
                 <div class="bg-white p-4">
-                    <h2 class="text-lg font-medium mb-4">Order Notes</h2>
+                    <!-- <h2 class="text-lg font-medium mb-4">Order Notes</h2> -->
                     <textarea v-model="orderRemark" placeholder="Add notes to your order (optional)"
                         class="w-full p-3 bg-gray-50 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-400 resize-none"
                         rows="2"></textarea>
@@ -77,7 +77,7 @@
 
                 <!-- Order Summary -->
                 <div class="bg-white p-4">
-                    <h2 class="text-lg font-medium mb-4">Order Summary</h2>
+                    <!-- <h2 class="text-lg font-medium mb-4">Order Summary</h2> -->
 
                     <div class="space-y-3">
                         <div class="flex justify-between items-center">
@@ -148,7 +148,6 @@ import { AlertCircle } from 'lucide-vue-next';
 import { useTempOrderStore } from '@/stores/temp-order.store';
 import { useAddressStore } from '@/stores/address.store';
 import { useToast } from '@/composables/useToast';
-import PageTitle from '@/components/common/PageTitle.vue';
 import AddressSelector from '@/components/checkout/AddressSelector.vue';
 import { formatPrice } from '@/utils/price.utils';
 

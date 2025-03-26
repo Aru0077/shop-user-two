@@ -224,7 +224,7 @@ const handleSubmit = async () => {
         };
 
         if (isEdit.value && addressId.value) {
-            // 编辑地址 - 使用 updateAddress 而不是 updateExistingAddress
+            // 编辑地址
             await addressStore.updateAddress(addressId.value, params);
             toast.success('地址更新成功');
         } else {
@@ -233,10 +233,16 @@ const handleSubmit = async () => {
             toast.success('地址添加成功');
         }
 
-        router.replace({
-            path: '/address',
-            query: { from: 'editor' }  // 添加来源标记
-        });
+        // 检查是否有重定向路径
+        const redirectPath = route.query.redirect as string;
+        if (redirectPath) {
+            router.replace(redirectPath);
+        } else {
+            router.replace({
+                path: '/address',
+                query: { from: 'editor' }
+            });
+        }
     } catch (error: any) {
         toast.error(error.message || '保存地址失败');
     }
@@ -244,9 +250,15 @@ const handleSubmit = async () => {
 
 // 取消操作
 const handleCancel = () => {
-    router.replace({
-        path: '/address',
-        query: { from: 'editor' }  // 添加来源标记
-    });
+    // 检查是否有重定向路径
+    const redirectPath = route.query.redirect as string;
+    if (redirectPath) {
+        router.replace(redirectPath);
+    } else {
+        router.replace({
+            path: '/address',
+            query: { from: 'editor' }
+        });
+    }
 };
 </script>
