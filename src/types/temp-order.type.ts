@@ -1,4 +1,30 @@
 // src/types/temp-order.type.ts
+
+// 需要添加导入
+import type { UserAddress } from '@/types/address.type';
+import type { Promotion } from '@/types/promotion.type';
+
+/**
+ * 支付方式
+ */
+export interface PaymentMethod {
+      id: string;
+      name: string;
+}
+
+/**
+ * 结算信息
+ */
+export interface CheckoutInfo {
+      addresses: UserAddress[];
+      defaultAddressId: number | null;
+      availablePromotions: Promotion[];
+      preferredPaymentType: string;
+      paymentMethods: PaymentMethod[];
+}
+
+
+
 /**
  * 临时订单项
  */
@@ -50,3 +76,4 @@ export interface CreateTempOrderParams {
             quantity: number
       };
 }
+

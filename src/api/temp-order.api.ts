@@ -1,12 +1,21 @@
 // src/api/temp-order.api.ts
 import http from '@/utils/request';
-import type { TempOrder, CreateTempOrderParams } from '@/types/temp-order.type';
+import type { TempOrder, CreateTempOrderParams, CheckoutInfo } from '@/types/temp-order.type';
 import type { CreateOrderResponse } from '@/types/order.type';
 
 /**
  * 临时订单API
  */
 export const tempOrderApi = {
+
+      /**
+       * 获取结算信息
+       */
+      getCheckoutInfo(): Promise<CheckoutInfo> {
+            return http.get('/temp-order/checkout-info');
+      },
+
+
       /**
        * 创建临时订单
        * @param params 创建临时订单的参数
