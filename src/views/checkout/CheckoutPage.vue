@@ -360,6 +360,8 @@ const goBack = () => {
 
 // 页面加载时初始化
 onMounted(async () => {
+    await tempOrderStore.ensureInitialized();
+    
     // 初始化store
     await Promise.all([
         tempOrderStore.ensureInitialized(),

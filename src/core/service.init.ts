@@ -5,8 +5,7 @@ import { useAddressStore } from '@/stores/address.store';
 import { useProductStore } from '@/stores/product.store';
 import { useCartStore } from '@/stores/cart.store';
 import { useFavoriteStore } from '@/stores/favorite.store';
-import { usePromotionStore } from '@/stores/promotion.store';
-import { useTempOrderStore } from '@/stores/temp-order.store';
+import { usePromotionStore } from '@/stores/promotion.store'; 
 
 /**
  * 核心服务初始化类
@@ -55,7 +54,6 @@ export class ServiceInitializer {
                               useAddressStore(),
                               useCartStore(),
                               useFavoriteStore(),
-                              useTempOrderStore()
                         ];
 
                         // 并行初始化用户数据模块

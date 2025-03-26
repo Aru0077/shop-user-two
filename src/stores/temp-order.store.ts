@@ -2,7 +2,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { tempOrderApi } from '@/api/temp-order.api';
-import { storage } from '@/utils/storage';
+import { storage, STORAGE_VERSIONS } from '@/utils/storage';
 import { createInitializeHelper } from '@/utils/store-helpers';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import { toast } from '@/utils/toast.service';
@@ -10,7 +10,7 @@ import { useUserStore } from '@/stores/user.store';
 import { useAddressStore } from '@/stores/address.store';
 import type { TempOrder, CreateTempOrderParams, CheckoutInfo } from '@/types/temp-order.type';
 import type { CreateOrderResponse } from '@/types/order.type';
-import type { ApiError } from '@/types/common.type'; 
+import type { ApiError } from '@/types/common.type';
 
 /**
  * 临时订单Store
@@ -20,14 +20,16 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
       // 初始化助手
       const initHelper = createInitializeHelper('TempOrderStore');
 
-      // 状态 - 临时订单相关
+      // ==================== 状态管理 ====================
+
+      // 临时订单状态
       const tempOrder = ref<TempOrder | null>(null);
       const loading = ref(false);
       const creating = ref(false);
       const confirming = ref(false);
       const error = ref<string | null>(null);
 
-      // 状态 - 结算信息相关
+      // 结算信息状态
       const checkoutInfo = ref<CheckoutInfo | null>(null);
       const selectedAddressId = ref<number | null>(null);
       const selectedPaymentType = ref<string>('qpay'); // 默认使用QPay支付
@@ -37,66 +39,39 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
       const userStore = useUserStore();
       const addressStore = useAddressStore();
 
-      // 计算属性 - 临时订单相关
-      const orderItems = computed(() => {
-            return tempOrder.value?.items || [];
-      });
+      // ==================== 计算属性 ====================
 
-      const totalAmount = computed(() => {
-            return tempOrder.value?.totalAmount || 0;
-      });
-
-      const discountAmount = computed(() => {
-            return tempOrder.value?.discountAmount || 0;
-      });
-
-      const paymentAmount = computed(() => {
-            return tempOrder.value?.paymentAmount || 0;
-      });
-
-      const promotion = computed(() => {
-            return tempOrder.value?.promotion || null;
-      });
-
-      const expireTime = computed(() => {
-            return tempOrder.value?.expireTime || '';
-      });
-
+      // 临时订单相关计算属性
+      const orderItems = computed(() => tempOrder.value?.items || []);
+      const totalAmount = computed(() => tempOrder.value?.totalAmount || 0);
+      const discountAmount = computed(() => tempOrder.value?.discountAmount || 0);
+      const paymentAmount = computed(() => tempOrder.value?.paymentAmount || 0);
+      const promotion = computed(() => tempOrder.value?.promotion || null);
+      const expireTime = computed(() => tempOrder.value?.expireTime || '');
       const isExpired = computed(() => {
             if (!tempOrder.value?.expireTime) return true;
-
             const expireDate = new Date(tempOrder.value.expireTime);
             return expireDate <= new Date();
       });
 
-      // 计算属性 - 结算信息相关
-      const availableAddresses = computed(() => {
-            return checkoutInfo.value?.addresses || [];
-      });
-
-      const availablePaymentMethods = computed(() => {
-            return checkoutInfo.value?.paymentMethods || [];
-      });
-
-      const availablePromotions = computed(() => {
-            return checkoutInfo.value?.availablePromotions || [];
-      });
-
+      // 结算信息相关计算属性
+      const availableAddresses = computed(() => checkoutInfo.value?.addresses || []);
+      const availablePaymentMethods = computed(() => checkoutInfo.value?.paymentMethods || []);
+      const availablePromotions = computed(() => checkoutInfo.value?.availablePromotions || []);
       const selectedAddress = computed(() => {
             if (!selectedAddressId.value) return null;
             return availableAddresses.value.find(addr => addr.id === selectedAddressId.value) || null;
       });
-
       const selectedPaymentMethod = computed(() => {
             if (!selectedPaymentType.value) return null;
             return availablePaymentMethods.value.find(method => method.id === selectedPaymentType.value) || null;
       });
-
       const checkoutReady = computed(() => {
             return !!selectedAddressId.value && !!tempOrder.value;
       });
 
-      // ==================== 内部工具方法 ====================
+      // ==================== 工具方法 ====================
+
       /**
        * 处理API错误
        */
@@ -143,6 +118,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
       }
 
       // ==================== 结算信息相关方法 ====================
+
       /**
        * 获取结算信息
        */
@@ -203,6 +179,13 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
        */
       function setSelectedAddress(addressId: number): void {
             selectedAddressId.value = addressId;
+
+            // 如果有临时订单，在本地更新addressId
+            if (tempOrder.value) {
+                  tempOrder.value.addressId = addressId;
+                  // 保存到本地缓存
+                  saveToLocalStorage();
+            }
       }
 
       /**
@@ -210,6 +193,13 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
        */
       function setSelectedPaymentType(paymentType: string): void {
             selectedPaymentType.value = paymentType;
+
+            // 如果有临时订单，在本地更新paymentType
+            if (tempOrder.value) {
+                  tempOrder.value.paymentType = paymentType;
+                  // 保存到本地缓存
+                  saveToLocalStorage();
+            }
       }
 
       /**
@@ -217,9 +207,17 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
        */
       function setOrderRemark(remark: string): void {
             orderRemark.value = remark;
+
+            // 如果有临时订单，在本地更新remark
+            if (tempOrder.value) {
+                  tempOrder.value.remark = remark;
+                  // 保存到本地缓存
+                  saveToLocalStorage();
+            }
       }
 
       // ==================== 临时订单相关方法 ====================
+
       /**
        * 创建临时订单
        */
@@ -329,9 +327,14 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
       }
 
       /**
-       * 更新临时订单
+       * 更新临时订单（仅在服务器端更新）
+       * @param params 要更新的字段对象
        */
-      async function updateTempOrder(): Promise<TempOrder | null> {
+      async function updateTempOrder(params: {
+            addressId?: number;
+            paymentType?: string;
+            remark?: string;
+      }): Promise<TempOrder | null> {
             if (!tempOrder.value) {
                   toast.warning('没有临时订单可更新');
                   return null;
@@ -341,16 +344,30 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                   loading.value = true;
                   error.value = null;
 
-                  const params = {
-                        addressId: selectedAddressId.value || undefined,
-                        paymentType: selectedPaymentType.value || undefined,
-                        remark: orderRemark.value || undefined
-                  };
+                  // 在本地先更新
+                  if (params.addressId !== undefined) {
+                        selectedAddressId.value = params.addressId;
+                        if (tempOrder.value) tempOrder.value.addressId = params.addressId;
+                  }
 
+                  if (params.paymentType !== undefined) {
+                        selectedPaymentType.value = params.paymentType;
+                        if (tempOrder.value) tempOrder.value.paymentType = params.paymentType;
+                  }
+
+                  if (params.remark !== undefined) {
+                        orderRemark.value = params.remark;
+                        if (tempOrder.value) tempOrder.value.remark = params.remark;
+                  }
+
+                  // 保存到本地缓存
+                  saveToLocalStorage();
+
+                  // 调用API更新
                   const updatedOrder = await tempOrderApi.updateTempOrder(tempOrder.value.id, params);
                   tempOrder.value = updatedOrder;
 
-                  // 缓存到本地
+                  // 再次保存更新后的订单到本地缓存
                   saveToLocalStorage();
 
                   return updatedOrder;
@@ -379,9 +396,6 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
             try {
                   confirming.value = true;
                   error.value = null;
-                  
-                  // 先更新订单信息
-                  await updateTempOrder();
 
                   // 确认订单
                   const result = await tempOrderApi.confirmTempOrder(tempOrder.value.id);
@@ -393,6 +407,50 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                   return result;
             } catch (err: any) {
                   handleError(err, '确认订单失败');
+                  return null;
+            } finally {
+                  confirming.value = false;
+            }
+      }
+
+      /**
+       * 更新并确认临时订单（一步完成）
+       * 这个方法专门用于最终提交订单时的场景
+       */
+      async function updateAndConfirmTempOrder(params: {
+            addressId?: number;
+            paymentType?: string;
+            remark?: string;
+      }): Promise<CreateOrderResponse | null> {
+            if (!tempOrder.value) {
+                  toast.warning('没有临时订单可确认');
+                  return null;
+            }
+
+            if (!params.addressId && !selectedAddressId.value) {
+                  toast.warning('请选择收货地址');
+                  return null;
+            }
+
+            try {
+                  confirming.value = true;
+                  error.value = null;
+
+                  // 如果有传入参数，先更新临时订单
+                  if (Object.keys(params).length > 0) {
+                        await tempOrderApi.updateTempOrder(tempOrder.value.id, params);
+                  }
+
+                  // 确认订单
+                  const result = await tempOrderApi.confirmTempOrder(tempOrder.value.id);
+
+                  // 清理临时订单和相关状态
+                  clearState();
+
+                  toast.success('订单创建成功');
+                  return result;
+            } catch (err: any) {
+                  handleError(err, '提交订单失败');
                   return null;
             } finally {
                   confirming.value = false;
@@ -431,9 +489,15 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
        */
       function saveToLocalStorage(): void {
             if (tempOrder.value) {
-                  storage.saveTempOrder(tempOrder.value);
+                // 计算存储过期时间与业务过期时间的差值
+                const expireDate = new Date(tempOrder.value.expireTime);
+                const now = new Date();
+                const expiryMs = Math.max(0, expireDate.getTime() - now.getTime());
+                
+                // 使用临时订单的有效期作为存储的过期时间
+                storage.set(storage.STORAGE_KEYS.TEMP_ORDER, tempOrder.value, expiryMs, STORAGE_VERSIONS.TEMP_ORDER);
             }
-      }
+        }
 
       /**
        * 从本地存储加载
@@ -441,11 +505,19 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
       function loadFromLocalStorage(): boolean {
             const data = storage.getTempOrder<TempOrder>();
             if (data) {
-                  tempOrder.value = data;
-                  return true;
+                // 检查临时订单是否已过期
+                const expireDate = new Date(data.expireTime);
+                if (expireDate <= new Date()) {
+                    // 订单已过期，清除本地存储
+                    storage.remove(storage.STORAGE_KEYS.TEMP_ORDER);
+                    return false;
+                }
+                
+                tempOrder.value = data;
+                return true;
             }
             return false;
-      }
+        }
 
       /**
        * 清除临时订单和结算相关状态
@@ -479,7 +551,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                         if (!addressStore.isInitialized()) {
                               await addressStore.init();
                         }
-                        
+
                         // 并行加载临时订单和结算信息
                         await Promise.all([
                               loadFromLocalStorage(),
@@ -531,6 +603,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
             loadTempOrder,
             updateTempOrder,
             confirmTempOrder,
+            updateAndConfirmTempOrder, // 新增方法：更新并确认临时订单
             refreshTempOrder,
             saveToLocalStorage,
             loadFromLocalStorage,
@@ -540,7 +613,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
             setSelectedAddress,
             setSelectedPaymentType,
             setOrderRemark,
-            
+
             // 共享方法
             clearState,
             init,
