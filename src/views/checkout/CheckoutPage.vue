@@ -12,14 +12,13 @@
 
             <template v-else-if="tempOrder">
                 <!-- Address Selector Component -->
-                <AddressSelector v-model:value="selectedAddressId" />
+                <AddressSelector v-model:value="localAddressId" />
 
                 <!-- Divider -->
                 <div class="h-px my-1"></div>
 
                 <!-- Product Information -->
                 <div class="bg-white p-4">
-                    <!-- <h2 class="text-lg font-medium mb-4">Product Information</h2> -->
                     <div v-for="item in tempOrder.items" :key="`${item.productId}-${item.skuId}`"
                         class="flex mb-4 pb-4 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
                         <!-- Product Image -->
@@ -51,9 +50,8 @@
 
                 <!-- Payment Method -->
                 <div class="bg-white p-4">
-                    <!-- <h2 class="text-lg font-medium mb-4">Payment Method</h2> -->
                     <div class="flex items-center p-3 bg-gray-50 rounded-lg">
-                        <input type="radio" id="qpay" value="QPAY" v-model="selectedPaymentType"
+                        <input type="radio" id="qpay" value="QPAY" v-model="localPaymentType"
                             class="w-4 h-4 accent-black" checked />
                         <label for="qpay" class="ml-3 flex items-center w-full">
                             <span class="font-medium">QPAY</span>
@@ -66,8 +64,7 @@
 
                 <!-- Order Notes -->
                 <div class="bg-white p-4">
-                    <!-- <h2 class="text-lg font-medium mb-4">Order Notes</h2> -->
-                    <textarea v-model="orderRemark" placeholder="Add notes to your order (optional)"
+                    <textarea v-model="localRemark" placeholder="Add notes to your order (optional)"
                         class="w-full p-3 bg-gray-50 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-400 resize-none"
                         rows="2"></textarea>
                 </div>
@@ -77,8 +74,6 @@
 
                 <!-- Order Summary -->
                 <div class="bg-white p-4">
-                    <!-- <h2 class="text-lg font-medium mb-4">Order Summary</h2> -->
-
                     <div class="space-y-3">
                         <div class="flex justify-between items-center">
                             <span class="text-gray-500">Subtotal</span>
@@ -137,12 +132,11 @@
                 </button>
             </div>
         </div>
-
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { AlertCircle } from 'lucide-vue-next';
 import { useTempOrderStore } from '@/stores/temp-order.store';
@@ -164,10 +158,10 @@ const error = ref<string | null>(null);
 const isSubmitting = ref(false);
 const countdownTimer = ref<number | null>(null);
 
-// 表单状态
-const selectedAddressId = ref<number | null>(null);
-const selectedPaymentType = ref<string>('QPAY');
-const orderRemark = ref<string>('');
+// 表单状态 - 使用本地变量存储用户选择，不立即发送到服务器
+const localAddressId = ref<number | null>(null);
+const localPaymentType = ref<string>('QPAY');
+const localRemark = ref<string>('');
 
 // 临时订单信息
 const tempOrder = computed(() => tempOrderStore.tempOrder);
@@ -184,37 +178,12 @@ const calculateTimeRemaining = () => {
     return remaining;
 };
 
-// 监听地址ID变化
-watch(selectedAddressId, (newValue) => {
-    if (newValue !== null) {
-        tempOrderStore.updateTempOrder({
-            addressId: newValue
-        });
-    }
-});
-
-// 监听支付方式变化
-watch(selectedPaymentType, (newValue) => {
-    if (newValue) {
-        tempOrderStore.updateTempOrder({
-            paymentType: newValue
-        });
-    }
-});
-
-// 监听备注变化
-watch(orderRemark, (newValue) => {
-    tempOrderStore.updateTempOrder({
-        remark: newValue
-    });
-});
-
 // 是否可以提交订单
 const isReadyToSubmit = computed(() => {
-    return !!selectedAddressId.value && !!selectedPaymentType.value && timeRemaining.value > 0;
+    return !!localAddressId.value && !!localPaymentType.value && timeRemaining.value > 0;
 });
 
-// 加载临时订单
+// 加载临时订单 
 const loadTempOrder = async () => {
     isLoading.value = true;
     error.value = null;
@@ -243,10 +212,16 @@ const loadTempOrder = async () => {
             return;
         }
 
-        // 设置表单默认值
-        selectedAddressId.value = order.addressId || null;
-        selectedPaymentType.value = order.paymentType || 'QPAY';
-        orderRemark.value = order.remark || '';
+        // 设置表单默认值到本地变量中
+        // 检查URL中是否有地址选择的参数
+        if (route.query.selectedAddressId) {
+            localAddressId.value = parseInt(route.query.selectedAddressId as string);
+        } else {
+            localAddressId.value = order.addressId || null;
+        }
+        
+        localPaymentType.value = order.paymentType || 'QPAY';
+        localRemark.value = order.remark || '';
 
         // 确保地址信息已加载
         if (addressStore.addresses.length === 0) {
@@ -309,11 +284,11 @@ const formatCountdown = (seconds: number): string => {
     return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 };
 
-// 提交订单 
+// 提交订单 - 一次性发送所有本地更改
 const submitOrder = async () => {
     if (!isReadyToSubmit.value || isSubmitting.value) return;
 
-    if (!selectedAddressId.value) {
+    if (!localAddressId.value) {
         toast.error('请选择收货地址');
         return;
     }
@@ -323,9 +298,9 @@ const submitOrder = async () => {
     try {
         // 准备提交的数据（包含当前页面上的所有用户选择）
         const orderData = {
-            addressId: selectedAddressId.value,
-            paymentType: selectedPaymentType.value,
-            remark: orderRemark.value
+            addressId: localAddressId.value,
+            paymentType: localPaymentType.value,
+            remark: localRemark.value
         };
 
         // 一次性更新并确认临时订单
@@ -360,8 +335,6 @@ const goBack = () => {
 
 // 页面加载时初始化
 onMounted(async () => {
-    await tempOrderStore.ensureInitialized();
-    
     // 初始化store
     await Promise.all([
         tempOrderStore.ensureInitialized(),

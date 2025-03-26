@@ -22,7 +22,7 @@
             <span class="mb-3 text-red-500 font-medium">Select Address</span>
         </div>
 
-        <!-- Address Display --> 
+        <!-- Address Display -->
         <div v-else class="p-4 bg-gray-50 rounded-lg">
             <div v-if="selectedAddress" class="flex justify-between items-start">
                 <div>
@@ -38,16 +38,14 @@
             </div>
             <div v-else class="text-red-500 font-medium">Select Address</div>
         </div>
-
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { MapPin, ChevronRight } from 'lucide-vue-next';
 import { useAddressStore } from '@/stores/address.store';
-import { useTempOrderStore } from '@/stores/temp-order.store';
 import { useToast } from '@/composables/useToast';
 
 // 组件属性
@@ -63,7 +61,6 @@ const emit = defineEmits<{
 // 初始化
 const router = useRouter();
 const addressStore = useAddressStore();
-const tempOrderStore = useTempOrderStore();
 const toast = useToast();
 
 // 状态
@@ -93,61 +90,29 @@ const goToAddressList = () => {
 
 // 初始化时加载地址列表 
 onMounted(async () => {
-  try {
-    // 检查 store 是否已初始化
-    if (!addressStore.isInitialized()) {
-      await addressStore.init();
-    }
-    // 如果地址列表为空，才请求地址列表
-    else if (addresses.value.length === 0) {
-      await addressStore.loadAddresses();
-    }
-    
-    // 如果尚未选择地址
-    if (!selectedAddressId.value) {
-      // 优先选择默认地址
-      if (addressStore.defaultAddress) {
-        selectAddress(addressStore.defaultAddress.id);
-      }
-      // 如果没有默认地址但有其他地址，选择第一个
-      else if (addresses.value.length > 0) {
-        selectAddress(addresses.value[0].id);
-      }
-    }
-  } catch (error) {
-    toast.error('获取地址失败');
-  }
-});
-
-// 选择地址
-// 选择地址
-const selectAddress = (addressId: number) => {
-    // 如果当前已经选择了该地址，则不需要再次更新
-    if (selectedAddressId.value === addressId) {
-        return;
-    }
-    
-    selectedAddressId.value = addressId;
-    
-    // 更新临时订单中的地址
-    if (tempOrderStore.tempOrder) {
-        tempOrderStore.updateTempOrder({
-            addressId: addressId
-        });
-    }
-};
-
-// 监听地址变化
-watch(addresses, (newAddresses) => {
-    // 如果当前选中的地址不在列表中，重置选择
-    if (selectedAddressId.value && !newAddresses.some(addr => addr.id === selectedAddressId.value)) {
-        if (addressStore.defaultAddress) {
-            selectAddress(addressStore.defaultAddress.id);
-        } else if (newAddresses.length > 0) {
-            selectAddress(newAddresses[0].id);
-        } else {
-            selectedAddressId.value = null;
+    try {
+        // 检查 store 是否已初始化
+        if (!addressStore.isInitialized()) {
+            await addressStore.init();
         }
+        // 如果地址列表为空，才请求地址列表
+        else if (addresses.value.length === 0) {
+            await addressStore.loadAddresses();
+        }
+
+        // 如果尚未选择地址
+        if (!selectedAddressId.value) {
+            // 优先选择默认地址
+            if (addressStore.defaultAddress) {
+                selectedAddressId.value = addressStore.defaultAddress.id;
+            }
+            // 如果没有默认地址但有其他地址，选择第一个
+            else if (addresses.value.length > 0) {
+                selectedAddressId.value = addresses.value[0].id;
+            }
+        }
+    } catch (error) {
+        toast.error('获取地址失败');
     }
-}, { deep: true });
+});
 </script>

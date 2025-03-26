@@ -3,7 +3,7 @@
         <!-- 页面标题 -->
         <PageTitle mainTitle="我的地址" />
 
-        <div class="flex-1 overflow-y-auto"> 
+        <div class="flex-1 overflow-y-auto">
             <!-- 间距占位符 -->
             <div class="w-full h-4"></div>
 
@@ -26,15 +26,15 @@
 
             <!-- 地址列表 -->
             <div v-else class="space-y-4">
-                <div v-for="address in sortedAddresses" :key="address.id"
-                    class="pb-6 px-1 border-b border-gray-100"
-                    :class="{'bg-gray-50 rounded-lg p-2': isAddressSelected(address.id)}"
+                <div v-for="address in sortedAddresses" :key="address.id" class="pb-6 px-1 border-b border-gray-100"
+                    :class="{ 'bg-gray-50 rounded-lg p-2': isAddressSelected(address.id) }"
                     @click="handleAddressSelect(address.id)">
                     <div class="flex justify-between items-start mb-2">
                         <div class="flex items-center font-medium text-black text-base">
                             <span>{{ address.receiverName }}</span>
                             <span class="ml-2">{{ address.receiverPhone }}</span>
-                            <span v-if="isAddressSelected(address.id)" class="ml-2 text-xs px-2 py-1 bg-black text-white rounded-full">Selected</span>
+                            <span v-if="isAddressSelected(address.id)"
+                                class="ml-2 text-xs px-2 py-1 bg-black text-white rounded-full">Selected</span>
                         </div>
                         <div class="flex space-x-2">
                             <button @click.stop="handleEdit(address)" class="p-1 rounded-full hover:bg-gray-100">
@@ -53,7 +53,8 @@
                             class="inline-flex items-center text-xs px-4 py-1 bg-black text-white rounded-full">
                             默认地址
                         </div>
-                        <button v-else @click.stop="handleSetDefault(address.id)" class="text-xs text-gray-500 underline">
+                        <button v-else @click.stop="handleSetDefault(address.id)"
+                            class="text-xs text-gray-500 underline">
                             设为默认地址
                         </button>
 
@@ -85,7 +86,6 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { MapPin, Plus, Pencil, Trash2 } from 'lucide-vue-next';
 import { useAddressStore } from '@/stores/address.store';
-import { useTempOrderStore } from '@/stores/temp-order.store';
 import { useToast } from '@/composables/useToast';
 import PageTitle from '@/components/common/PageTitle.vue';
 import type { UserAddress } from '@/types/address.type';
@@ -93,7 +93,6 @@ import type { UserAddress } from '@/types/address.type';
 const router = useRouter();
 const route = useRoute();
 const addressStore = useAddressStore();
-const tempOrderStore = useTempOrderStore();
 const toast = useToast();
 
 // 计算属性
@@ -111,36 +110,19 @@ const isAddressSelected = (id: number): boolean => {
     return selectedId.value === id;
 };
 
-// 处理地址选择
-// 处理地址选择
-const handleAddressSelect = async (id: number) => {
+// 处理地址选择 - 仅在本地更新，不发送网络请求
+const handleAddressSelect = (id: number) => {
     if (fromCheckout) {
         selectedId.value = id;
-        
-        // 如果来自结账页面，更新临时订单
-        if (tempOrderStore.tempOrder) {
-            try {
-                // 先在本地立即更新临时订单状态 (关键修复)
-                if (tempOrderStore.tempOrder) {
-                    tempOrderStore.tempOrder.addressId = id;
-                }
-                
-                // 立即跳转回订单确认页
-                router.push(redirectPath);
-                
-                // 后台继续完成网络请求
-                tempOrderStore.updateTempOrder({
-                    addressId: id
-                }).catch(error => {
-                    console.error('更新地址失败:', error);
-                });
-                
-            } catch (error: any) {
-                toast.error(error.message || '更新地址失败');
+
+        // 立即跳转回订单确认页面
+        router.push({
+            path: redirectPath,
+            query: {
+                // 将选中的地址ID作为参数传回结账页面
+                selectedAddressId: id.toString()
             }
-        } else {
-            router.push(redirectPath);
-        }
+        });
     }
 };
 
@@ -152,11 +134,6 @@ onMounted(async () => {
     } else if (route.query.from === 'editor') {
         // 如果是从编辑页面返回，刷新数据
         await addressStore.loadAddresses();
-    }
-    
-    // 如果来自结账页面且需要初始化临时订单 store
-    if (fromCheckout && !tempOrderStore.isInitialized()) {
-        await tempOrderStore.ensureInitialized();
     }
 });
 
