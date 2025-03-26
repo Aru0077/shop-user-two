@@ -112,18 +112,29 @@ const isAddressSelected = (id: number): boolean => {
 };
 
 // 处理地址选择
+// 处理地址选择
 const handleAddressSelect = async (id: number) => {
     if (fromCheckout) {
         selectedId.value = id;
         
-        // 如果来自结账页面，更新临时订单并返回
+        // 如果来自结账页面，更新临时订单
         if (tempOrderStore.tempOrder) {
             try {
-                await tempOrderStore.updateTempOrder({
-                    addressId: id
-                });
-                toast.success('地址已更新');
+                // 先在本地立即更新临时订单状态 (关键修复)
+                if (tempOrderStore.tempOrder) {
+                    tempOrderStore.tempOrder.addressId = id;
+                }
+                
+                // 立即跳转回订单确认页
                 router.push(redirectPath);
+                
+                // 后台继续完成网络请求
+                tempOrderStore.updateTempOrder({
+                    addressId: id
+                }).catch(error => {
+                    console.error('更新地址失败:', error);
+                });
+                
             } catch (error: any) {
                 toast.error(error.message || '更新地址失败');
             }

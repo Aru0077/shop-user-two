@@ -93,24 +93,30 @@ const goToAddressList = () => {
 
 // 初始化时加载地址列表 
 onMounted(async () => {
-    try {
-        // 无论是否已有地址列表，都重新加载一次确保数据最新
-        await addressStore.loadAddresses();
-        
-        // 如果尚未选择地址
-        if (!selectedAddressId.value) {
-            // 优先选择默认地址
-            if (addressStore.defaultAddress) {
-                selectAddress(addressStore.defaultAddress.id);
-            }
-            // 如果没有默认地址但有其他地址，选择第一个
-            else if (addresses.value.length > 0) {
-                selectAddress(addresses.value[0].id);
-            }
-        }
-    } catch (error) {
-        toast.error('获取地址失败');
+  try {
+    // 检查 store 是否已初始化
+    if (!addressStore.isInitialized()) {
+      await addressStore.init();
     }
+    // 如果地址列表为空，才请求地址列表
+    else if (addresses.value.length === 0) {
+      await addressStore.loadAddresses();
+    }
+    
+    // 如果尚未选择地址
+    if (!selectedAddressId.value) {
+      // 优先选择默认地址
+      if (addressStore.defaultAddress) {
+        selectAddress(addressStore.defaultAddress.id);
+      }
+      // 如果没有默认地址但有其他地址，选择第一个
+      else if (addresses.value.length > 0) {
+        selectAddress(addresses.value[0].id);
+      }
+    }
+  } catch (error) {
+    toast.error('获取地址失败');
+  }
 });
 
 // 选择地址
