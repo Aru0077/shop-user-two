@@ -309,7 +309,7 @@ const formatCountdown = (seconds: number): string => {
     return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 };
 
-// 提交订单
+// 提交订单 
 const submitOrder = async () => {
     if (!isReadyToSubmit.value || isSubmitting.value) return;
 
@@ -321,8 +321,15 @@ const submitOrder = async () => {
     isSubmitting.value = true;
 
     try {
-        // 确认临时订单
-        const order = await tempOrderStore.confirmTempOrder();
+        // 准备提交的数据（包含当前页面上的所有用户选择）
+        const orderData = {
+            addressId: selectedAddressId.value,
+            paymentType: selectedPaymentType.value,
+            remark: orderRemark.value
+        };
+
+        // 一次性更新并确认临时订单
+        const order = await tempOrderStore.updateAndConfirmTempOrder(orderData);
 
         if (!order) {
             throw new Error('提交订单失败');
