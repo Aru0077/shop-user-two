@@ -94,16 +94,6 @@
                     </div>
                 </div>
 
-                <!-- Divider -->
-                <div class="h-px my-1"></div>
-
-                <!-- Order Timer -->
-                <div v-if="timeRemaining > 0" class="bg-white p-4">
-                    <div class="flex justify-between items-center">
-                        <div class="text-gray-500">Order expires in</div>
-                        <div class="text-red-500 font-medium">{{ formatCountdown(timeRemaining) }}</div>
-                    </div>
-                </div>
             </template>
 
             <!-- Error State -->
@@ -156,31 +146,30 @@ const toast = useToast();
 const isLoading = ref(true);
 const error = ref<string | null>(null);
 const isSubmitting = ref(false);
-const countdownTimer = ref<number | null>(null);
 
 // 表单状态 - 使用本地变量存储用户选择，不立即发送到服务器
-const localAddressId = ref<number | null>(null);
-const localPaymentType = ref<string>('QPAY');
-const localRemark = ref<string>('');
+const localAddressId = computed({
+    get: () => tempOrderStore.selectedAddressId,
+    set: (val) => tempOrderStore.setSelectedAddress(val!)
+});
+
+const localPaymentType = computed({
+    get: () => tempOrderStore.selectedPaymentType,
+    set: (val) => tempOrderStore.setSelectedPaymentType(val)
+});
+
+const localRemark = computed({
+    get: () => tempOrderStore.orderRemark,
+    set: (val) => tempOrderStore.setOrderRemark(val)
+});
 
 // 临时订单信息
-const tempOrder = computed(() => tempOrderStore.tempOrder);
-const timeRemaining = ref<number>(0);
-
-// 计算倒计时
-const calculateTimeRemaining = () => {
-    if (!tempOrder.value || !tempOrder.value.expireTime) return 0;
-
-    const expireTime = new Date(tempOrder.value.expireTime).getTime();
-    const now = Date.now();
-    const remaining = Math.max(0, Math.floor((expireTime - now) / 1000));
-
-    return remaining;
-};
+const tempOrder = computed(() => tempOrderStore.tempOrder); 
+ 
 
 // 是否可以提交订单
 const isReadyToSubmit = computed(() => {
-    return !!localAddressId.value && !!localPaymentType.value && timeRemaining.value > 0;
+    return !!localAddressId.value && !!localPaymentType.value;
 });
 
 // 加载临时订单 
@@ -197,7 +186,7 @@ const loadTempOrder = async () => {
             return;
         }
 
-        // 获取临时订单
+        // 获取临时订单（store中会自动启动倒计时）
         const order = await tempOrderStore.loadTempOrder(tempOrderId);
 
         if (!order) {
@@ -205,31 +194,14 @@ const loadTempOrder = async () => {
             return;
         }
 
-        // 如果临时订单已过期
-        timeRemaining.value = calculateTimeRemaining();
-        if (timeRemaining.value <= 0) {
-            error.value = '订单已过期，请重新下单';
-            return;
-        }
-
-        // 设置表单默认值到本地变量中
-        // 检查URL中是否有地址选择的参数
-        if (route.query.selectedAddressId) {
-            localAddressId.value = parseInt(route.query.selectedAddressId as string);
-        } else {
-            localAddressId.value = order.addressId || null;
-        }
-        
-        localPaymentType.value = order.paymentType || 'QPAY';
-        localRemark.value = order.remark || '';
+        // 设置表单默认值（使用计算属性，不需要额外赋值）
 
         // 确保地址信息已加载
         if (addressStore.addresses.length === 0) {
             await addressStore.loadAddresses();
         }
 
-        // 启动倒计时更新
-        startCountdown();
+        // 启动倒计时现在在store中自动处理
     } catch (err: any) {
         error.value = err.message || '加载订单失败';
     } finally {
@@ -237,58 +209,12 @@ const loadTempOrder = async () => {
     }
 };
 
-// 更新倒计时
-const startCountdown = () => {
-    // 清除已有的定时器
-    if (countdownTimer.value) {
-        clearInterval(countdownTimer.value);
-    }
-
-    // 更新初始倒计时
-    timeRemaining.value = calculateTimeRemaining();
-
-    // 每秒更新倒计时
-    countdownTimer.value = window.setInterval(() => {
-        timeRemaining.value = calculateTimeRemaining();
-
-        // 当倒计时接近结束时(小于3分钟)，尝试刷新临时订单有效期
-        if (timeRemaining.value > 0 && timeRemaining.value < 180) {
-            refreshTempOrder();
-        }
-
-        // 如果倒计时结束，显示过期信息
-        if (timeRemaining.value <= 0) {
-            clearInterval(countdownTimer.value!);
-            error.value = '订单已过期，请重新下单';
-        }
-    }, 1000);
-};
-
-// 刷新临时订单有效期
-const refreshTempOrder = async () => {
-    if (!tempOrder.value || timeRemaining.value <= 0) return;
-
-    try {
-        await tempOrderStore.refreshTempOrder();
-        // 更新倒计时
-        timeRemaining.value = calculateTimeRemaining();
-    } catch (err) {
-        console.error('刷新订单失败:', err);
-    }
-};
-
-// 格式化倒计时
-const formatCountdown = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
-};
 
 // 提交订单 - 一次性发送所有本地更改
 const submitOrder = async () => {
     if (!isReadyToSubmit.value || isSubmitting.value) return;
 
-    if (!localAddressId.value) {
+    if (!tempOrderStore.selectedAddressId) {
         toast.error('请选择收货地址');
         return;
     }
@@ -296,15 +222,8 @@ const submitOrder = async () => {
     isSubmitting.value = true;
 
     try {
-        // 准备提交的数据（包含当前页面上的所有用户选择）
-        const orderData = {
-            addressId: localAddressId.value,
-            paymentType: localPaymentType.value,
-            remark: localRemark.value
-        };
-
-        // 一次性更新并确认临时订单
-        const order = await tempOrderStore.updateAndConfirmTempOrder(orderData);
+        // 直接确认临时订单，不需要再传递参数
+        const order = await tempOrderStore.confirmTempOrder();
 
         if (!order) {
             throw new Error('提交订单失败');
@@ -327,7 +246,6 @@ const submitOrder = async () => {
         isSubmitting.value = false;
     }
 };
-
 // 返回上一页
 const goBack = () => {
     router.back();
@@ -347,8 +265,6 @@ onMounted(async () => {
 
 // 清理倒计时
 onUnmounted(() => {
-    if (countdownTimer.value) {
-        clearInterval(countdownTimer.value);
-    }
+   
 });
 </script>

@@ -29,6 +29,8 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
       const confirming = ref(false);
       const error = ref<string | null>(null);
 
+      
+
       // 结算信息状态
       const checkoutInfo = ref<CheckoutInfo | null>(null);
       const selectedAddressId = ref<number | null>(null);
@@ -116,6 +118,10 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                   getCheckoutInfo();
             });
       }
+
+ 
+ 
+
 
       // ==================== 结算信息相关方法 ====================
 
@@ -233,6 +239,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
 
                   const order = await tempOrderApi.createTempOrder(params);
                   tempOrder.value = order;
+ 
 
                   // 如果临时订单中已包含地址和支付方式信息，使用它们
                   if (order.addressId) {
@@ -263,6 +270,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
             }
       }
 
+
       /**
        * 加载临时订单
        */
@@ -279,7 +287,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                   // 尝试从缓存获取
                   const cachedOrder = storage.getTempOrder<TempOrder>();
                   if (cachedOrder && cachedOrder.id === id) {
-                        tempOrder.value = cachedOrder;
+                        tempOrder.value = cachedOrder; 
 
                         // 恢复选择的地址和支付方式
                         if (cachedOrder.addressId) {
@@ -299,7 +307,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
 
                   // 从API获取
                   const order = await tempOrderApi.getTempOrder(id);
-                  tempOrder.value = order;
+                  tempOrder.value = order; 
 
                   // 恢复选择的地址和支付方式
                   if (order.addressId) {
@@ -489,15 +497,15 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
        */
       function saveToLocalStorage(): void {
             if (tempOrder.value) {
-                // 计算存储过期时间与业务过期时间的差值
-                const expireDate = new Date(tempOrder.value.expireTime);
-                const now = new Date();
-                const expiryMs = Math.max(0, expireDate.getTime() - now.getTime());
-                
-                // 使用临时订单的有效期作为存储的过期时间
-                storage.set(storage.STORAGE_KEYS.TEMP_ORDER, tempOrder.value, expiryMs, STORAGE_VERSIONS.TEMP_ORDER);
+                  // 计算存储过期时间与业务过期时间的差值
+                  const expireDate = new Date(tempOrder.value.expireTime);
+                  const now = new Date();
+                  const expiryMs = Math.max(0, expireDate.getTime() - now.getTime());
+
+                  // 使用临时订单的有效期作为存储的过期时间
+                  storage.set(storage.STORAGE_KEYS.TEMP_ORDER, tempOrder.value, expiryMs, STORAGE_VERSIONS.TEMP_ORDER);
             }
-        }
+      }
 
       /**
        * 从本地存储加载
@@ -505,19 +513,20 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
       function loadFromLocalStorage(): boolean {
             const data = storage.getTempOrder<TempOrder>();
             if (data) {
-                // 检查临时订单是否已过期
-                const expireDate = new Date(data.expireTime);
-                if (expireDate <= new Date()) {
-                    // 订单已过期，清除本地存储
-                    storage.remove(storage.STORAGE_KEYS.TEMP_ORDER);
-                    return false;
-                }
-                
-                tempOrder.value = data;
-                return true;
+                  // 检查临时订单是否已过期
+                  const expireDate = new Date(data.expireTime);
+                  if (expireDate <= new Date()) {
+                        // 订单已过期，清除本地存储
+                        storage.remove(storage.STORAGE_KEYS.TEMP_ORDER);
+                        return false;
+                  }
+
+                  tempOrder.value = data; 
+
+                  return true;
             }
             return false;
-        }
+      }
 
       /**
        * 清除临时订单和结算相关状态
@@ -528,7 +537,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
             selectedAddressId.value = null;
             selectedPaymentType.value = 'qpay';
             orderRemark.value = '';
-            error.value = null;
+            error.value = null; 
 
             // 清除本地缓存
             storage.remove(storage.STORAGE_KEYS.TEMP_ORDER);
@@ -552,8 +561,8 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                               await addressStore.init();
                         }
 
-                        // 只从本地存储加载临时订单数据，不获取结算信息
-                        loadFromLocalStorage();
+                        // 从本地存储加载临时订单数据
+                        loadFromLocalStorage(); 
                   }
 
                   initHelper.completeInitialization();
@@ -585,7 +594,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
             paymentAmount,
             promotion,
             expireTime,
-            isExpired,
+            isExpired, 
 
             // 计算属性 - 结算信息相关
             availableAddresses,

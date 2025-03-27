@@ -89,10 +89,13 @@ import { useAddressStore } from '@/stores/address.store';
 import { useToast } from '@/composables/useToast';
 import PageTitle from '@/components/common/PageTitle.vue';
 import type { UserAddress } from '@/types/address.type';
+// 导入临时订单store
+import { useTempOrderStore } from '@/stores/temp-order.store';
 
 const router = useRouter();
 const route = useRoute();
 const addressStore = useAddressStore();
+const tempOrderStore = useTempOrderStore();
 const toast = useToast();
 
 // 计算属性
@@ -114,14 +117,13 @@ const isAddressSelected = (id: number): boolean => {
 const handleAddressSelect = (id: number) => {
     if (fromCheckout) {
         selectedId.value = id;
+        
+        // 更新临时订单中的地址ID
+        tempOrderStore.setSelectedAddress(id);
 
-        // 立即跳转回订单确认页面
+        // 立即跳转回订单确认页面，不需要传递地址ID参数
         router.push({
-            path: redirectPath,
-            query: {
-                // 将选中的地址ID作为参数传回结账页面
-                selectedAddressId: id.toString()
-            }
+            path: redirectPath
         });
     }
 };
