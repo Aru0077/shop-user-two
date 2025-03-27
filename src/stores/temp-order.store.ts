@@ -552,11 +552,8 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                               await addressStore.init();
                         }
 
-                        // 并行加载临时订单和结算信息
-                        await Promise.all([
-                              loadFromLocalStorage(),
-                              getCheckoutInfo()
-                        ]);
+                        // 只从本地存储加载临时订单数据，不获取结算信息
+                        loadFromLocalStorage();
                   }
 
                   initHelper.completeInitialization();
