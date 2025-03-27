@@ -46,6 +46,20 @@ export const tempOrderApi = {
       },
 
       /**
+       * 更新并确认临时订单（一步操作）
+       * @param id 临时订单ID
+       * @param params 更新参数
+       */
+      updateAndConfirmTempOrder(id: string, params: {
+            addressId?: number;
+            paymentType?: string;
+            remark?: string;
+      }): Promise<CreateOrderResponse> {
+            return http.post(`/temp-order/${id}/update-confirm`, params);
+      },
+
+
+      /**
        * 获取临时订单详情
        * @param id 临时订单ID
        */

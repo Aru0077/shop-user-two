@@ -126,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { AlertCircle } from 'lucide-vue-next';
 import { useTempOrderStore } from '@/stores/temp-order.store';
@@ -164,8 +164,8 @@ const localRemark = computed({
 });
 
 // 临时订单信息
-const tempOrder = computed(() => tempOrderStore.tempOrder); 
- 
+const tempOrder = computed(() => tempOrderStore.tempOrder);
+
 
 // 是否可以提交订单
 const isReadyToSubmit = computed(() => {
@@ -197,8 +197,13 @@ const loadTempOrder = async () => {
         // 设置表单默认值（使用计算属性，不需要额外赋值）
 
         // 确保地址信息已加载
+        // 确保地址信息已加载
         if (addressStore.addresses.length === 0) {
-            await addressStore.loadAddresses();
+            try {
+                await addressStore.loadAddresses();
+            } catch (err) {
+                toast.error('加载地址信息失败');
+            }
         }
 
         // 启动倒计时现在在store中自动处理
@@ -214,16 +219,16 @@ const loadTempOrder = async () => {
 const submitOrder = async () => {
     if (!isReadyToSubmit.value || isSubmitting.value) return;
 
-    if (!tempOrderStore.selectedAddressId) {
-        toast.error('请选择收货地址');
-        return;
-    }
 
     isSubmitting.value = true;
 
     try {
         // 直接确认临时订单，不需要再传递参数
-        const order = await tempOrderStore.confirmTempOrder();
+        const order = await tempOrderStore.updateAndConfirmTempOrder({
+            addressId: localAddressId.value ?? undefined,
+            paymentType: localPaymentType.value,
+            remark: localRemark.value
+        });
 
         if (!order) {
             throw new Error('提交订单失败');
@@ -263,8 +268,4 @@ onMounted(async () => {
     await loadTempOrder();
 });
 
-// 清理倒计时
-onUnmounted(() => {
-   
-});
 </script>
