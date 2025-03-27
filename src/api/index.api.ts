@@ -5,8 +5,7 @@ import { addressApi } from '@/api/address.api';
 import { cartApi } from '@/api/cart.api';
 import { favoriteApi } from '@/api/favorite.api';
 import { orderApi } from '@/api/order.api';
-import { promotionApi } from '@/api/promotion.api';
-import { checkoutApi } from '@/api/checkout.api';
+import { promotionApi } from '@/api/promotion.api'; 
 import { tempOrderApi } from '@/api/temp-order.api';
 import { qpayApi } from '@/api/qpay.api';
 import { facebookApi } from '@/api/facebook.api'; 
@@ -22,8 +21,7 @@ export const api = {
       cartApi, 
       favoriteApi, 
       orderApi, 
-      promotionApi, 
-      checkoutApi,
+      promotionApi,  
       tempOrderApi,
       qpayApi,
       facebookApi
