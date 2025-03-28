@@ -123,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { User, Lock, Eye, EyeOff } from 'lucide-vue-next';
 import { useUserStore } from '@/stores/user.store';
@@ -146,13 +146,19 @@ const error = ref('');
 
 // Initialize Facebook SDK on component mount
 onMounted(async () => {
-  if (!facebookStore.initialized) {
-    try {
-      await facebookStore.init();
-    } catch (err) {
-      console.error('初始化Facebook SDK失败:', err);
+    if (!facebookStore.initialized) {
+        try {
+            await facebookStore.init();
+        } catch (err) {
+            console.error('初始化 Facebook SDK 失败:', err);
+        }
     }
-  }
+
+    // 检查 URL 参数中是否包含来自 Facebook 登录回调的错误消息
+    const urlError = route.query.error;
+    if (urlError) {
+        error.value = decodeURIComponent(urlError as string);
+    }
 });
 
 // Handle traditional login
@@ -185,21 +191,36 @@ const handleLogin = async () => {
 };
 
 // Handle Facebook login
+// 处理 Facebook 登录
 const handleFacebookLogin = async () => {
     try {
-        const success = await facebookStore.loginWithPopup({ scope: 'public_profile' });
+        // 清除之前的错误
+        error.value = '';
 
+        // 使用新的智能登录方法，会根据设备类型自动选择最佳登录方式
+        const success = await facebookStore.login({ scope: 'public_profile,email' });
+
+        // 注意：若使用重定向方式，此处代码不会继续执行
+        // 只有在桌面端使用弹窗方式成功登录后，才会执行以下代码
         if (success) {
-            toast.success('Facebook login successful');
+            toast.success('Facebook 登录成功');
 
-            // Redirect to source page or homepage
+            // 重定向到来源页面或首页
             const redirectPath = route.query.redirect as string || '/home';
             router.replace(redirectPath);
         }
     } catch (err: any) {
-        console.error('Facebook login failed:', err);
-        error.value = err.message || 'Facebook login failed. Please try again.';
+        console.error('Facebook 登录失败:', err);
+        error.value = err.message || 'Facebook 登录失败，请重试。';
         toast.error(error.value);
     }
 };
+
+onUnmounted(() => {
+    // 清理错误状态
+    facebookStore.clearError();
+    error.value = '';
+});
+
+
 </script>

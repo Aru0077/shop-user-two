@@ -6,6 +6,7 @@ import { facebookApi } from '@/api/facebook.api';
 import { useUserStore } from '@/stores/user.store';
 import { toast } from '@/utils/toast.service';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
+import router from '@/router';
 
 /**
  * 检测是否为移动设备
@@ -23,6 +24,17 @@ export const useFacebookStore = defineStore('facebook', () => {
     const loading = ref(false);
     const error = ref<string | null>(null);
     const userStore = useUserStore();
+    
+    // 登录状态追踪
+    const loginState = ref<{
+        pendingRedirect: boolean;
+        authCode?: string;
+        inProgress: boolean;
+    }>({
+        pendingRedirect: false,
+        authCode: undefined,
+        inProgress: false
+    });
 
     // 计算属性
     const isConnected = computed(() => {
@@ -30,33 +42,17 @@ export const useFacebookStore = defineStore('facebook', () => {
     });
 
     /**
-     * 初始化 Facebook SDK
+     * 初始化 Facebook SDK (仅用于必要功能)
      */
     async function init(): Promise<void> {
-        // 添加一个静态标志防止多次初始化
-        if (window._fbSDKInitialized || initialized.value) return;
+        // 如果已初始化则跳过
+        if (initialized.value) return;
 
         try {
             loading.value = true;
+            // 加载SDK但不进行任何访问令牌操作
             await facebookUtils.loadSDK();
             initialized.value = true;
-            window._fbSDKInitialized = true; // 添加全局标记
-
-            // 避免在初始化后立即检查登录状态
-            // 适当延迟检查登录状态
-            setTimeout(async () => {
-                try {
-                    const response = await facebookUtils.getLoginStatus();
-                    if (response.status === 'connected' && response.authResponse?.accessToken) {
-                        // 如果已连接但未登录系统，则自动登录
-                        if (!userStore.isLoggedIn) {
-                            await loginWithToken(response.authResponse.accessToken);
-                        }
-                    }
-                } catch (err) {
-                    console.error('检查Facebook登录状态失败:', err);
-                }
-            }, 500);
         } catch (err: any) {
             const errorMessage = err.message || '初始化 Facebook SDK 失败';
             error.value = errorMessage;
@@ -69,50 +65,95 @@ export const useFacebookStore = defineStore('facebook', () => {
     /**
      * 智能登录 - 根据设备类型选择最佳登录方式
      */
-    async function login(options: FacebookLoginOptions = { scope: 'public_profile' }): Promise<boolean> {
-        if (!initialized.value) {
-            await init();
+    async function login(options: FacebookLoginOptions = { scope: 'public_profile,email' }): Promise<boolean> {
+        if (loginState.value.inProgress) {
+            toast.info('登录正在进行中，请稍候');
+            return false;
         }
+        
+        try {
+            loginState.value.inProgress = true;
+            clearError();
+            
+            // 确保SDK已初始化
+            if (!initialized.value) {
+                await init();
+            }
 
-        // 移动设备优先使用重定向方式
-        if (isMobileDevice()) {
-            await loginWithRedirect();
-            return true; // 注意：重定向后此处返回值无意义
-        } else {
-            // 桌面设备使用弹窗方式
-            return await loginWithPopup(options);
+            // 移动设备使用重定向方式
+            if (isMobileDevice()) {
+                await loginWithRedirect(options.scope);
+                return true; // 重定向后此返回值无意义
+            } else {
+                // 桌面设备使用弹窗方式
+                return await loginWithPopupWindow(options.scope);
+            }
+        } catch (err: any) {
+            const errorMessage = err.message || 'Facebook 登录失败';
+            error.value = errorMessage;
+            toast.error(errorMessage);
+            return false;
+        } finally {
+            loginState.value.inProgress = false;
         }
     }
 
     /**
-     * 使用弹窗方式登录
+     * 重定向方式登录（移动端首选）
      */
-    async function loginWithPopup(options: FacebookLoginOptions = { scope: 'public_profile' }): Promise<boolean> {
-        if (!initialized.value) {
-            await init();
-        }
-
+    async function loginWithRedirect(scope = 'public_profile,email'): Promise<void> {
         try {
             loading.value = true;
-            const response = await facebookUtils.login(options);
+            
+            // 设置状态为等待重定向
+            loginState.value.pendingRedirect = true;
+            
+            // 获取回调URL
+            const redirectUri = `${window.location.origin}/auth/facebook-callback`;
+            
+            // 生成登录URL
+            const loginUrl = facebookUtils.generateLoginUrl(redirectUri, scope);
+            
+            // 将当前路径保存到sessionStorage以便登录后返回
+            const currentPath = router.currentRoute.value.fullPath;
+            sessionStorage.setItem('fb_redirect_path', currentPath);
+            
+            // 重定向到Facebook登录页面
+            window.location.href = loginUrl;
+        } catch (err: any) {
+            loginState.value.pendingRedirect = false;
+            const errorMessage = err.message || '获取Facebook登录链接失败';
+            error.value = errorMessage;
+            toast.error(errorMessage);
+        }
+    }
 
-            if (response.status !== 'connected' || !response.authResponse) {
+    /**
+     * 弹窗窗口方式登录（桌面端首选）
+     */
+    async function loginWithPopupWindow(scope = 'public_profile,email'): Promise<boolean> {
+        try {
+            loading.value = true;
+            
+            // 使用弹窗方式登录
+            const result = await facebookUtils.openLoginPopup(scope);
+            
+            if (!result.success) {
+                if (result.error) {
+                    error.value = result.error;
+                    toast.error(result.error);
+                }
                 return false;
             }
-
-            return await loginWithToken(response.authResponse.accessToken);
-        } catch (err: any) {
-            let errorMessage = err.message || 'Facebook 登录失败';
-
-            // 处理特定类型的错误
-            if (err.message?.includes('popup')) {
-                errorMessage = '弹窗被阻止，请尝试使用重定向方式登录';
-
-                // 弹窗被阻止时，可以尝试切换到重定向方式
-                await loginWithRedirect();
-                return true;
+            
+            // 使用授权码登录
+            if (result.code) {
+                return await handleCallback(result.code);
             }
-
+            
+            return false;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Facebook 弹窗登录失败';
             error.value = errorMessage;
             toast.error(errorMessage);
             return false;
@@ -122,24 +163,7 @@ export const useFacebookStore = defineStore('facebook', () => {
     }
 
     /**
-     * 重定向方式登录
-     */
-    async function loginWithRedirect(): Promise<void> {
-        try {
-            loading.value = true;
-            const response = await facebookApi.getLoginUrl();
-            window.location.href = response.loginUrl;
-        } catch (err: any) {
-            const errorMessage = err.message || '获取 Facebook 登录链接失败';
-            error.value = errorMessage;
-            toast.error(errorMessage);
-        } finally {
-            loading.value = false;
-        }
-    }
-
-    /**
-     * 处理授权回调
+     * 处理授权回调（由重定向或弹窗方式触发）
      */
     async function handleCallback(code: string): Promise<boolean> {
         try {
@@ -154,6 +178,10 @@ export const useFacebookStore = defineStore('facebook', () => {
             // 发布登录成功事件
             eventBus.emit(EVENT_NAMES.USER_LOGIN, response.user);
 
+            // 重置登录状态
+            loginState.value.pendingRedirect = false;
+            loginState.value.authCode = undefined;
+
             toast.success('Facebook 登录成功');
             return true;
         } catch (err: any) {
@@ -167,8 +195,8 @@ export const useFacebookStore = defineStore('facebook', () => {
     }
 
     /**
- * 使用访问令牌登录
- */
+     * 使用访问令牌登录（仅在服务器端使用）
+     */
     async function loginWithToken(accessToken: string): Promise<boolean> {
         if (!accessToken) {
             error.value = "访问令牌无效";
@@ -177,7 +205,6 @@ export const useFacebookStore = defineStore('facebook', () => {
 
         try {
             loading.value = true;
-            // 将令牌作为参数传递，而不是设置为全局变量
             const response = await facebookApi.loginWithToken(accessToken);
 
             // 更新用户状态
@@ -227,12 +254,13 @@ export const useFacebookStore = defineStore('facebook', () => {
         loading,
         error,
         isConnected,
+        loginState,
 
         // 方法
         init,
-        login,  // 新增智能登录方法
-        loginWithPopup,
+        login,
         loginWithRedirect,
+        loginWithPopupWindow,
         handleCallback,
         loginWithToken,
         logout,

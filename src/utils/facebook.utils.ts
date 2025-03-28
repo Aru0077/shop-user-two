@@ -1,176 +1,188 @@
 // src/utils/facebook.utils.ts
-import { toast } from '@/utils/toast.service';
+// import { toast } from '@/utils/toast.service';
 
 // Facebook SDK 类型定义
 declare global {
-      interface Window {
-            _fbSDKInitialized?: boolean;
-            fbAsyncInit: () => void;
-            FB: {
-                  init: (options: {
-                        appId: string;
-                        cookie?: boolean;
-                        xfbml?: boolean;
-                        version: string;
-                  }) => void;
-                  login: (
-                        callback: (response: FacebookAuthResponse) => void,
-                        options?: FacebookLoginOptions
-                  ) => void;
-                  getLoginStatus: (
-                        callback: (response: FacebookAuthResponse) => void
-                  ) => void;
-                  logout: (callback: (response: any) => void) => void;
-                  api: (
-                        path: string,
-                        params: any,
-                        callback: (response: any) => void
-                  ) => void;
-            };
-      }
+    interface Window {
+        _fbSDKInitialized?: boolean;
+        fbAsyncInit: () => void;
+        FB: {
+            init: (options: {
+                appId: string;
+                cookie?: boolean;
+                xfbml?: boolean;
+                version: string;
+            }) => void;
+            login: (
+                callback: (response: FacebookAuthResponse) => void,
+                options?: FacebookLoginOptions
+            ) => void;
+            getLoginStatus: (
+                callback: (response: FacebookAuthResponse) => void
+            ) => void;
+            logout: (callback: (response: any) => void) => void;
+            api: (
+                path: string,
+                params: any,
+                callback: (response: any) => void
+            ) => void;
+        };
+        // 用于跨窗口通信
+        fbCallbackHandler?: (data: any) => void;
+    }
 }
 
 // Facebook 响应类型定义
 export interface FacebookAuthResponse {
-      status: 'connected' | 'not_authorized' | 'unknown';
-      authResponse?: {
-            accessToken: string;
-            expiresIn: string;
-            reauthorize_required_in: string;
-            signedRequest: string;
-            userID: string;
-      };
+    status: 'connected' | 'not_authorized' | 'unknown';
+    authResponse?: {
+        accessToken: string;
+        expiresIn: string;
+        reauthorize_required_in: string;
+        signedRequest: string;
+        userID: string;
+    };
 }
 
 // Facebook 登录选项类型定义
 export interface FacebookLoginOptions {
-      scope?: string;
-      auth_type?: 'rerequest';
-      return_scopes?: boolean;
+    scope?: string;
+    auth_type?: 'rerequest';
+    return_scopes?: boolean;
 }
 
 /**
  * Facebook SDK 工具类
  */
 export const facebookUtils = {
-      /**
-       * 加载 Facebook SDK
-       */
-      loadSDK(): Promise<void> {
-            return new Promise((resolve) => {
-                  // 如果已经加载，直接返回
-                  if (window.FB) {
-                        resolve();
-                        return;
-                  }
+    /**
+     * 加载 Facebook SDK (仅用于退出登录等必要功能)
+     */
+    loadSDK(): Promise<void> {
+        return new Promise((resolve) => {
+            // 如果已经加载，直接返回
+            if (window.FB) {
+                resolve();
+                return;
+            }
 
-                  // 定义加载完成回调
-                  window.fbAsyncInit = function () {
-                        window.FB.init({
-                              appId: import.meta.env.VITE_FACEBOOK_APP_ID,
-                              cookie: true,
-                              xfbml: true,
-                              version: 'v22.0'
-                        });
-                        resolve();
-                  };
+            // 定义加载完成回调
+            window.fbAsyncInit = function () {
+                window.FB.init({
+                    appId: import.meta.env.VITE_FACEBOOK_APP_ID,
+                    cookie: false, // 关闭cookie以避免令牌覆盖问题
+                    xfbml: true,
+                    version: 'v22.0'
+                });
+                resolve();
+            };
 
-                  // 加载 Facebook SDK
-                  (function (d, s, id) {
-                        const fjs = d.getElementsByTagName(s)[0];
-                        if (d.getElementById(id)) return;
+            // 加载 Facebook SDK
+            (function (d, s, id) {
+                const fjs = d.getElementsByTagName(s)[0];
+                if (d.getElementById(id)) return;
 
-                        const js = d.createElement(s) as HTMLScriptElement;
-                        js.id = id;
-                        js.src = "https://connect.facebook.net/en_US/sdk.js";
+                const js = d.createElement(s) as HTMLScriptElement;
+                js.id = id;
+                js.src = "https://connect.facebook.net/en_US/sdk.js";
 
-                        if (fjs && fjs.parentNode) {
-                              fjs.parentNode.insertBefore(js, fjs);
-                        }
-                  }(document, 'script', 'facebook-jssdk'));
+                if (fjs && fjs.parentNode) {
+                    fjs.parentNode.insertBefore(js, fjs);
+                }
+            }(document, 'script', 'facebook-jssdk'));
+        });
+    },
+
+    /**
+     * 生成Facebook登录URL (用于重定向和弹窗登录)
+     */
+    generateLoginUrl(redirectUri: string, scope = 'public_profile,email'): string {
+        const appId = import.meta.env.VITE_FACEBOOK_APP_ID;
+        const state = Math.random().toString(36).substring(2);
+
+        // 保存state到localStorage以便验证回调
+        localStorage.setItem('fb_login_state', state);
+
+        return `https://www.facebook.com/v22.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&state=${state}&response_type=code`;
+    },
+
+    /**
+     * 打开弹窗窗口进行登录 (桌面端)
+     */
+    openLoginPopup(scope = 'public_profile,email'): Promise<{ success: boolean; code?: string; error?: string }> {
+        return new Promise((resolve) => {
+            // 生成回调URL
+            const redirectUri = `${window.location.origin}/auth/facebook-callback`;
+            const loginUrl = this.generateLoginUrl(redirectUri, scope);
+            
+            // 窗口大小和位置计算
+            const width = 600;
+            const height = 700;
+            const left = window.screenX + (window.outerWidth - width) / 2;
+            const top = window.screenY + (window.outerHeight - height) / 2;
+            
+            // 打开弹窗
+            const popup = window.open(
+                loginUrl,
+                'facebook_login',
+                `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
+            );
+            
+            if (!popup) {
+                resolve({ 
+                    success: false, 
+                    error: '无法打开登录窗口，请检查您的浏览器是否阻止了弹窗' 
+                });
+                return;
+            }
+            
+            // 设置窗口消息监听器
+            window.fbCallbackHandler = (data) => {
+                if (popup && !popup.closed) {
+                    try {
+                        popup.close();
+                    } catch (e) {
+                        console.error('关闭弹窗失败:', e);
+                    }
+                }
+                
+                if (data.success) {
+                    resolve({ success: true, code: data.code });
+                } else {
+                    resolve({ 
+                        success: false, 
+                        error: data.error || '登录失败' 
+                    });
+                }
+            };
+
+            // 轮询检查窗口是否关闭
+            const checkClosed = setInterval(() => {
+                if (popup && popup.closed) {
+                    clearInterval(checkClosed);
+                    // 如果窗口被用户手动关闭，视为取消登录
+                    if (window.fbCallbackHandler) {
+                        resolve({ success: false, error: '登录已取消' });
+                        window.fbCallbackHandler = undefined;
+                    }
+                }
+            }, 500);
+        });
+    },
+
+    /**
+     * 退出登录 (安全使用FB.logout)
+     */
+    logout(): Promise<void> {
+        return new Promise((resolve) => {
+            if (!window.FB) {
+                resolve();
+                return;
+            }
+
+            window.FB.logout(() => {
+                resolve();
             });
-      },
-
-      /**
-       * 获取登录状态
-       */
-      getLoginStatus(): Promise<FacebookAuthResponse> {
-            return new Promise((resolve) => {
-                  if (!window.FB) {
-                        resolve({ status: 'unknown' });
-                        return;
-                  }
-
-                  window.FB.getLoginStatus((response) => {
-                        resolve(response);
-                  });
-            });
-      },
-
-      /**
-       * 登录 Facebook
-       */
-      login(options: FacebookLoginOptions = { scope: 'public_profile' }): Promise<FacebookAuthResponse> {
-            return new Promise((resolve, reject) => {
-                  if (!window.FB) {
-                        toast.error('Facebook SDK 未初始化');
-                        resolve({ status: 'unknown' });
-                        return;
-                  }
-
-                  try {
-                        window.FB.login((response) => {
-                              resolve(response);
-                        }, options);
-                  } catch (error) {
-                        reject(error);
-                  }
-            });
-      },
-
-      /**
-       * 退出登录
-       */
-      logout(): Promise<void> {
-            return new Promise((resolve, reject) => {
-                  if (!window.FB) {
-                        resolve();
-                        return;
-                  }
-
-                  try {
-                        window.FB.logout(() => {
-                              resolve();
-                        });
-                  } catch (error) {
-                        reject(error);
-                  }
-            });
-      },
-
-      /**
-       * 获取用户信息
-       */
-      getUserInfo(fields = 'id,name', accessToken?: string): Promise<any> {
-            return new Promise((resolve, reject) => {
-                  if (!window.FB) {
-                        reject(new Error('Facebook SDK 未初始化'));
-                        return;
-                  }
-
-                  // 使用传入的access token作为参数，而非依赖全局设置
-                  const params: any = { fields };
-                  if (accessToken) {
-                        params.access_token = accessToken;
-                  }
-
-                  window.FB.api('/me', params, (response) => {
-                        if (response && !response.error) {
-                              resolve(response);
-                        } else {
-                              reject(response?.error || new Error('获取用户信息失败'));
-                        }
-                  });
-            });
-      }
+        });
+    }
 };
