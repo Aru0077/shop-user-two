@@ -252,7 +252,7 @@ const routes: Array<RouteRecordRaw> = [
       },
       // 支付相关
       {
-            path: '/payment',
+            path: '/payment/:id',
             name: 'Payment',
             component: () => import('@/views/payment/PaymentPage.vue'),
             meta: {

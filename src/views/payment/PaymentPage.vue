@@ -1,28 +1,27 @@
 <template>
     <div class="page-container pb-safe">
         <!-- 加载状态 -->
-        <div v-if="loading && !paymentData" class="flex justify-center items-center h-screen">
+        <div v-if="loading && !orderDetail" class="flex justify-center items-center h-screen">
             <div
                 class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-black border-r-transparent align-middle">
             </div>
         </div>
 
         <!-- 支付内容 -->
-        <div v-else-if="paymentData" class="space-y-4">
+        <div v-else-if="orderDetail" class="space-y-4">
             <!-- 顶部支付状态卡片 -->
             <div class="bg-white rounded-xl p-5 shadow-sm">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <CreditCard :size="24" class="text-green-500" />
                         <div class="ml-3">
-                            <div class="text-lg font-bold">Payment</div>
+                            <div class="text-lg font-bold">支付订单</div>
                             <div class="text-sm text-gray-500 mt-1">
-                                Please complete payment within <span class="text-red-500 font-medium">{{
-                                    formatCountdown(countdown) }}</span>
+                                请在 <span class="text-red-500 font-medium">{{ formatCountdown(countdown) }}</span> 内完成支付
                             </div>
                         </div>
                     </div>
-                    <div class="text-red-500 font-bold text-xl">{{ formatPrice(paymentData.amount) }}</div>
+                    <div class="text-red-500 font-bold text-xl">{{ formatPrice(orderDetail.paymentAmount) }}</div>
                 </div>
 
                 <!-- 倒计时进度条 -->
@@ -35,33 +34,45 @@
 
             <!-- 付款信息 -->
             <div class="bg-white rounded-xl p-5 shadow-sm">
-                <div class="text-base font-medium mb-3">Payment Information</div>
+                <div class="text-base font-medium mb-3">支付信息</div>
                 <div class="text-sm space-y-2">
                     <div class="flex justify-between">
-                        <span class="text-gray-500">Order ID</span>
-                        <span>{{ paymentData.orderNumber || paymentData.id }}</span>
+                        <span class="text-gray-500">订单编号</span>
+                        <span>{{ orderDetail.orderNo }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-500">Created Time</span>
-                        <span>{{ formatDate(paymentData.createdAt) }}</span>
+                        <span class="text-gray-500">创建时间</span>
+                        <span>{{ formatDate(orderDetail.createdAt) }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-500">Payment Method</span>
-                        <span>{{ selectedPaymentType }}</span>
+                        <span class="text-gray-500">支付方式</span>
+                        <span>QPAY</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">商品总额</span>
+                        <span>{{ formatPrice(orderDetail.totalAmount) }}</span>
+                    </div>
+                    <div v-if="orderDetail.discountAmount > 0" class="flex justify-between">
+                        <span class="text-gray-500">优惠金额</span>
+                        <span class="text-red-500">-{{ formatPrice(orderDetail.discountAmount) }}</span>
+                    </div>
+                    <div class="flex justify-between font-bold">
+                        <span class="text-gray-800">实付金额</span>
+                        <span class="text-red-500">{{ formatPrice(orderDetail.paymentAmount) }}</span>
                     </div>
                 </div>
             </div>
 
             <!-- QPAY支付区域 -->
             <div class="bg-white rounded-xl p-5 shadow-sm">
-                <div class="text-base font-medium mb-3">Scan QR Code to Pay</div>
+                <div class="text-base font-medium mb-3">扫描二维码支付</div>
 
                 <!-- 支付加载中 -->
                 <div v-if="creatingPayment" class="flex flex-col items-center justify-center py-8">
                     <div
                         class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-black border-r-transparent mb-4">
                     </div>
-                    <div class="text-gray-500">Generating payment QR code...</div>
+                    <div class="text-gray-500">生成支付二维码中...</div>
                 </div>
 
                 <!-- 支付状态信息 -->
@@ -69,12 +80,12 @@
                     <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
                         <CheckCircle :size="32" class="text-green-500" />
                     </div>
-                    <div class="text-green-500 font-medium mb-2">Payment Successful</div>
-                    <div class="text-gray-500 text-sm mb-4">Thank you for your purchase</div>
+                    <div class="text-green-500 font-medium mb-2">支付成功</div>
+                    <div class="text-gray-500 text-sm mb-4">感谢您的购买</div>
                     <div class="flex space-x-4">
-                        <button @click="viewPaymentResult" class="px-5 py-2 bg-black text-white rounded-full">View
-                            Result</button>
-                        <button @click="goToHome" class="px-5 py-2 border border-gray-300 rounded-full">Home</button>
+                        <button @click="viewPaymentResult"
+                            class="px-5 py-2 bg-black text-white rounded-full">查看结果</button>
+                        <button @click="goToHome" class="px-5 py-2 border border-gray-300 rounded-full">返回首页</button>
                     </div>
                 </div>
 
@@ -82,31 +93,29 @@
                     <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                         <XCircle :size="32" class="text-gray-500" />
                     </div>
-                    <div class="text-gray-500 font-medium mb-2">Payment Cancelled</div>
-                    <div class="text-gray-500 text-sm mb-4">You can initiate payment again</div>
-                    <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">Retry
-                        Payment</button>
+                    <div class="text-gray-500 font-medium mb-2">支付已取消</div>
+                    <div class="text-gray-500 text-sm mb-4">您可以重新发起支付</div>
+                    <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">重试支付</button>
                 </div>
 
                 <div v-else-if="paymentStatus === 'EXPIRED'" class="flex flex-col items-center justify-center py-8">
                     <div class="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-4">
                         <AlertCircle :size="32" class="text-orange-500" />
                     </div>
-                    <div class="text-orange-500 font-medium mb-2">Payment Expired</div>
-                    <div class="text-gray-500 text-sm mb-4">You can initiate payment again</div>
-                    <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">Retry
-                        Payment</button>
+                    <div class="text-orange-500 font-medium mb-2">支付已过期</div>
+                    <div class="text-gray-500 text-sm mb-4">您可以重新发起支付</div>
+                    <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">重试支付</button>
                 </div>
 
                 <!-- 二维码支付区域 -->
                 <div v-else-if="qPayInvoice" class="flex flex-col items-center py-4">
                     <!-- 二维码图片 -->
                     <div class="p-4 border border-gray-200 rounded-lg bg-white mb-4">
-                        <img :src="qPayInvoice.qrImage" alt="Payment QR Code" class="w-48 h-48">
+                        <img :src="qPayInvoice.qrImage" alt="支付二维码" class="w-48 h-48">
                     </div>
 
                     <div class="text-sm text-gray-500 mb-4 text-center">
-                        Please use <span class="text-black font-medium mx-1">QPay App</span> to scan the code
+                        请使用<span class="text-black font-medium mx-1">QPay App</span>扫描二维码完成支付
                     </div>
 
                     <!-- 使用deep link打开QPay应用 -->
@@ -114,7 +123,7 @@
                         <a :href="qPayInvoice.deepLink"
                             class="px-5 py-2 bg-blue-500 text-white rounded-full flex items-center">
                             <ExternalLink :size="16" class="mr-2" />
-                            Open QPay App
+                            打开QPay应用
                         </a>
                     </div>
 
@@ -123,7 +132,7 @@
                         <a :href="qPayInvoice.invoiceUrl" target="_blank"
                             class="text-blue-500 text-sm flex items-center">
                             <ExternalLink :size="14" class="mr-1" />
-                            Open QPay Web Version
+                            打开QPay网页版
                         </a>
                     </div>
 
@@ -131,7 +140,7 @@
                     <button @click="checkPayment"
                         class="mt-4 px-5 py-2 border border-gray-300 rounded-full flex items-center">
                         <RefreshCw :size="16" class="mr-2" :class="{ 'animate-spin': checkingPayment }" />
-                        {{ checkingPayment ? 'Checking...' : 'Check Payment Status' }}
+                        {{ checkingPayment ? '检查中...' : '检查支付状态' }}
                     </button>
                 </div>
 
@@ -140,39 +149,39 @@
                     <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
                         <AlertTriangle :size="32" class="text-red-500" />
                     </div>
-                    <div class="text-red-500 font-medium mb-2">Failed to Generate Payment</div>
+                    <div class="text-red-500 font-medium mb-2">生成支付失败</div>
                     <div class="text-gray-500 text-sm mb-4">{{ error }}</div>
-                    <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">Retry</button>
+                    <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">重试</button>
                 </div>
             </div>
 
             <!-- 支付说明 -->
             <div class="bg-white rounded-xl p-5 shadow-sm">
-                <div class="text-base font-medium mb-3">Payment Instructions</div>
+                <div class="text-base font-medium mb-3">支付说明</div>
                 <div class="text-sm text-gray-500 space-y-2">
                     <div class="flex items-start">
                         <div
                             class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs mr-2 flex-shrink-0">
                             1</div>
-                        <div>Open QPay App and click "Scan"</div>
+                        <div>打开QPay应用并点击"扫一扫"</div>
                     </div>
                     <div class="flex items-start">
                         <div
                             class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs mr-2 flex-shrink-0">
                             2</div>
-                        <div>Position QR code under camera and wait for automatic scanning</div>
+                        <div>将二维码放在摄像头下方，等待自动扫描</div>
                     </div>
                     <div class="flex items-start">
                         <div
                             class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs mr-2 flex-shrink-0">
                             3</div>
-                        <div>Confirm payment amount and complete payment</div>
+                        <div>确认支付金额并完成支付</div>
                     </div>
                     <div class="flex items-start">
                         <div
                             class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs mr-2 flex-shrink-0">
                             4</div>
-                        <div>The page will automatically update after payment is complete</div>
+                        <div>支付完成后页面将自动更新</div>
                     </div>
                 </div>
             </div>
@@ -181,25 +190,25 @@
             <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 safe-area-bottom">
                 <div class="flex justify-between items-center">
                     <div>
-                        <div class="text-sm">Amount</div>
-                        <div class="text-red-500 font-bold text-xl">{{ formatPrice(paymentData.amount) }}</div>
+                        <div class="text-sm">支付金额</div>
+                        <div class="text-red-500 font-bold text-xl">{{ formatPrice(orderDetail.paymentAmount) }}</div>
                     </div>
                     <button @click="cancelPayment" class="px-5 py-2 border border-gray-300 rounded-full">
-                        Cancel Payment
+                        取消支付
                     </button>
                 </div>
             </div>
         </div>
 
         <!-- 错误状态 -->
-        <div v-else-if="paymentError" class="flex flex-col items-center justify-center h-screen">
+        <div v-else-if="error" class="flex flex-col items-center justify-center h-screen">
             <div class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                 <FileX :size="36" class="text-gray-400" />
             </div>
-            <div class="text-gray-500 mb-6">{{ paymentError }}</div>
+            <div class="text-gray-500 mb-6">{{ error }}</div>
             <button @click="goBack" class="bg-black text-white py-3 px-8 rounded-full flex items-center">
                 <ArrowLeft :size="16" class="mr-2" />
-                Back
+                返回
             </button>
         </div>
     </div>
@@ -220,14 +229,17 @@ import {
     ArrowLeft
 } from 'lucide-vue-next';
 import { useQPayStore } from '@/stores/qpay.store';
+import { useOrderStore } from '@/stores/order.store';
 import { useUserStore } from '@/stores/user.store';
 import { useToast } from '@/composables/useToast';
 import { formatPrice } from '@/utils/price.utils';
+import type { OrderDetail } from '@/types/order.type';
 
 // 初始化
 const route = useRoute();
 const router = useRouter();
 const qPayStore = useQPayStore();
+const orderStore = useOrderStore();
 const userStore = useUserStore();
 const toast = useToast();
 
@@ -235,11 +247,11 @@ const toast = useToast();
 const loading = ref(true);
 const creatingPayment = ref(false);
 const checkingPayment = ref(false);
-const paymentError = ref<string | null>(null);
 const error = ref<string | null>(null);
-const paymentId = computed(() => route.query.id as string);
-const paymentData = ref<any>(null);
-const selectedPaymentType = ref('QPAY');
+const orderId = computed(() => route.params.id as string);
+const orderDetail = ref<OrderDetail | null>(null);
+
+// QPay支付相关
 const qPayInvoice = computed(() => qPayStore.currentInvoice);
 const paymentStatus = computed(() => qPayStore.paymentStatus);
 
@@ -247,21 +259,24 @@ const paymentStatus = computed(() => qPayStore.paymentStatus);
 const countdown = ref(1800); // 默认30分钟
 const countdownTimer = ref<number | null>(null);
 const countdownPercentage = computed(() => {
-    // 假设默认支付时间为30分钟
-    const totalSeconds = 1800;
+    // 总时间为订单的超时秒数，如果没有则默认30分钟
+    const totalSeconds = orderDetail.value?.timeoutSeconds || 1800;
     return Math.min(100, Math.max(0, (countdown.value / totalSeconds) * 100));
 });
 
-// 获取支付信息
-const fetchPaymentInfo = async () => {
+// 获取订单信息
+const fetchOrderDetail = async () => {
     if (!userStore.isLoggedIn) {
-        toast.warning('Please log in first');
-        router.push('/login');
+        toast.warning('请先登录');
+        router.push({
+            path: '/login',
+            query: { redirect: router.currentRoute.value.fullPath }
+        });
         return;
     }
 
-    if (!paymentId.value) {
-        paymentError.value = 'Invalid payment ID';
+    if (!orderId.value) {
+        error.value = '无效的订单ID';
         loading.value = false;
         return;
     }
@@ -269,26 +284,42 @@ const fetchPaymentInfo = async () => {
     try {
         loading.value = true;
 
-        // 模拟从API获取支付数据
-        // 实际应用中应从API获取
-        paymentData.value = {
-            id: paymentId.value,
-            orderNumber: 'ORD' + Math.floor(Math.random() * 10000000),
-            amount: 75900,
-            createdAt: new Date().toISOString(),
-            timeoutSeconds: 1800, // 30分钟
-            status: 'PENDING'
-        };
+        // 确保订单store已初始化
+        await orderStore.ensureInitialized();
+
+        // 获取订单详情
+        const detail = await orderStore.getOrderDetail(orderId.value);
+
+        if (!detail) {
+            error.value = '无法获取订单信息';
+            return;
+        }
+
+        // 检查订单状态
+        if (detail.paymentStatus === 1) {
+            // 已支付
+            toast.info('订单已支付');
+            router.push(`/payment/result?id=${orderId.value}&status=success`);
+            return;
+        }
+
+        if (detail.orderStatus === 5) {
+            // 已取消
+            error.value = '订单已取消，无法支付';
+            return;
+        }
+
+        orderDetail.value = detail;
 
         // 设置倒计时
-        countdown.value = paymentData.value.timeoutSeconds || 1800;
+        countdown.value = detail.timeoutSeconds || 1800;
         startCountdown();
 
         // 创建支付
         await createQPayPayment();
     } catch (err: any) {
-        paymentError.value = 'Failed to load payment information';
-        console.error('Failed to load payment information:', err);
+        error.value = '加载订单信息失败';
+        console.error('加载订单信息失败:', err);
     } finally {
         loading.value = false;
     }
@@ -296,37 +327,34 @@ const fetchPaymentInfo = async () => {
 
 // 创建QPay支付
 const createQPayPayment = async () => {
-    if (!paymentData.value) return;
+    if (!orderDetail.value) return;
 
     try {
         creatingPayment.value = true;
         error.value = null;
 
         // 确保QPay store已初始化
-        if (!qPayStore.isInitialized()) {
-            await qPayStore.init();
-        }
+        await qPayStore.ensureInitialized();
 
-        // 示例创建支付，实际应用需调整
-        if (qPayStore.currentInvoice && qPayStore.currentOrderId === paymentId.value) {
-            // 已经有支付数据，检查支付状态
-            await qPayStore.checkPaymentStatus(paymentId.value);
+        // 如果已经有当前订单的支付数据，检查支付状态
+        if (qPayStore.currentInvoice && qPayStore.currentOrderId === orderId.value) {
+            await qPayStore.checkPaymentStatus(orderId.value);
         } else {
             // 创建新的支付
-            await qPayStore.createPayment({ orderId: paymentId.value });
+            await qPayStore.createPayment({ orderId: orderId.value });
         }
 
         // 检查支付状态
         if (qPayStore.isPaid) {
-            toast.success('Payment successful');
+            toast.success('支付成功');
         } else if (qPayStore.isCancelled) {
-            toast.warning('Payment cancelled');
+            toast.warning('支付已取消');
         } else if (qPayStore.isExpired) {
-            toast.warning('Payment expired');
+            toast.warning('支付已过期');
         }
     } catch (err: any) {
-        error.value = err.message || 'Failed to create payment';
-        console.error('Failed to create payment:', err);
+        error.value = err.message || '创建支付失败';
+        console.error('创建支付失败:', err);
     } finally {
         creatingPayment.value = false;
     }
@@ -334,24 +362,26 @@ const createQPayPayment = async () => {
 
 // 检查支付状态
 const checkPayment = async () => {
-    if (!paymentData.value) return;
+    if (!orderDetail.value) return;
 
     try {
         checkingPayment.value = true;
-        await qPayStore.checkPaymentStatus(paymentId.value);
+        await qPayStore.checkPaymentStatus(orderId.value);
 
         if (qPayStore.isPaid) {
-            toast.success('Payment successful');
+            toast.success('支付成功');
+            // 刷新订单信息
+            await orderStore.getOrderDetail(orderId.value);
         } else if (qPayStore.isPending) {
-            toast.info('Payment in progress, please try again later');
+            toast.info('支付处理中，请稍后再试');
         } else if (qPayStore.isCancelled) {
-            toast.warning('Payment cancelled');
+            toast.warning('支付已取消');
         } else if (qPayStore.isExpired) {
-            toast.warning('Payment expired');
+            toast.warning('支付已过期');
         }
     } catch (err: any) {
-        toast.error('Failed to check payment status');
-        console.error('Failed to check payment status:', err);
+        toast.error('检查支付状态失败');
+        console.error('检查支付状态失败:', err);
     } finally {
         checkingPayment.value = false;
     }
@@ -361,13 +391,13 @@ const checkPayment = async () => {
 const refreshPayment = async () => {
     // 清除已有的支付数据
     qPayStore.clearQPayState();
-    // 重新创建支付
-    await createQPayPayment();
+    // 重新获取订单信息
+    await fetchOrderDetail();
 };
 
 // 取消支付
 const cancelPayment = async () => {
-    if (!confirm('Are you sure you want to cancel this payment?')) return;
+    if (!confirm('确定要取消此次支付吗？')) return;
 
     try {
         // 清除QPay支付数据
@@ -375,13 +405,13 @@ const cancelPayment = async () => {
         // 返回上一页
         router.go(-1);
     } catch (err) {
-        console.error('Failed to cancel payment:', err);
+        console.error('取消支付失败:', err);
     }
 };
 
 // 查看支付结果
 const viewPaymentResult = () => {
-    router.push(`/payment/result?id=${paymentId.value}&status=success`);
+    router.push(`/payment/result?id=${orderId.value}&status=success`);
 };
 
 // 返回首页
@@ -398,7 +428,7 @@ const goBack = () => {
 const formatDate = (dateString: string): string => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
+    return date.toLocaleString('zh-CN', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -431,8 +461,8 @@ const startCountdown = () => {
 
         if (countdown.value <= 0) {
             clearInterval(countdownTimer.value as number);
-            // 倒计时结束，刷新页面获取最新状态
-            fetchPaymentInfo();
+            // 倒计时结束，检查支付状态
+            checkPayment();
         }
     }, 1000);
 };
@@ -456,7 +486,7 @@ watch(() => qPayStore.paymentStatus, (newStatus) => {
 onMounted(async () => {
     // 检查用户登录状态
     if (!userStore.isLoggedIn) {
-        toast.warning('Please log in first');
+        toast.warning('请先登录');
         router.push({
             path: '/login',
             query: { redirect: router.currentRoute.value.fullPath }
@@ -464,11 +494,8 @@ onMounted(async () => {
         return;
     }
 
-    // 确保所需的store已初始化
-    await qPayStore.ensureInitialized();
-
-    // 获取支付信息和创建支付
-    await fetchPaymentInfo();
+    // 获取订单信息和创建支付
+    await fetchOrderDetail();
 });
 
 // 组件卸载时清理资源
