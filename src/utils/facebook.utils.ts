@@ -4,6 +4,7 @@ import { toast } from '@/utils/toast.service';
 // Facebook SDK 类型定义
 declare global {
       interface Window {
+            _fbSDKInitialized?: boolean;
             fbAsyncInit: () => void;
             FB: {
                   init: (options: {
@@ -150,14 +151,20 @@ export const facebookUtils = {
       /**
        * 获取用户信息
        */
-      getUserInfo(fields = 'id,name'): Promise<any> {
+      getUserInfo(fields = 'id,name', accessToken?: string): Promise<any> {
             return new Promise((resolve, reject) => {
                   if (!window.FB) {
                         reject(new Error('Facebook SDK 未初始化'));
                         return;
                   }
 
-                  window.FB.api('/me', { fields }, (response) => {
+                  // 使用传入的access token作为参数，而非依赖全局设置
+                  const params: any = { fields };
+                  if (accessToken) {
+                        params.access_token = accessToken;
+                  }
+
+                  window.FB.api('/me', params, (response) => {
                         if (response && !response.error) {
                               resolve(response);
                         } else {

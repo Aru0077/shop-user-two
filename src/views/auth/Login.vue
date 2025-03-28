@@ -146,11 +146,13 @@ const error = ref('');
 
 // Initialize Facebook SDK on component mount
 onMounted(async () => {
+  if (!facebookStore.initialized) {
     try {
-        await facebookStore.init();
+      await facebookStore.init();
     } catch (err) {
-        console.error('Failed to initialize Facebook SDK:', err);
+      console.error('初始化Facebook SDK失败:', err);
     }
+  }
 });
 
 // Handle traditional login
