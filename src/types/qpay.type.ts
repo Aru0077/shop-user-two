@@ -12,6 +12,13 @@ export interface CreateQPayPaymentParams {
   orderId: string;
 }
 
+export interface QPayUrl {
+  name: string;          // 支付方式名称
+  description: string;   // 支付方式描述
+  logo: string;          // 支付方式logo
+  link: string;          // 支付链接
+}
+
 /**
  * QPay发票信息
  */
@@ -19,8 +26,8 @@ export interface QPayInvoice {
   invoiceId: string;
   qrImage: string;
   qrText: string;
-  invoiceUrl: string;
-  deepLink?: string;
+  qPayShortUrl: string;   
+  urls: QPayUrl[];    
   orderId: string;
 }
 

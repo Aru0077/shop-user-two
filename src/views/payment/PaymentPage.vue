@@ -107,33 +107,53 @@
                     <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">重试支付</button>
                 </div>
 
-                <!-- 二维码支付区域 -->
+                <!-- 二维码支付区域（根据新数据格式更新） -->
                 <div v-else-if="qPayInvoice" class="flex flex-col items-center py-4">
                     <!-- 二维码图片 -->
                     <div class="p-4 border border-gray-200 rounded-lg bg-white mb-4">
-                        <img :src="qPayInvoice.qrImage" alt="支付二维码" class="w-48 h-48">
+                        <img :src="'data:image/png;base64,' + qPayInvoice.qrImage" alt="支付二维码" class="w-48 h-48">
                     </div>
 
                     <div class="text-sm text-gray-500 mb-4 text-center">
-                        请使用<span class="text-black font-medium mx-1">QPay App</span>扫描二维码完成支付
+                        请使用<span class="text-black font-medium mx-1">QPay支持的应用</span>扫描二维码完成支付
                     </div>
 
-                    <!-- 使用deep link打开QPay应用 -->
-                    <div v-if="qPayInvoice.deepLink" class="mb-4">
-                        <a :href="qPayInvoice.deepLink"
-                            class="px-5 py-2 bg-blue-500 text-white rounded-full flex items-center">
-                            <ExternalLink :size="16" class="mr-2" />
-                            打开QPay应用
+                    <!-- 短链接显示 -->
+                    <div v-if="qPayInvoice.qPayShortUrl" class="mb-4 text-center">
+                        <p class="text-sm text-gray-500 mb-1">或访问以下链接支付：</p>
+                        <a :href="qPayInvoice.qPayShortUrl" target="_blank" class="text-blue-500 font-medium break-all">
+                            {{ qPayInvoice.qPayShortUrl }}
                         </a>
                     </div>
 
-                    <!-- 或者打开QPay网页版 -->
-                    <div v-if="qPayInvoice.invoiceUrl" class="mb-2">
-                        <a :href="qPayInvoice.invoiceUrl" target="_blank"
-                            class="text-blue-500 text-sm flex items-center">
-                            <ExternalLink :size="14" class="mr-1" />
-                            打开QPay网页版
-                        </a>
+                    <!-- 支持的支付方式 -->
+                    <div v-if="qPayInvoice.urls && qPayInvoice.urls.length > 0" class="w-full max-w-sm mb-4">
+                        <p class="text-sm font-medium mb-2 text-center">选择支付方式：</p>
+                        <div class="grid grid-cols-3 gap-3">
+                            <a v-for="url in qPayInvoice.urls.slice(0, 6)" :key="url.name" :href="url.link"
+                                class="flex flex-col items-center p-2 border rounded-lg hover:bg-gray-50">
+                                <img :src="url.logo" :alt="url.name" class="w-10 h-10 mb-1 object-contain">
+                                <span class="text-xs text-center">{{ url.description }}</span>
+                            </a>
+                        </div>
+
+                        <!-- 查看更多支付方式按钮 -->
+                        <div v-if="qPayInvoice.urls.length > 6" class="text-center mt-2">
+                            <button @click="showMorePaymentOptions = !showMorePaymentOptions"
+                                class="text-sm text-blue-500">
+                                {{ showMorePaymentOptions ? '收起' : '查看更多支付方式' }}
+                            </button>
+                        </div>
+
+                        <!-- 更多支付方式展开区域 -->
+                        <div v-if="showMorePaymentOptions && qPayInvoice.urls.length > 6"
+                            class="mt-3 grid grid-cols-3 gap-3">
+                            <a v-for="url in qPayInvoice.urls.slice(6)" :key="url.name" :href="url.link"
+                                class="flex flex-col items-center p-2 border rounded-lg hover:bg-gray-50">
+                                <img :src="url.logo" :alt="url.name" class="w-10 h-10 mb-1 object-contain">
+                                <span class="text-xs text-center">{{ url.description }}</span>
+                            </a>
+                        </div>
                     </div>
 
                     <!-- 检查支付状态按钮 -->
@@ -223,7 +243,6 @@ import {
     XCircle,
     AlertCircle,
     AlertTriangle,
-    ExternalLink,
     RefreshCw,
     FileX,
     ArrowLeft
@@ -250,6 +269,8 @@ const checkingPayment = ref(false);
 const error = ref<string | null>(null);
 const orderId = computed(() => route.params.id as string);
 const orderDetail = ref<OrderDetail | null>(null);
+// 添加展示更多支付方式的状态
+const showMorePaymentOptions = ref(false);
 
 // QPay支付相关
 const qPayInvoice = computed(() => qPayStore.currentInvoice);
