@@ -105,8 +105,10 @@ const loading = computed(() => addressStore.loading);
 
 // 获取URL参数
 const selectedId = ref<number | null>(route.query.selectedId ? parseInt(route.query.selectedId as string) : null);
-const redirectPath = route.query.redirect as string || '/checkout';
-const fromCheckout = route.query.from === 'checkout';
+const fromSource = route.query.from as string;
+// 根据来源设置默认重定向路径
+const redirectPath = route.query.redirect as string || (fromSource === 'checkout' ? '/checkout' : '/profile');
+const fromCheckout = fromSource === 'checkout';
 
 // 判断地址是否被选中
 const isAddressSelected = (id: number): boolean => {
@@ -117,7 +119,7 @@ const isAddressSelected = (id: number): boolean => {
 const handleAddressSelect = (id: number) => {
     if (fromCheckout) {
         selectedId.value = id;
-        
+
         // 更新临时订单中的地址ID
         tempOrderStore.setSelectedAddress(id);
 

@@ -450,7 +450,7 @@ const goBack = () => {
 // 处理返回按钮点击
 const handleBackClick = () => {
     // 按优先级查找结账页、购物车页或商品详情页
-    smartBack(router, ['/checkout', '/cart', '/product/'], '/order');
+    smartBack(router, [ '/cart', '/product/'], '/order');
 
     // 发送一个事件表示已经处理了返回事件
     eventBus.emit('navbar:back:handled');
