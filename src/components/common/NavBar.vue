@@ -134,6 +134,31 @@ const handleLeftButtonClick = () => {
         case 'logo':
             break;
         case 'back':
+            // 处理结账页面返回逻辑
+            if (route.path === '/checkout') {
+                // 安全获取路由历史 - 使用类型安全的方式
+                const previousPath = router.currentRoute.value.fullPath;
+                const fromAddress = previousPath.includes('/address');
+                
+                // 获取临时订单ID
+                const tempOrderId = route.query.tempOrderId;
+                
+                // 判断上一个路由是否为地址页面
+                if (fromAddress) {
+                    // 如果是从地址页返回，并且存在历史记录 
+                    
+                    // 根据是否有tempOrderId决定返回到哪里
+                    if (tempOrderId) {
+                        // 有临时订单，可能是从购物车来的
+                        router.push('/cart');
+                    } else {
+                        // 默认返回购物车
+                        router.push('/cart');
+                    }
+                    return;
+                }
+            }
+
             // 检查是否在地址列表页，且带有特定标记
             if (route.path === '/address' && route.query.from === 'editor') {
                 // 清除查询参数，避免影响下次访问

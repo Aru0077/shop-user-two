@@ -123,7 +123,10 @@ const handleAddressSelect = (id: number) => {
 
         // 立即跳转回订单确认页面，不需要传递地址ID参数
         router.replace({
-            path: redirectPath
+            path: redirectPath,
+            query: {
+                tempOrderId: route.query.tempOrderId as string
+            }
         });
     }
 };

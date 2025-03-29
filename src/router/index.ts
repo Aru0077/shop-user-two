@@ -108,7 +108,8 @@ const routes: Array<RouteRecordRaw> = [
                   navbar: {
                         leftButton: 'back'
                   },
-                  requiresAuth: true
+                  requiresAuth: true,
+                  specialHandling: true // 添加一个标记，用于处理结账页面的特殊逻辑
             }
       },
       {
@@ -302,9 +303,11 @@ const router = createRouter({
       }
 });
 
-// 全局前置守卫
-// 全局前置守卫
-router.beforeEach((to, _from, next) => {
+// 添加一个记录合法来源页面的变量
+let validCheckoutSources = [];
+
+// 全局前置守卫 
+router.beforeEach((to, from, next) => {
       // 检查页面是否需要登录
       if (to.meta.requiresAuth) {
             const userStore = useUserStore();
@@ -335,6 +338,59 @@ router.beforeEach((to, _from, next) => {
             preloadComponent(HomePage);
             preloadComponent(CategoryPage);
       }
+
+      // 处理进入结账页面的逻辑
+      if (to.path === '/checkout') {
+            // 检查是否有临时订单ID
+            if (!to.query.tempOrderId) {
+                  next('/cart');
+                  return;
+            }
+
+            // 检查来源是否合法
+            const validSources = [
+                  '/cart',
+                  '/product/', // 以 /product/ 开头的路径，如 /product/123
+                  '/address'
+            ];
+
+            const isValidSource = validSources.some(path => {
+                  return from.path === path || from.path.startsWith(path);
+            });
+
+            if (!isValidSource) {
+                  // 非法来源，重定向到购物车
+                  next('/cart');
+                  return;
+            }
+
+            // 如果是从地址页面返回，记录当前状态
+            if (from.path === '/address') {
+                  // 存储当前合法的结账页状态
+                  validCheckoutSources.push(from.path);
+            }
+      }
+
+      // // 处理在地址页面选择地址后返回结账页的逻辑
+      // if (from.path === '/address' && to.path === '/checkout') {
+      //       // 地址选择后返回结账页，这是合法的
+      //       next();
+      //       return;
+      // }
+
+      // // 处理从结账页返回的逻辑
+      // if (from.path === '/checkout') {
+      //       // 如果试图返回到地址页面，重定向到适当的页面
+      //       if (to.path === '/address') {
+      //             const lastValidSource = router.options.history.state.back;
+      //             if (lastValidSource && lastValidSource.includes('/product/')) {
+      //                   next('/product/' + lastValidSource.split('/product/')[1]);
+      //             } else {
+      //                   next('/cart');
+      //             }
+      //             return;
+      //       }
+      // }
 
       next();
 });
