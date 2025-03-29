@@ -11,6 +11,7 @@ import { useAddressStore } from '@/stores/address.store';
 import type { TempOrder, CreateTempOrderParams, CheckoutInfo } from '@/types/temp-order.type';
 import type { CreateOrderResponse } from '@/types/order.type';
 import type { ApiError } from '@/types/common.type';
+import { useRouter } from 'vue-router';
 
 /**
  * 临时订单Store
@@ -410,7 +411,13 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
 
                   // 清理临时订单和相关状态
                   clearState();
-
+                  const router = useRouter();
+                  // 移除路由历史中的checkout页面记录
+                  const currentPath = router.currentRoute.value.path;
+                  if (currentPath !== '/checkout') {
+                        // 如果已经离开checkout页面，尝试从历史记录中删除
+                        history.pushState(null, '', currentPath);
+                  }
                   toast.success('订单创建成功');
                   return result;
             } catch (err: any) {
@@ -501,6 +508,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                   storage.set(storage.STORAGE_KEYS.TEMP_ORDER, tempOrder.value, expiryMs, STORAGE_VERSIONS.TEMP_ORDER);
             }
       }
+
 
       /**
        * 从本地存储加载
@@ -607,7 +615,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
             updateAndConfirmTempOrder, // 新增方法：更新并确认临时订单
             refreshTempOrder,
             saveToLocalStorage,
-            loadFromLocalStorage,
+            loadFromLocalStorage, 
 
             // 结算信息相关方法
             getCheckoutInfo,

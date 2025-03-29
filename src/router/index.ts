@@ -303,9 +303,6 @@ const router = createRouter({
       }
 });
 
-// 添加一个记录合法来源页面的变量
-let validCheckoutSources = [];
-
 // 全局前置守卫 
 router.beforeEach((to, from, next) => {
       // 检查页面是否需要登录
@@ -339,58 +336,57 @@ router.beforeEach((to, from, next) => {
             preloadComponent(CategoryPage);
       }
 
-      // 处理进入结账页面的逻辑
+      // 临时订单相关页面的访问控制
       if (to.path === '/checkout') {
-            // 检查是否有临时订单ID
+            // 1. 检查是否有临时订单ID
             if (!to.query.tempOrderId) {
                   next('/cart');
                   return;
             }
 
-            // 检查来源是否合法
-            const validSources = [
+            // 2. 检查来源是否合法
+            const validCheckoutSources = [
                   '/cart',
-                  '/product/', // 以 /product/ 开头的路径，如 /product/123
-                  '/address'
+                  '/product/',  // 商品详情页
+                  '/address'    // 地址选择页
             ];
 
-            const isValidSource = validSources.some(path => {
+            // 从地址页返回时的特殊处理
+            if (from.path === '/address' && from.query.from === 'checkout') {
+                  // 合法来源，允许访问
+                  next();
+                  return;
+            }
+
+            // 检查其他合法来源
+            const isValidSource = validCheckoutSources.some(path => {
                   return from.path === path || from.path.startsWith(path);
             });
-
+            
             if (!isValidSource) {
                   // 非法来源，重定向到购物车
                   next('/cart');
                   return;
             }
+      }
 
-            // 如果是从地址页面返回，记录当前状态
-            if (from.path === '/address') {
-                  // 存储当前合法的结账页状态
-                  validCheckoutSources.push(from.path);
+      // PaymentPage的访问控制 
+      if (to.path === '/payment') {
+            // 只允许从checkout页面进入
+            if (!from.path.startsWith('/checkout')) {
+                  next('/order');
+                  return;
             }
       }
 
-      // // 处理在地址页面选择地址后返回结账页的逻辑
-      // if (from.path === '/address' && to.path === '/checkout') {
-      //       // 地址选择后返回结账页，这是合法的
-      //       next();
-      //       return;
-      // }
-
-      // // 处理从结账页返回的逻辑
-      // if (from.path === '/checkout') {
-      //       // 如果试图返回到地址页面，重定向到适当的页面
-      //       if (to.path === '/address') {
-      //             const lastValidSource = router.options.history.state.back;
-      //             if (lastValidSource && lastValidSource.includes('/product/')) {
-      //                   next('/product/' + lastValidSource.split('/product/')[1]);
-      //             } else {
-      //                   next('/cart');
-      //             }
-      //             return;
-      //       }
-      // }
+      // PaymentResultPage的访问控制
+      if (to.path === '/payment/result') {
+            // 只允许从payment页面进入
+            if (!from.path.startsWith('/payment')) {
+                  next('/order');
+                  return;
+            }
+      }
 
       next();
 });

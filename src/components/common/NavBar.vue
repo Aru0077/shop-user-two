@@ -136,43 +136,73 @@ const handleLeftButtonClick = () => {
         case 'back':
             // 处理结账页面返回逻辑
             if (route.path === '/checkout') {
-                // 安全获取路由历史 - 使用类型安全的方式
-                const previousPath = router.currentRoute.value.fullPath;
-                const fromAddress = previousPath.includes('/address');
-                
-                // 获取临时订单ID
+                // 检查是否有上一页记录
+                if (router.options.history.state.back) {
+                    // 正常返回上一页
+                    router.back();
+                } else {
+                    // 没有历史记录时，默认返回购物车
+                    router.push('/cart');
+                }
+                return;
+            }
+
+            // 处理地址页面返回逻辑
+            if (route.path === '/address') {
+                const fromSource = route.query.from;
                 const tempOrderId = route.query.tempOrderId;
-                
-                // 判断上一个路由是否为地址页面
-                if (fromAddress) {
-                    // 如果是从地址页返回，并且存在历史记录 
-                    
-                    // 根据是否有tempOrderId决定返回到哪里
-                    if (tempOrderId) {
-                        // 有临时订单，可能是从购物车来的
-                        router.push('/cart');
-                    } else {
-                        // 默认返回购物车
-                        router.push('/cart');
-                    }
+
+                // 从结账页来的，返回结账页
+                if (fromSource === 'checkout' && tempOrderId) {
+                    router.push({
+                        path: '/checkout',
+                        query: { tempOrderId }
+                    });
                     return;
                 }
-            }
 
-            // 检查是否在地址列表页，且带有特定标记
-            if (route.path === '/address' && route.query.from === 'editor') {
-                // 清除查询参数，避免影响下次访问
-                const { from, ...otherQuery } = route.query;
+                // 从个人中心的编辑页来的，返回个人中心
+                if (fromSource === 'editor') {
+                    const { from, ...otherQuery } = route.query;
+                    router.replace({
+                        path: '/profile',
+                        query: otherQuery
+                    });
+                    return;
+                }
 
-                // 直接导航到个人中心页面或应用首页
-                router.replace({
-                    path: '/profile',  // 或其他合适的返回页面，如'/home'
-                    query: otherQuery
-                });
-            } else {
-                // 正常的返回操作
+                // 从个人中心来的，返回个人中心
+                if (fromSource === 'profile') {
+                    router.push('/profile');
+                    return;
+                }
+
+                // 默认返回行为
                 router.back();
             }
+
+            // 处理支付页面返回逻辑
+            if (route.path.startsWith('/payment') && !route.path.includes('result')) {
+                // 支付页返回结账页
+                const orderId = route.query.id;
+                if (orderId) {
+                    router.push('/order');
+                } else {
+                    router.back();
+                }
+                return;
+            }
+
+            // 处理支付结果页返回逻辑
+            if (route.path.includes('/payment/result')) {
+                // 支付结果页应该返回订单列表
+                router.push('/order');
+                return;
+            }
+
+
+            // 默认返回行为
+            router.back();
             break;
 
         default:

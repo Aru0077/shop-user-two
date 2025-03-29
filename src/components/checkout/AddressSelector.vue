@@ -43,7 +43,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { MapPin, ChevronRight } from 'lucide-vue-next';
 import { useAddressStore } from '@/stores/address.store';
 import { useToast } from '@/composables/useToast';
@@ -59,6 +59,7 @@ const emit = defineEmits<{
 }>();
 
 // 初始化
+const route = useRoute();
 const router = useRouter();
 const addressStore = useAddressStore();
 const toast = useToast();
@@ -82,7 +83,7 @@ const goToAddressList = () => {
         path: '/address',
         query: {
             from: 'checkout',
-            redirect: router.currentRoute.value.fullPath,
+            tempOrderId: route.query.tempOrderId as string, // 携带临时订单ID
             selectedId: selectedAddressId.value ? selectedAddressId.value.toString() : undefined
         }
     });
