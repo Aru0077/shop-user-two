@@ -187,6 +187,15 @@ const loadTempOrder = async () => {
         if (!tempOrderId) {
             error.value = '缺少订单信息';
             return;
+        }   
+
+        // 添加：检查是否从PaymentPage返回
+        // 如果是从PaymentPage返回，则不尝试加载临时订单
+        const referrer = document.referrer;
+        if (referrer && referrer.includes('/payment/')) {
+            // 返回到上一页或首页
+            smartBack(router, ['/cart', '/product/'], '/cart');
+            return;
         }
 
         // 获取临时订单（store中会自动启动倒计时）
@@ -194,13 +203,12 @@ const loadTempOrder = async () => {
 
         if (!order) {
             error.value = '未找到订单信息';
+             // 订单不存在，返回购物车页
+             smartBack(router, ['/cart', '/product/'], '/cart');
             return;
-        }
+        } 
 
-        // 设置表单默认值（使用计算属性，不需要额外赋值）
-
-        // 确保地址信息已加载
-        // 确保地址信息已加载
+        // 确保地址信息已加载 
         if (addressStore.addresses.length === 0) {
             try {
                 await addressStore.loadAddresses();

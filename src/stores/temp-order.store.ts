@@ -457,6 +457,16 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                   // 清理临时订单和相关状态
                   clearState();
 
+                  const router = useRouter();
+                  // 添加：移除URL中的tempOrderId参数
+                  const currentRoute = router.currentRoute.value;
+                  if (currentRoute.query.tempOrderId) {
+                        router.replace({
+                              path: currentRoute.path,
+                              query: {}
+                        });
+                  }
+
                   toast.success('订单创建成功');
                   return result;
             } catch (err: any) {
@@ -615,7 +625,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
             updateAndConfirmTempOrder, // 新增方法：更新并确认临时订单
             refreshTempOrder,
             saveToLocalStorage,
-            loadFromLocalStorage, 
+            loadFromLocalStorage,
 
             // 结算信息相关方法
             getCheckoutInfo,

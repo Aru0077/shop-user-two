@@ -15,7 +15,7 @@ export function smartBack(router: Router, targetPaths: string[] = [], fallbackPa
       if (history.state.back) {
             // 检查是否有要查找的目标页面
             if (targetPaths.length > 0) { 
-                  let stepsBack = 0;
+                  let stepsBack = 0; 
 
                   // 尝试返回并检查
                   const checkNextHistory = () => {
@@ -29,10 +29,10 @@ export function smartBack(router: Router, targetPaths: string[] = [], fallbackPa
                                     window.location.pathname.includes(path));
 
                               if (isTargetPath) { 
-                                    // 清除历史记录中的中间页面
-                                    history.pushState(null, '', window.location.href);
-
+ 
+                                    router.replace(window.location.pathname + window.location.search);
                                     console.log(`找到目标路径，返回了${stepsBack}步`);
+
                               } else if (stepsBack < 10 && history.state.back) { // 限制最大回退步数
                                     // 继续查找
                                     checkNextHistory();
