@@ -159,7 +159,7 @@ onMounted(async () => {
 });
 
 // 填充表单数据
-const fillFormWithAddress = (address:any) => {
+const fillFormWithAddress = (address: any) => {
     form.receiverName = address.receiverName;
     form.receiverPhone = address.receiverPhone;
     form.province = address.province;
@@ -252,8 +252,19 @@ const handleSubmit = async () => {
 const handleCancel = () => {
     // 检查是否有重定向路径
     const redirectPath = route.query.redirect as string;
-    if (redirectPath) {
-        router.replace(redirectPath);
+    const fromSource = route.query.from as string;
+
+    if (redirectPath && fromSource) {
+        if (fromSource === 'checkout') {
+            // 如果来自结账页，保留tempOrderId
+            const tempOrderId = route.query.tempOrderId;
+            router.replace({
+                path: redirectPath,
+                query: tempOrderId ? { tempOrderId } : undefined
+            });
+        } else {
+            router.replace(redirectPath);
+        }
     } else {
         router.replace({
             path: '/address',

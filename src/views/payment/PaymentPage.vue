@@ -20,17 +20,20 @@
                                 <div class="ml-3">
                                     <div class="text-lg font-bold">Payment Order</div>
                                     <div class="text-sm text-gray-500 mt-1">
-                                        Please complete payment within <span class="text-red-500 font-medium">{{ formatCountdown(countdown) }}</span>
+                                        Please complete payment within <span class="text-red-500 font-medium">{{
+                                            formatCountdown(countdown) }}</span>
                                     </div>
                                 </div>
                             </div>
-                            <div class="text-red-500 font-bold text-xl">{{ formatPrice(orderDetail.paymentAmount) }}</div>
+                            <div class="text-red-500 font-bold text-xl">{{ formatPrice(orderDetail.paymentAmount) }}
+                            </div>
                         </div>
 
                         <!-- 倒计时进度条 -->
                         <div class="mt-3">
                             <div class="w-full bg-gray-200 rounded-full h-1.5">
-                                <div class="bg-red-500 h-1.5 rounded-full" :style="{ width: countdownPercentage + '%' }"></div>
+                                <div class="bg-red-500 h-1.5 rounded-full"
+                                    :style="{ width: countdownPercentage + '%' }"></div>
                             </div>
                         </div>
                     </div>
@@ -79,7 +82,8 @@
                         </div>
 
                         <!-- 支付状态信息 -->
-                        <div v-else-if="paymentStatus === 'PAID'" class="flex flex-col items-center justify-center py-8">
+                        <div v-else-if="paymentStatus === 'PAID'"
+                            class="flex flex-col items-center justify-center py-8">
                             <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
                                 <CheckCircle :size="32" class="text-green-500" />
                             </div>
@@ -88,43 +92,51 @@
                             <div class="flex space-x-4">
                                 <button @click="viewPaymentResult"
                                     class="px-5 py-2 bg-black text-white rounded-full">View Result</button>
-                                <button @click="goToHome" class="px-5 py-2 border border-gray-300 rounded-full">Back to Home</button>
+                                <button @click="goToHome" class="px-5 py-2 border border-gray-300 rounded-full">Back to
+                                    Home</button>
                             </div>
                         </div>
 
-                        <div v-else-if="paymentStatus === 'CANCELLED'" class="flex flex-col items-center justify-center py-8">
+                        <div v-else-if="paymentStatus === 'CANCELLED'"
+                            class="flex flex-col items-center justify-center py-8">
                             <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                                 <XCircle :size="32" class="text-gray-500" />
                             </div>
                             <div class="text-gray-500 font-medium mb-2">Payment Cancelled</div>
                             <div class="text-gray-500 text-sm mb-4">You can start a new payment</div>
-                            <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">Retry Payment</button>
+                            <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">Retry
+                                Payment</button>
                         </div>
 
-                        <div v-else-if="paymentStatus === 'EXPIRED'" class="flex flex-col items-center justify-center py-8">
+                        <div v-else-if="paymentStatus === 'EXPIRED'"
+                            class="flex flex-col items-center justify-center py-8">
                             <div class="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-4">
                                 <AlertCircle :size="32" class="text-orange-500" />
                             </div>
                             <div class="text-orange-500 font-medium mb-2">Payment Expired</div>
                             <div class="text-gray-500 text-sm mb-4">You can start a new payment</div>
-                            <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">Retry Payment</button>
+                            <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">Retry
+                                Payment</button>
                         </div>
 
                         <!-- 二维码支付区域（根据新数据格式更新） -->
                         <div v-else-if="qPayInvoice" class="flex flex-col items-center py-4">
                             <!-- 二维码图片 -->
                             <div class="p-4 border border-gray-200 rounded-lg bg-white mb-4">
-                                <img :src="'data:image/png;base64,' + qPayInvoice.qrImage" alt="Payment QR Code" class="w-48 h-48">
+                                <img :src="'data:image/png;base64,' + qPayInvoice.qrImage" alt="Payment QR Code"
+                                    class="w-48 h-48">
                             </div>
 
                             <div class="text-sm text-gray-500 mb-4 text-center">
-                                Please use <span class="text-black font-medium mx-1">QPay supported apps</span> to scan the QR code
+                                Please use <span class="text-black font-medium mx-1">QPay supported apps</span> to scan
+                                the QR code
                             </div>
 
                             <!-- 短链接显示 -->
                             <div v-if="qPayInvoice.qPayShortUrl" class="mb-4 text-center">
                                 <p class="text-sm text-gray-500 mb-1">Or visit this link to pay:</p>
-                                <a :href="qPayInvoice.qPayShortUrl" target="_blank" class="text-blue-500 font-medium break-all">
+                                <a :href="qPayInvoice.qPayShortUrl" target="_blank"
+                                    class="text-blue-500 font-medium break-all">
                                     {{ qPayInvoice.qPayShortUrl }}
                                 </a>
                             </div>
@@ -133,8 +145,8 @@
                             <div v-if="qPayInvoice.urls && qPayInvoice.urls.length > 0" class="w-full max-w-sm mb-4">
                                 <p class="text-sm font-medium mb-2 text-center">Select payment method:</p>
                                 <div class="grid grid-cols-4 gap-3">
-                                    <a v-for="url in qPayInvoice.urls" :key="url.name" :href="url.link" 
-                                       class="flex flex-col items-center p-2 border rounded-lg hover:bg-gray-50">
+                                    <a v-for="url in qPayInvoice.urls" :key="url.name" :href="url.link"
+                                        class="flex flex-col items-center p-2 border rounded-lg hover:bg-gray-50">
                                         <img :src="url.logo" :alt="url.name" class="w-10 h-10 mb-1 object-contain">
                                     </a>
                                 </div>
@@ -155,7 +167,8 @@
                             </div>
                             <div class="text-red-500 font-medium mb-2">Payment Generation Failed</div>
                             <div class="text-gray-500 text-sm mb-4">{{ error }}</div>
-                            <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">Retry</button>
+                            <button @click="refreshPayment"
+                                class="px-5 py-2 bg-black text-white rounded-full">Retry</button>
                         </div>
                     </div>
 
@@ -239,6 +252,9 @@ import { useUserStore } from '@/stores/user.store';
 import { useToast } from '@/composables/useToast';
 import { formatPrice } from '@/utils/price.utils';
 import type { OrderDetail } from '@/types/order.type';
+import { eventBus } from '@/core/event-bus';
+import { smartBack } from '@/utils/navigation';
+
 
 // 初始化
 const route = useRoute();
@@ -431,6 +447,15 @@ const goBack = () => {
     router.replace('/order');
 };
 
+// 处理返回按钮点击
+const handleBackClick = () => {
+    // 按优先级查找结账页、购物车页或商品详情页
+    smartBack(router, ['/checkout', '/cart', '/product/'], '/order');
+
+    // 发送一个事件表示已经处理了返回事件
+    eventBus.emit('navbar:back:handled');
+};
+
 // 格式化日期
 const formatDate = (dateString: string): string => {
     if (!dateString) return '';
@@ -491,6 +516,8 @@ watch(() => qPayStore.paymentStatus, (newStatus) => {
 
 // 组件挂载时
 onMounted(async () => {
+    eventBus.on('navbar:back', handleBackClick);
+
     // 检查用户登录状态
     if (!userStore.isLoggedIn) {
         toast.warning('请先登录');
@@ -507,6 +534,7 @@ onMounted(async () => {
 
 // 组件卸载时清理资源
 onUnmounted(() => {
+    eventBus.off('navbar:back', handleBackClick);
     // 清除倒计时
     if (countdownTimer.value) {
         clearInterval(countdownTimer.value);

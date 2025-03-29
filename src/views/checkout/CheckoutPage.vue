@@ -126,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { AlertCircle } from 'lucide-vue-next';
 import { useTempOrderStore } from '@/stores/temp-order.store';
@@ -134,6 +134,8 @@ import { useAddressStore } from '@/stores/address.store';
 import { useToast } from '@/composables/useToast';
 import AddressSelector from '@/components/checkout/AddressSelector.vue';
 import { formatPrice } from '@/utils/price.utils';
+import { eventBus } from '@/core/event-bus';
+import { smartBack } from '@/utils/navigation';
 
 // 初始化
 const route = useRoute();
@@ -248,10 +250,22 @@ const submitOrder = async () => {
 // 返回上一页
 const goBack = () => {
     router.back();
+}; 
+
+// 处理返回按钮点击
+const handleBackClick = () => {
+    // 按优先级查找购物车页或商品详情页
+    smartBack(router, ['/cart', '/product/'], '/cart');
+    
+    // 发送一个事件表示已经处理了返回事件
+    eventBus.emit('navbar:back:handled');
 };
 
+
+
 // 页面加载时初始化
-onMounted(async () => {
+onMounted(async () => { 
+    eventBus.on('navbar:back', handleBackClick);
     // 初始化store
     await Promise.all([
         tempOrderStore.ensureInitialized(),
@@ -260,6 +274,10 @@ onMounted(async () => {
 
     // 加载订单数据
     await loadTempOrder();
+}); 
+
+onUnmounted(() => {
+    eventBus.off('navbar:back', handleBackClick);
 });
 
 </script>

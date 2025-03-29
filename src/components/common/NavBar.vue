@@ -44,6 +44,7 @@ import LogoIcon from '@/assets/logo.png';
 import { useAddressStore } from '@/stores/address.store';
 import { useCartStore } from '@/stores/cart.store';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
+import { smartBack } from '@/utils/navigation';
 
 interface NavbarOptions {
     leftButton?: string;
@@ -134,46 +135,67 @@ const handleLeftButtonClick = () => {
         case 'logo':
             break;
         case 'back':
-            // 处理结账页面返回逻辑
-            if (route.path === '/checkout') {
-                // 检查是否有上一页记录
-                if (router.options.history.state.back) {
-                    // 正常返回上一页
+            // 使用一个标志变量来追踪事件是否被处理
+            let backEventHandled = false;
+
+            // 添加一个临时的事件监听器来检测是否有处理程序
+            const checkHandler = () => {
+                backEventHandled = true;
+            };
+            
+            // 先监听事件处理状态
+            eventBus.on('navbar:back:handled', checkHandler);
+            
+            // 发布返回按钮点击事件
+            eventBus.emit('navbar:back', route.path);
+            
+            // 移除临时监听器
+            eventBus.off('navbar:back:handled', checkHandler);
+
+            // 如果没有组件处理这个事件，则使用默认逻辑
+            if (!backEventHandled) { 
+                // 处理结账页面返回逻辑
+                if (route.path === '/checkout') {
+                    // 按优先级查找购物车页或商品详情页
+                    smartBack(router, ['/cart', '/product/'], '/cart');
+                    return;
+                }
+
+                // 处理支付页面返回逻辑
+                if (route.path.startsWith('/payment') && !route.path.includes('result')) {
+                    // 查找结账页或购物车页
+                    smartBack(router, ['/checkout', '/cart', '/product/'], '/order');
+                    return;
+                }
+
+                // 处理支付结果页返回逻辑
+                if (route.path.includes('/payment/result')) {
+                    // 直接返回订单列表，不进行历史查找
+                    router.replace('/order');
+                    return;
+                }
+                // 处理地址页面返回逻辑
+                if (route.path === '/address') {
+                    const fromSource = route.query.from;
+                    const tempOrderId = route.query.tempOrderId;
+
+                    // 从结账页来的，返回结账页
+                    if (fromSource === 'checkout' && tempOrderId) {
+                        router.push({
+                            path: '/checkout',
+                            query: { tempOrderId }
+                        });
+                        return;
+                    }
+
+                    // 简化地址返回逻辑
+                    if (fromSource === 'editor' || fromSource === 'profile') {
+                        router.replace('/profile');
+                        return;
+                    }
+
+                    // 默认返回行为
                     router.back();
-                } else {
-                    // 没有历史记录时，默认返回购物车
-                    router.push('/cart');
-                }
-                return;
-            }
-
-            // 处理地址页面返回逻辑
-            if (route.path === '/address') {
-                const fromSource = route.query.from;
-                const tempOrderId = route.query.tempOrderId;
-
-                // 从结账页来的，返回结账页
-                if (fromSource === 'checkout' && tempOrderId) {
-                    router.push({
-                        path: '/checkout',
-                        query: { tempOrderId }
-                    });
-                    return;
-                }
-
-                // 从个人中心的编辑页来的，返回个人中心
-                if (fromSource === 'editor') {
-                    const { from, ...otherQuery } = route.query;
-                    router.replace({
-                        path: '/profile',
-                        query: otherQuery
-                    });
-                    return;
-                }
-
-                // 从个人中心来的，返回个人中心
-                if (fromSource === 'profile') {
-                    router.push('/profile');
                     return;
                 }
 
@@ -181,28 +203,7 @@ const handleLeftButtonClick = () => {
                 router.back();
             }
 
-            // 处理支付页面返回逻辑
-            if (route.path.startsWith('/payment') && !route.path.includes('result')) {
-                // 支付页返回结账页
-                const orderId = route.query.id;
-                if (orderId) {
-                    router.push('/order');
-                } else {
-                    router.back();
-                }
-                return;
-            }
 
-            // 处理支付结果页返回逻辑
-            if (route.path.includes('/payment/result')) {
-                // 支付结果页应该返回订单列表
-                router.push('/order');
-                return;
-            }
-
-
-            // 默认返回行为
-            router.back();
             break;
 
         default:

@@ -304,11 +304,10 @@ const router = createRouter({
 });
 
 // 全局前置守卫 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
       // 检查页面是否需要登录
       if (to.meta.requiresAuth) {
-            const userStore = useUserStore();
-            // 使用isLoggedIn计算属性替代不存在的checkTokenExpiry方法
+            const userStore = useUserStore(); 
             if (!userStore.isLoggedIn) {
                   // 跳转到登录页面，并记录来源页面
                   next({
@@ -334,58 +333,6 @@ router.beforeEach((to, from, next) => {
       } else if (to.name === 'Profile') {
             preloadComponent(HomePage);
             preloadComponent(CategoryPage);
-      }
-
-      // 临时订单相关页面的访问控制
-      if (to.path === '/checkout') {
-            // 1. 检查是否有临时订单ID
-            if (!to.query.tempOrderId) {
-                  next('/cart');
-                  return;
-            }
-
-            // 2. 检查来源是否合法
-            const validCheckoutSources = [
-                  '/cart',
-                  '/product/',  // 商品详情页
-                  '/address'    // 地址选择页
-            ];
-
-            // 从地址页返回时的特殊处理
-            if (from.path === '/address' && from.query.from === 'checkout') {
-                  // 合法来源，允许访问
-                  next();
-                  return;
-            }
-
-            // 检查其他合法来源
-            const isValidSource = validCheckoutSources.some(path => {
-                  return from.path === path || from.path.startsWith(path);
-            });
-            
-            if (!isValidSource) {
-                  // 非法来源，重定向到购物车
-                  next('/cart');
-                  return;
-            }
-      }
-
-      // PaymentPage的访问控制 
-      if (to.path === '/payment') {
-            // 只允许从checkout页面进入
-            if (!from.path.startsWith('/checkout')) {
-                  next('/order');
-                  return;
-            }
-      }
-
-      // PaymentResultPage的访问控制
-      if (to.path === '/payment/result') {
-            // 只允许从payment页面进入
-            if (!from.path.startsWith('/payment')) {
-                  next('/order');
-                  return;
-            }
       }
 
       next();
