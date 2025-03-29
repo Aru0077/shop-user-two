@@ -165,7 +165,8 @@ const localRemark = computed({
 
 // 临时订单信息
 const tempOrder = computed(() => tempOrderStore.tempOrder);
-
+// 首先添加一个来源判断
+// const fromProductDetail = ref(document.referrer.includes('/product/'));
 
 // 是否可以提交订单
 const isReadyToSubmit = computed(() => {

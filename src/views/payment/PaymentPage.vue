@@ -1,234 +1,220 @@
 <template>
-    <div class="page-container pb-safe">
+    <div class="flex flex-col h-full overflow-hidden">
         <!-- 加载状态 -->
-        <div v-if="loading && !orderDetail" class="flex justify-center items-center h-screen">
+        <div v-if="loading && !orderDetail" class="flex justify-center items-center flex-1">
             <div
                 class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-black border-r-transparent align-middle">
             </div>
         </div>
 
         <!-- 支付内容 -->
-        <div v-else-if="orderDetail" class="space-y-4">
-            <!-- 顶部支付状态卡片 -->
-            <div class="bg-white rounded-xl p-5 shadow-sm">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <CreditCard :size="24" class="text-green-500" />
-                        <div class="ml-3">
-                            <div class="text-lg font-bold">支付订单</div>
-                            <div class="text-sm text-gray-500 mt-1">
-                                请在 <span class="text-red-500 font-medium">{{ formatCountdown(countdown) }}</span> 内完成支付
+        <div v-else-if="orderDetail" class="flex flex-col h-full">
+            <!-- 可滚动的内容区域 -->
+            <div class="flex-1 overflow-y-auto px-4 pt-4 pb-2">
+                <div class="space-y-4">
+                    <!-- 顶部支付状态卡片 -->
+                    <div class="bg-white rounded-xl p-5 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <CreditCard :size="24" class="text-green-500" />
+                                <div class="ml-3">
+                                    <div class="text-lg font-bold">Payment Order</div>
+                                    <div class="text-sm text-gray-500 mt-1">
+                                        Please complete payment within <span class="text-red-500 font-medium">{{ formatCountdown(countdown) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-red-500 font-bold text-xl">{{ formatPrice(orderDetail.paymentAmount) }}</div>
+                        </div>
+
+                        <!-- 倒计时进度条 -->
+                        <div class="mt-3">
+                            <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                <div class="bg-red-500 h-1.5 rounded-full" :style="{ width: countdownPercentage + '%' }"></div>
                             </div>
                         </div>
                     </div>
-                    <div class="text-red-500 font-bold text-xl">{{ formatPrice(orderDetail.paymentAmount) }}</div>
-                </div>
 
-                <!-- 倒计时进度条 -->
-                <div class="mt-3">
-                    <div class="w-full bg-gray-200 rounded-full h-1.5">
-                        <div class="bg-red-500 h-1.5 rounded-full" :style="{ width: countdownPercentage + '%' }"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 付款信息 -->
-            <div class="bg-white rounded-xl p-5 shadow-sm">
-                <div class="text-base font-medium mb-3">支付信息</div>
-                <div class="text-sm space-y-2">
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">订单编号</span>
-                        <span>{{ orderDetail.orderNo }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">创建时间</span>
-                        <span>{{ formatDate(orderDetail.createdAt) }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">支付方式</span>
-                        <span>QPAY</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">商品总额</span>
-                        <span>{{ formatPrice(orderDetail.totalAmount) }}</span>
-                    </div>
-                    <div v-if="orderDetail.discountAmount > 0" class="flex justify-between">
-                        <span class="text-gray-500">优惠金额</span>
-                        <span class="text-red-500">-{{ formatPrice(orderDetail.discountAmount) }}</span>
-                    </div>
-                    <div class="flex justify-between font-bold">
-                        <span class="text-gray-800">实付金额</span>
-                        <span class="text-red-500">{{ formatPrice(orderDetail.paymentAmount) }}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- QPAY支付区域 -->
-            <div class="bg-white rounded-xl p-5 shadow-sm">
-                <div class="text-base font-medium mb-3">扫描二维码支付</div>
-
-                <!-- 支付加载中 -->
-                <div v-if="creatingPayment" class="flex flex-col items-center justify-center py-8">
-                    <div
-                        class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-black border-r-transparent mb-4">
-                    </div>
-                    <div class="text-gray-500">生成支付二维码中...</div>
-                </div>
-
-                <!-- 支付状态信息 -->
-                <div v-else-if="paymentStatus === 'PAID'" class="flex flex-col items-center justify-center py-8">
-                    <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
-                        <CheckCircle :size="32" class="text-green-500" />
-                    </div>
-                    <div class="text-green-500 font-medium mb-2">支付成功</div>
-                    <div class="text-gray-500 text-sm mb-4">感谢您的购买</div>
-                    <div class="flex space-x-4">
-                        <button @click="viewPaymentResult"
-                            class="px-5 py-2 bg-black text-white rounded-full">查看结果</button>
-                        <button @click="goToHome" class="px-5 py-2 border border-gray-300 rounded-full">返回首页</button>
-                    </div>
-                </div>
-
-                <div v-else-if="paymentStatus === 'CANCELLED'" class="flex flex-col items-center justify-center py-8">
-                    <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                        <XCircle :size="32" class="text-gray-500" />
-                    </div>
-                    <div class="text-gray-500 font-medium mb-2">支付已取消</div>
-                    <div class="text-gray-500 text-sm mb-4">您可以重新发起支付</div>
-                    <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">重试支付</button>
-                </div>
-
-                <div v-else-if="paymentStatus === 'EXPIRED'" class="flex flex-col items-center justify-center py-8">
-                    <div class="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-4">
-                        <AlertCircle :size="32" class="text-orange-500" />
-                    </div>
-                    <div class="text-orange-500 font-medium mb-2">支付已过期</div>
-                    <div class="text-gray-500 text-sm mb-4">您可以重新发起支付</div>
-                    <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">重试支付</button>
-                </div>
-
-                <!-- 二维码支付区域（根据新数据格式更新） -->
-                <div v-else-if="qPayInvoice" class="flex flex-col items-center py-4">
-                    <!-- 二维码图片 -->
-                    <div class="p-4 border border-gray-200 rounded-lg bg-white mb-4">
-                        <img :src="'data:image/png;base64,' + qPayInvoice.qrImage" alt="支付二维码" class="w-48 h-48">
+                    <!-- 付款信息 -->
+                    <div class="bg-white rounded-xl p-5 shadow-sm">
+                        <div class="text-base font-medium mb-3">Payment Information</div>
+                        <div class="text-sm space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Order No.</span>
+                                <span>{{ orderDetail.orderNo }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Created Time</span>
+                                <span>{{ formatDate(orderDetail.createdAt) }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Payment Method</span>
+                                <span>QPAY</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Total Amount</span>
+                                <span>{{ formatPrice(orderDetail.totalAmount) }}</span>
+                            </div>
+                            <div v-if="orderDetail.discountAmount > 0" class="flex justify-between">
+                                <span class="text-gray-500">Discount</span>
+                                <span class="text-red-500">-{{ formatPrice(orderDetail.discountAmount) }}</span>
+                            </div>
+                            <div class="flex justify-between font-bold">
+                                <span class="text-gray-800">Payment Amount</span>
+                                <span class="text-red-500">{{ formatPrice(orderDetail.paymentAmount) }}</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="text-sm text-gray-500 mb-4 text-center">
-                        请使用<span class="text-black font-medium mx-1">QPay支持的应用</span>扫描二维码完成支付
-                    </div>
+                    <!-- QPAY支付区域 -->
+                    <div class="bg-white rounded-xl p-5 shadow-sm">
+                        <div class="text-base font-medium mb-3">Scan QR Code to Pay</div>
 
-                    <!-- 短链接显示 -->
-                    <div v-if="qPayInvoice.qPayShortUrl" class="mb-4 text-center">
-                        <p class="text-sm text-gray-500 mb-1">或访问以下链接支付：</p>
-                        <a :href="qPayInvoice.qPayShortUrl" target="_blank" class="text-blue-500 font-medium break-all">
-                            {{ qPayInvoice.qPayShortUrl }}
-                        </a>
-                    </div>
-
-                    <!-- 支持的支付方式 -->
-                    <div v-if="qPayInvoice.urls && qPayInvoice.urls.length > 0" class="w-full max-w-sm mb-4">
-                        <p class="text-sm font-medium mb-2 text-center">选择支付方式：</p>
-                        <div class="grid grid-cols-3 gap-3">
-                            <a v-for="url in qPayInvoice.urls.slice(0, 6)" :key="url.name" :href="url.link"
-                                class="flex flex-col items-center p-2 border rounded-lg hover:bg-gray-50">
-                                <img :src="url.logo" :alt="url.name" class="w-10 h-10 mb-1 object-contain">
-                                <span class="text-xs text-center">{{ url.description }}</span>
-                            </a>
+                        <!-- 支付加载中 -->
+                        <div v-if="creatingPayment" class="flex flex-col items-center justify-center py-8">
+                            <div
+                                class="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-black border-r-transparent mb-4">
+                            </div>
+                            <div class="text-gray-500">Generating payment QR code...</div>
                         </div>
 
-                        <!-- 查看更多支付方式按钮 -->
-                        <div v-if="qPayInvoice.urls.length > 6" class="text-center mt-2">
-                            <button @click="showMorePaymentOptions = !showMorePaymentOptions"
-                                class="text-sm text-blue-500">
-                                {{ showMorePaymentOptions ? '收起' : '查看更多支付方式' }}
+                        <!-- 支付状态信息 -->
+                        <div v-else-if="paymentStatus === 'PAID'" class="flex flex-col items-center justify-center py-8">
+                            <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
+                                <CheckCircle :size="32" class="text-green-500" />
+                            </div>
+                            <div class="text-green-500 font-medium mb-2">Payment Successful</div>
+                            <div class="text-gray-500 text-sm mb-4">Thank you for your purchase</div>
+                            <div class="flex space-x-4">
+                                <button @click="viewPaymentResult"
+                                    class="px-5 py-2 bg-black text-white rounded-full">View Result</button>
+                                <button @click="goToHome" class="px-5 py-2 border border-gray-300 rounded-full">Back to Home</button>
+                            </div>
+                        </div>
+
+                        <div v-else-if="paymentStatus === 'CANCELLED'" class="flex flex-col items-center justify-center py-8">
+                            <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                                <XCircle :size="32" class="text-gray-500" />
+                            </div>
+                            <div class="text-gray-500 font-medium mb-2">Payment Cancelled</div>
+                            <div class="text-gray-500 text-sm mb-4">You can start a new payment</div>
+                            <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">Retry Payment</button>
+                        </div>
+
+                        <div v-else-if="paymentStatus === 'EXPIRED'" class="flex flex-col items-center justify-center py-8">
+                            <div class="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-4">
+                                <AlertCircle :size="32" class="text-orange-500" />
+                            </div>
+                            <div class="text-orange-500 font-medium mb-2">Payment Expired</div>
+                            <div class="text-gray-500 text-sm mb-4">You can start a new payment</div>
+                            <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">Retry Payment</button>
+                        </div>
+
+                        <!-- 二维码支付区域（根据新数据格式更新） -->
+                        <div v-else-if="qPayInvoice" class="flex flex-col items-center py-4">
+                            <!-- 二维码图片 -->
+                            <div class="p-4 border border-gray-200 rounded-lg bg-white mb-4">
+                                <img :src="'data:image/png;base64,' + qPayInvoice.qrImage" alt="Payment QR Code" class="w-48 h-48">
+                            </div>
+
+                            <div class="text-sm text-gray-500 mb-4 text-center">
+                                Please use <span class="text-black font-medium mx-1">QPay supported apps</span> to scan the QR code
+                            </div>
+
+                            <!-- 短链接显示 -->
+                            <div v-if="qPayInvoice.qPayShortUrl" class="mb-4 text-center">
+                                <p class="text-sm text-gray-500 mb-1">Or visit this link to pay:</p>
+                                <a :href="qPayInvoice.qPayShortUrl" target="_blank" class="text-blue-500 font-medium break-all">
+                                    {{ qPayInvoice.qPayShortUrl }}
+                                </a>
+                            </div>
+
+                            <!-- 支持的支付方式 -->
+                            <div v-if="qPayInvoice.urls && qPayInvoice.urls.length > 0" class="w-full max-w-sm mb-4">
+                                <p class="text-sm font-medium mb-2 text-center">Select payment method:</p>
+                                <div class="grid grid-cols-4 gap-3">
+                                    <a v-for="url in qPayInvoice.urls" :key="url.name" :href="url.link" 
+                                       class="flex flex-col items-center p-2 border rounded-lg hover:bg-gray-50">
+                                        <img :src="url.logo" :alt="url.name" class="w-10 h-10 mb-1 object-contain">
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- 检查支付状态按钮 -->
+                            <button @click="checkPayment"
+                                class="mt-4 px-5 py-2 border border-gray-300 rounded-full flex items-center">
+                                <RefreshCw :size="16" class="mr-2" :class="{ 'animate-spin': checkingPayment }" />
+                                {{ checkingPayment ? 'Checking...' : 'Check Payment Status' }}
                             </button>
                         </div>
 
-                        <!-- 更多支付方式展开区域 -->
-                        <div v-if="showMorePaymentOptions && qPayInvoice.urls.length > 6"
-                            class="mt-3 grid grid-cols-3 gap-3">
-                            <a v-for="url in qPayInvoice.urls.slice(6)" :key="url.name" :href="url.link"
-                                class="flex flex-col items-center p-2 border rounded-lg hover:bg-gray-50">
-                                <img :src="url.logo" :alt="url.name" class="w-10 h-10 mb-1 object-contain">
-                                <span class="text-xs text-center">{{ url.description }}</span>
-                            </a>
+                        <!-- 支付异常 -->
+                        <div v-else-if="error" class="flex flex-col items-center justify-center py-8">
+                            <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
+                                <AlertTriangle :size="32" class="text-red-500" />
+                            </div>
+                            <div class="text-red-500 font-medium mb-2">Payment Generation Failed</div>
+                            <div class="text-gray-500 text-sm mb-4">{{ error }}</div>
+                            <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">Retry</button>
                         </div>
                     </div>
 
-                    <!-- 检查支付状态按钮 -->
-                    <button @click="checkPayment"
-                        class="mt-4 px-5 py-2 border border-gray-300 rounded-full flex items-center">
-                        <RefreshCw :size="16" class="mr-2" :class="{ 'animate-spin': checkingPayment }" />
-                        {{ checkingPayment ? '检查中...' : '检查支付状态' }}
-                    </button>
-                </div>
-
-                <!-- 支付异常 -->
-                <div v-else-if="error" class="flex flex-col items-center justify-center py-8">
-                    <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
-                        <AlertTriangle :size="32" class="text-red-500" />
-                    </div>
-                    <div class="text-red-500 font-medium mb-2">生成支付失败</div>
-                    <div class="text-gray-500 text-sm mb-4">{{ error }}</div>
-                    <button @click="refreshPayment" class="px-5 py-2 bg-black text-white rounded-full">重试</button>
-                </div>
-            </div>
-
-            <!-- 支付说明 -->
-            <div class="bg-white rounded-xl p-5 shadow-sm">
-                <div class="text-base font-medium mb-3">支付说明</div>
-                <div class="text-sm text-gray-500 space-y-2">
-                    <div class="flex items-start">
-                        <div
-                            class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs mr-2 flex-shrink-0">
-                            1</div>
-                        <div>打开QPay应用并点击"扫一扫"</div>
-                    </div>
-                    <div class="flex items-start">
-                        <div
-                            class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs mr-2 flex-shrink-0">
-                            2</div>
-                        <div>将二维码放在摄像头下方，等待自动扫描</div>
-                    </div>
-                    <div class="flex items-start">
-                        <div
-                            class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs mr-2 flex-shrink-0">
-                            3</div>
-                        <div>确认支付金额并完成支付</div>
-                    </div>
-                    <div class="flex items-start">
-                        <div
-                            class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs mr-2 flex-shrink-0">
-                            4</div>
-                        <div>支付完成后页面将自动更新</div>
+                    <!-- 支付说明 -->
+                    <div class="bg-white rounded-xl p-5 shadow-sm">
+                        <div class="text-base font-medium mb-3">Payment Instructions</div>
+                        <div class="text-sm text-gray-500 space-y-2">
+                            <div class="flex items-start">
+                                <div
+                                    class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs mr-2 flex-shrink-0">
+                                    1</div>
+                                <div>Open QPay app and click "Scan"</div>
+                            </div>
+                            <div class="flex items-start">
+                                <div
+                                    class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs mr-2 flex-shrink-0">
+                                    2</div>
+                                <div>Place QR code under camera for scanning</div>
+                            </div>
+                            <div class="flex items-start">
+                                <div
+                                    class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs mr-2 flex-shrink-0">
+                                    3</div>
+                                <div>Confirm payment amount and complete payment</div>
+                            </div>
+                            <div class="flex items-start">
+                                <div
+                                    class="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs mr-2 flex-shrink-0">
+                                    4</div>
+                                <div>Page will update automatically when payment is complete</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 底部按钮区域 -->
-            <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 safe-area-bottom">
+            <!-- 底部按钮区域 - 固定在底部 -->
+            <div class="bg-white border-t border-gray-200 p-4 safe-area-bottom">
                 <div class="flex justify-between items-center">
                     <div>
-                        <div class="text-sm">支付金额</div>
+                        <div class="text-sm">Payment Amount</div>
                         <div class="text-red-500 font-bold text-xl">{{ formatPrice(orderDetail.paymentAmount) }}</div>
                     </div>
                     <button @click="cancelPayment" class="px-5 py-2 border border-gray-300 rounded-full">
-                        取消支付
+                        Cancel Payment
                     </button>
                 </div>
             </div>
         </div>
 
         <!-- 错误状态 -->
-        <div v-else-if="error" class="flex flex-col items-center justify-center h-screen">
+        <div v-else-if="error" class="flex flex-col items-center justify-center flex-1">
             <div class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                 <FileX :size="36" class="text-gray-400" />
             </div>
             <div class="text-gray-500 mb-6">{{ error }}</div>
             <button @click="goBack" class="bg-black text-white py-3 px-8 rounded-full flex items-center">
                 <ArrowLeft :size="16" class="mr-2" />
-                返回
+                Back
             </button>
         </div>
     </div>
@@ -270,7 +256,7 @@ const error = ref<string | null>(null);
 const orderId = computed(() => route.params.id as string);
 const orderDetail = ref<OrderDetail | null>(null);
 // 添加展示更多支付方式的状态
-const showMorePaymentOptions = ref(false);
+// const showMorePaymentOptions = ref(false);
 
 // QPay支付相关
 const qPayInvoice = computed(() => qPayStore.currentInvoice);
@@ -424,7 +410,7 @@ const cancelPayment = async () => {
         // 清除QPay支付数据
         qPayStore.clearQPayState();
         // 返回上一页
-        router.go(-1);
+        router.replace('/order');
     } catch (err) {
         console.error('取消支付失败:', err);
     }
@@ -437,12 +423,12 @@ const viewPaymentResult = () => {
 
 // 返回首页
 const goToHome = () => {
-    router.push('/home');
+    router.replace('/home');
 };
 
 // 返回上一页
 const goBack = () => {
-    router.go(-1);
+    router.replace('/order');
 };
 
 // 格式化日期
