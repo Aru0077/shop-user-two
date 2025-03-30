@@ -146,13 +146,6 @@ const error = ref('');
 
 // Initialize Facebook SDK on component mount
 onMounted(async () => {
-    if (!facebookStore.initialized) {
-        try {
-            await facebookStore.init();
-        } catch (err) {
-            console.error('初始化 Facebook SDK 失败:', err);
-        }
-    }
 
     // 检查 URL 参数中是否包含来自 Facebook 登录回调的错误消息
     const urlError = route.query.error;
@@ -191,27 +184,23 @@ const handleLogin = async () => {
 };
 
 // Handle Facebook login
-// 处理 Facebook 登录
 const handleFacebookLogin = async () => {
     try {
         // 清除之前的错误
         error.value = '';
+        
+        // 保存当前重定向路径，用于登录成功后跳转
+        const redirectPath = route.query.redirect as string || '/home';
+        sessionStorage.setItem('fb_redirect_path', redirectPath);
 
-        // 使用新的智能登录方法，会根据设备类型自动选择最佳登录方式
-        const success = await facebookStore.login({ scope: 'public_profile' });
-
-        // 注意：若使用重定向方式，此处代码不会继续执行
-        // 只有在桌面端使用弹窗方式成功登录后，才会执行以下代码
-        if (success) {
-            toast.success('Facebook 登录成功');
-
-            // 重定向到来源页面或首页
-            const redirectPath = route.query.redirect as string || '/home';
-            router.replace(redirectPath);
-        }
+        // 获取登录URL并重定向
+        const { loginUrl } = await facebookStore.getLoginUrl();
+        
+        // 直接重定向到Facebook登录页面
+        window.location.href = loginUrl;
     } catch (err: any) {
-        console.error('Facebook 登录失败:', err);
-        error.value = err.message || 'Facebook 登录失败，请重试。';
+        console.error('Facebook登录失败:', err);
+        error.value = err.message || 'Facebook登录失败，请重试';
         toast.error(error.value);
     }
 };

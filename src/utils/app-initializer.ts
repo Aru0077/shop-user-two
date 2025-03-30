@@ -1,7 +1,6 @@
 // src/utils/app-initializer.ts
 import { serviceInitializer } from '@/core/service.init';
-import { eventBus, EVENT_NAMES } from '@/core/event-bus';
-import { useFacebookStore } from '@/stores/facebook.store';
+import { eventBus, EVENT_NAMES } from '@/core/event-bus'; 
 
 /**
  * 应用初始化类
@@ -29,8 +28,6 @@ export class AppInitializer {
             console.info('开始初始化应用...');
 
             try {
-                  // 1. 处理可能的Facebook登录回调
-                  await this.handleFacebookCallback();
 
                   // 1. 确保核心服务层初始化完成
                   await serviceInitializer.initialize();
@@ -51,92 +48,6 @@ export class AppInitializer {
             }
       }
 
-      /**
-       * 处理Facebook登录回调
-       */
-      private async handleFacebookCallback(): Promise<void> {
-            // 检查当前是否在回调页面
-            const isCallbackPage = window.location.pathname === '/auth/facebook-callback' ||
-                  window.location.pathname.endsWith('/auth/facebook-callback');
-
-            if (!isCallbackPage) return;
-
-            // 解析URL参数
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
-            const error = urlParams.get('error');
-            const error_reason = urlParams.get('error_reason');
-
-            // 如果没有code或state，可能是直接访问页面或错误
-            if (!code || !state) {
-                  if (error) {
-                        // 处理Facebook返回的错误
-                        const errorMessage = error_reason || error || '登录取消或发生错误';
-                        console.error('Facebook登录错误:', errorMessage);
-
-                        this.handleFacebookError(errorMessage);
-                        return;
-                  }
-                  // 没有code或error，可能是直接访问
-                  window.location.href = '/login';
-                  return;
-            }
-
-            // 验证state以防止CSRF攻击
-            const savedState = localStorage.getItem('fb_login_state');
-            if (state !== savedState) {
-                  console.error('Facebook登录状态验证失败');
-                  window.location.href = '/login?error=facebook_state_invalid';
-                  return;
-            }
-
-            // 清除state
-            localStorage.removeItem('fb_login_state');
-
-            try {
-                  // 检查是否是弹窗回调
-                  if (window.opener && window.opener.fbCallbackHandler) {
-                        // 弹窗回调 - 向父窗口发送成功消息
-                        window.opener.fbCallbackHandler({ success: true, code });
-                        window.close();
-                        return;
-                  }
-
-                  // 重定向回调 - 处理登录
-                  const facebookStore = useFacebookStore();
-                  const success = await facebookStore.handleCallback(code);
-
-                  // 登录成功，重定向到原始路径
-                  if (success) {
-                        const redirectPath = sessionStorage.getItem('fb_redirect_path') || '/';
-                        sessionStorage.removeItem('fb_redirect_path');
-                        window.location.href = redirectPath;
-                  } else {
-                        window.location.href = '/login?error=facebook_auth_failed';
-                  }
-            } catch (err) {
-                  console.error('处理Facebook回调失败:', err);
-                  this.handleFacebookError('登录处理失败');
-            }
-      }
-
-      /**
-      * 处理Facebook错误
-      */
-      private handleFacebookError(errorMessage: string): void {
-            if (window.opener && window.opener.fbCallbackHandler) {
-                  // 弹窗模式
-                  window.opener.fbCallbackHandler({
-                        success: false,
-                        error: errorMessage
-                  });
-                  window.close();
-            } else {
-                  // 重定向模式
-                  window.location.href = `/login?error=${encodeURIComponent(errorMessage)}`;
-            }
-      }
       /**
        * 初始化UI相关功能
        */

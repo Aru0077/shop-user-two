@@ -6,13 +6,13 @@ import type { FacebookLoginResponse } from '@/types/facebook.type';
  * Facebook登录API
  */
 export const facebookApi = {
+
       /**
-       * 获取Facebook登录URL
-       */
+     * 获取Facebook登录URL
+     */
       getLoginUrl(): Promise<{ loginUrl: string }> {
             return http.get('/facebook/auth-url');
       },
-
       /**
        * 使用授权码登录
        */

@@ -192,18 +192,6 @@ const routes: Array<RouteRecordRaw> = [
             }
       },
       {
-            path: '/auth/facebook-callback',
-            name: 'FacebookCallback',
-            component: () => import('@/views/auth/FacebookCallback.vue'),
-            meta: {
-                  title: '回调',
-                  showTabBar: false,
-                  navbar: {
-                        leftButton: 'back'
-                  },
-            }
-      },
-      {
             path: '/auth/login-success',
             name: 'LoginSuccess',
             component: () => import('@/views/auth/LoginSuccess.vue'),

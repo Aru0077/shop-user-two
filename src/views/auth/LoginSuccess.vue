@@ -2,8 +2,8 @@
     <div class="flex flex-col items-center justify-center min-h-screen p-6">
         <div v-if="isProcessing" class="text-center">
             <div class="spinner mb-4"></div>
-            <h2 class="text-xl font-semibold mb-2">登录成功，正在处理...</h2>
-            <p class="text-gray-600">请稍候，正在完成登录</p>
+            <h2 class="text-xl font-semibold mb-2">登录成功，正在完成...</h2>
+            <p class="text-gray-600">请稍候</p>
         </div>
     </div>
 </template>
@@ -29,21 +29,20 @@ onMounted(async () => {
 
         if (!token || !userId) {
             toast.error('登录信息不完整');
-            router.replace('/login');
+            router.replace('/home');
             return;
         }
 
         // 设置用户令牌
         userStore.token = token;
 
-        // 创建基本用户信息（实际应用中可能需要通过API获取完整用户信息）
+        // 设置用户信息
         const user: User = {
             id: userId,
-            username: '用户' + userId.substring(0, 6), // 临时用户名
+            username: '用户' + userId.substring(0, 6),
             isBlacklist: 0,
             createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            // facebookId是可选的，所以不需要设置
+            updatedAt: new Date().toISOString()
         };
 
         userStore.user = user;
@@ -57,16 +56,16 @@ onMounted(async () => {
         // 提示用户登录成功
         toast.success('Facebook登录成功');
 
-        // 重定向到主页或者来源页面
+        // 重定向到来源页面或主页
         const redirectPath = sessionStorage.getItem('fb_redirect_path') || '/home';
         sessionStorage.removeItem('fb_redirect_path');
 
-        // 完成重定向
+        // 使用replace而非push，防止返回到登录页
         router.replace(redirectPath);
     } catch (error) {
-        console.error('处理登录成功回调失败:', error);
+        console.error('处理登录失败:', error);
         toast.error('登录处理失败');
-        router.replace('/login');
+        router.replace('/home');
     } finally {
         isProcessing.value = false;
     }
