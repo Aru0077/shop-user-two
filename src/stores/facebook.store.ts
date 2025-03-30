@@ -65,7 +65,7 @@ export const useFacebookStore = defineStore('facebook', () => {
     /**
      * 智能登录 - 根据设备类型选择最佳登录方式
      */
-    async function login(options: FacebookLoginOptions = { scope: 'public_profile,email' }): Promise<boolean> {
+    async function login(options: FacebookLoginOptions = { scope: 'public_profile' }): Promise<boolean> {
         if (loginState.value.inProgress) {
             toast.info('登录正在进行中，请稍候');
             return false;
@@ -101,18 +101,15 @@ export const useFacebookStore = defineStore('facebook', () => {
     /**
      * 重定向方式登录（移动端首选）
      */
-    async function loginWithRedirect(scope = 'public_profile,email'): Promise<void> {
+    async function loginWithRedirect(scope = 'public_profile'): Promise<void> {
         try {
             loading.value = true;
             
             // 设置状态为等待重定向
             loginState.value.pendingRedirect = true;
-            
-            // 获取回调URL
-            const redirectUri = `${window.location.origin}/auth/facebook-callback`;
-            
+             
             // 生成登录URL
-            const loginUrl = facebookUtils.generateLoginUrl(redirectUri, scope);
+            const loginUrl = facebookUtils.generateLoginUrl(scope);
             
             // 将当前路径保存到sessionStorage以便登录后返回
             const currentPath = router.currentRoute.value.fullPath;
@@ -131,7 +128,7 @@ export const useFacebookStore = defineStore('facebook', () => {
     /**
      * 弹窗窗口方式登录（桌面端首选）
      */
-    async function loginWithPopupWindow(scope = 'public_profile,email'): Promise<boolean> {
+    async function loginWithPopupWindow(scope = 'public_profile'): Promise<boolean> {
         try {
             loading.value = true;
             

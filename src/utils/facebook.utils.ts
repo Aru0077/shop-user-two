@@ -96,9 +96,12 @@ export const facebookUtils = {
     /**
      * 生成Facebook登录URL (用于重定向和弹窗登录)
      */
-    generateLoginUrl(redirectUri: string, scope = 'public_profile,email'): string {
+    generateLoginUrl(scope = 'public_profile'): string {
         const appId = import.meta.env.VITE_FACEBOOK_APP_ID;
         const state = Math.random().toString(36).substring(2);
+
+        // 使用固定的重定向URI，而不是动态生成
+        const redirectUri = import.meta.env.VITE_FACEBOOK_REDIRECT_URI;
 
         // 保存state到localStorage以便验证回调
         localStorage.setItem('fb_login_state', state);
@@ -109,33 +112,32 @@ export const facebookUtils = {
     /**
      * 打开弹窗窗口进行登录 (桌面端)
      */
-    openLoginPopup(scope = 'public_profile,email'): Promise<{ success: boolean; code?: string; error?: string }> {
+    openLoginPopup(scope = 'public_profile'): Promise<{ success: boolean; code?: string; error?: string }> {
         return new Promise((resolve) => {
             // 生成回调URL
-            const redirectUri = `${window.location.origin}/auth/facebook-callback`;
-            const loginUrl = this.generateLoginUrl(redirectUri, scope);
-            
+            const loginUrl = this.generateLoginUrl(scope);
+
             // 窗口大小和位置计算
             const width = 600;
             const height = 700;
             const left = window.screenX + (window.outerWidth - width) / 2;
             const top = window.screenY + (window.outerHeight - height) / 2;
-            
+
             // 打开弹窗
             const popup = window.open(
                 loginUrl,
                 'facebook_login',
                 `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
             );
-            
+
             if (!popup) {
-                resolve({ 
-                    success: false, 
-                    error: '无法打开登录窗口，请检查您的浏览器是否阻止了弹窗' 
+                resolve({
+                    success: false,
+                    error: '无法打开登录窗口，请检查您的浏览器是否阻止了弹窗'
                 });
                 return;
             }
-            
+
             // 设置窗口消息监听器
             window.fbCallbackHandler = (data) => {
                 if (popup && !popup.closed) {
@@ -145,13 +147,13 @@ export const facebookUtils = {
                         console.error('关闭弹窗失败:', e);
                     }
                 }
-                
+
                 if (data.success) {
                     resolve({ success: true, code: data.code });
                 } else {
-                    resolve({ 
-                        success: false, 
-                        error: data.error || '登录失败' 
+                    resolve({
+                        success: false,
+                        error: data.error || '登录失败'
                     });
                 }
             };

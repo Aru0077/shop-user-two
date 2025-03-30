@@ -198,7 +198,7 @@ const handleFacebookLogin = async () => {
         error.value = '';
 
         // 使用新的智能登录方法，会根据设备类型自动选择最佳登录方式
-        const success = await facebookStore.login({ scope: 'public_profile,email' });
+        const success = await facebookStore.login({ scope: 'public_profile' });
 
         // 注意：若使用重定向方式，此处代码不会继续执行
         // 只有在桌面端使用弹窗方式成功登录后，才会执行以下代码
