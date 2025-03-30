@@ -63,7 +63,8 @@ export class AppInitializer {
             const error_reason = urlParams.get('error_reason');
 
             // 如果当前是回调页面，特殊处理
-            if (window.location.pathname === '/auth/facebook-callback') {
+            if (window.location.pathname === '/auth/facebook-callback' || 
+                  window.location.pathname.endsWith('/auth/facebook-callback')) {
                   if (code && state) {
                         // 验证state以防止CSRF攻击
                         const savedState = localStorage.getItem('fb_login_state');
