@@ -204,6 +204,18 @@ const routes: Array<RouteRecordRaw> = [
             }
       },
       {
+            path: '/auth/login-success',
+            name: 'LoginSuccess',
+            component: () => import('@/views/auth/LoginSuccess.vue'),
+            meta: {
+                  title: '登录成功',
+                  showTabBar: false,
+                  navbar: {
+                        leftButton: 'back'
+                  }
+            }
+      },
+      {
             path: '/register',
             name: 'Register',
             component: () => import('@/views/auth/Register.vue'),
@@ -307,7 +319,7 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
       // 检查页面是否需要登录
       if (to.meta.requiresAuth) {
-            const userStore = useUserStore(); 
+            const userStore = useUserStore();
             if (!userStore.isLoggedIn) {
                   // 跳转到登录页面，并记录来源页面
                   next({

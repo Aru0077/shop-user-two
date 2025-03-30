@@ -97,14 +97,19 @@ export const facebookUtils = {
     generateLoginUrl(scope = 'public_profile'): string {
         const appId = import.meta.env.VITE_FACEBOOK_APP_ID;
         const state = Math.random().toString(36).substring(2);
+        const apiVersion = import.meta.env.VITE_FACEBOOK_API_VERSION || 'v22.0';
 
-        // 使用环境变量中配置的重定向URI
+        // 确保前后端使用相同的重定向URI
         const redirectUri = import.meta.env.VITE_FACEBOOK_REDIRECT_URI;
+
+        if (!appId || !redirectUri) {
+            console.error('Facebook配置错误: 缺少应用ID或重定向URI');
+        }
 
         // 保存state到localStorage以便验证回调
         localStorage.setItem('fb_login_state', state);
 
-        return `https://www.facebook.com/v22.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&state=${state}&response_type=code`;
+        return `https://www.facebook.com/${apiVersion}/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&state=${state}&response_type=code`;
     },
 
     /**
