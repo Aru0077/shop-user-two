@@ -24,7 +24,7 @@ export const useFacebookStore = defineStore('facebook', () => {
     const loading = ref(false);
     const error = ref<string | null>(null);
     const userStore = useUserStore();
-    
+
     // 登录状态追踪
     const loginState = ref<{
         pendingRedirect: boolean;
@@ -42,15 +42,13 @@ export const useFacebookStore = defineStore('facebook', () => {
     });
 
     /**
-     * 初始化 Facebook SDK (仅用于必要功能)
+     * 初始化 Facebook SDK
      */
     async function init(): Promise<void> {
-        // 如果已初始化则跳过
         if (initialized.value) return;
 
         try {
             loading.value = true;
-            // 加载SDK但不进行任何访问令牌操作
             await facebookUtils.loadSDK();
             initialized.value = true;
         } catch (err: any) {
@@ -70,11 +68,11 @@ export const useFacebookStore = defineStore('facebook', () => {
             toast.info('登录正在进行中，请稍候');
             return false;
         }
-        
+
         try {
             loginState.value.inProgress = true;
             clearError();
-            
+
             // 确保SDK已初始化
             if (!initialized.value) {
                 await init();
@@ -104,17 +102,17 @@ export const useFacebookStore = defineStore('facebook', () => {
     async function loginWithRedirect(scope = 'public_profile'): Promise<void> {
         try {
             loading.value = true;
-            
+
             // 设置状态为等待重定向
             loginState.value.pendingRedirect = true;
-             
+
             // 生成登录URL
             const loginUrl = facebookUtils.generateLoginUrl(scope);
-            
+
             // 将当前路径保存到sessionStorage以便登录后返回
             const currentPath = router.currentRoute.value.fullPath;
             sessionStorage.setItem('fb_redirect_path', currentPath);
-            
+
             // 重定向到Facebook登录页面
             window.location.href = loginUrl;
         } catch (err: any) {
@@ -131,10 +129,10 @@ export const useFacebookStore = defineStore('facebook', () => {
     async function loginWithPopupWindow(scope = 'public_profile'): Promise<boolean> {
         try {
             loading.value = true;
-            
+
             // 使用弹窗方式登录
             const result = await facebookUtils.openLoginPopup(scope);
-            
+
             if (!result.success) {
                 if (result.error) {
                     error.value = result.error;
@@ -142,12 +140,12 @@ export const useFacebookStore = defineStore('facebook', () => {
                 }
                 return false;
             }
-            
+
             // 使用授权码登录
             if (result.code) {
                 return await handleCallback(result.code);
             }
-            
+
             return false;
         } catch (err: any) {
             const errorMessage = err.message || 'Facebook 弹窗登录失败';
@@ -192,39 +190,6 @@ export const useFacebookStore = defineStore('facebook', () => {
     }
 
     /**
-     * 使用访问令牌登录（仅在服务器端使用）
-     */
-    async function loginWithToken(accessToken: string): Promise<boolean> {
-        if (!accessToken) {
-            error.value = "访问令牌无效";
-            return false;
-        }
-
-        try {
-            loading.value = true;
-            const response = await facebookApi.loginWithToken(accessToken);
-
-            // 更新用户状态
-            userStore.token = response.token;
-            userStore.user = response.user;
-            userStore.saveUserDataToStorage();
-
-            // 发布登录成功事件
-            eventBus.emit(EVENT_NAMES.USER_LOGIN, response.user);
-
-            toast.success('Facebook 登录成功');
-            return true;
-        } catch (err: any) {
-            const errorMessage = err.message || 'Facebook 令牌登录失败';
-            error.value = errorMessage;
-            toast.error(errorMessage);
-            return false;
-        } finally {
-            loading.value = false;
-        }
-    }
-
-    /**
      * 退出登录
      */
     async function logout(): Promise<void> {
@@ -259,7 +224,6 @@ export const useFacebookStore = defineStore('facebook', () => {
         loginWithRedirect,
         loginWithPopupWindow,
         handleCallback,
-        loginWithToken,
         logout,
         clearError
     };

@@ -1,7 +1,5 @@
 // src/utils/facebook.utils.ts
-// import { toast } from '@/utils/toast.service';
-
-// Facebook SDK 类型定义
+// 定义全局类型
 declare global {
     interface Window {
         _fbSDKInitialized?: boolean;
@@ -56,7 +54,7 @@ export interface FacebookLoginOptions {
  */
 export const facebookUtils = {
     /**
-     * 加载 Facebook SDK (仅用于退出登录等必要功能)
+     * 加载 Facebook SDK
      */
     loadSDK(): Promise<void> {
         return new Promise((resolve) => {
@@ -70,7 +68,7 @@ export const facebookUtils = {
             window.fbAsyncInit = function () {
                 window.FB.init({
                     appId: import.meta.env.VITE_FACEBOOK_APP_ID,
-                    cookie: false, // 关闭cookie以避免令牌覆盖问题
+                    cookie: true, // 启用cookie来支持自动登录
                     xfbml: true,
                     version: 'v22.0'
                 });
@@ -100,7 +98,7 @@ export const facebookUtils = {
         const appId = import.meta.env.VITE_FACEBOOK_APP_ID;
         const state = Math.random().toString(36).substring(2);
 
-        // 使用固定的重定向URI，而不是动态生成
+        // 使用环境变量中配置的重定向URI
         const redirectUri = import.meta.env.VITE_FACEBOOK_REDIRECT_URI;
 
         // 保存state到localStorage以便验证回调
@@ -114,7 +112,7 @@ export const facebookUtils = {
      */
     openLoginPopup(scope = 'public_profile'): Promise<{ success: boolean; code?: string; error?: string }> {
         return new Promise((resolve) => {
-            // 生成回调URL
+            // 生成登录URL
             const loginUrl = this.generateLoginUrl(scope);
 
             // 窗口大小和位置计算
@@ -173,7 +171,7 @@ export const facebookUtils = {
     },
 
     /**
-     * 退出登录 (安全使用FB.logout)
+     * 退出登录
      */
     logout(): Promise<void> {
         return new Promise((resolve) => {
