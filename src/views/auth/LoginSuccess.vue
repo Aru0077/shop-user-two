@@ -26,7 +26,7 @@ onMounted(async () => {
         // 从URL查询参数中获取令牌和用户ID
         const token = route.query.token as string;
         const userId = route.query.userId as string;
-        const username = route.query.username as string;
+        const username = decodeURIComponent(route.query.username as string);
 
         if (!token || !userId) {
             toast.error('登录信息不完整');
