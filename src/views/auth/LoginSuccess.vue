@@ -15,7 +15,7 @@ import { useUserStore } from '@/stores/user.store';
 import { toast } from '@/utils/toast.service';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import type { User } from '@/types/user.type';
-
+import { cleanupHistory } from '@/utils/history';
 
 const route = useRoute();
 const router = useRouter();
@@ -59,12 +59,16 @@ onMounted(async () => {
         // 提示用户登录成功
         toast.success('Facebook登录成功');
 
+        // 清理历史记录中的Facebook URL
+        cleanupHistory(['facebook.com', 'm.facebook.com']);
+
         // 重定向到来源页面或主页
         const redirectPath = sessionStorage.getItem('fb_redirect_path') || '/home';
         sessionStorage.removeItem('fb_redirect_path');
 
         // 使用replace而非push，防止返回到登录页
         router.replace(redirectPath);
+
     } catch (error) {
         console.error('处理登录失败:', error);
         toast.error('登录处理失败');

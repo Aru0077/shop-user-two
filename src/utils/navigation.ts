@@ -1,5 +1,6 @@
 // src/utils/navigation.ts
 import type { Router } from 'vue-router';
+import { useUserStore } from '@/stores/user.store';
 
 /**
  * 智能返回函数 - 查找最近的有效返回页面并跳转
@@ -9,13 +10,28 @@ import type { Router } from 'vue-router';
  */
 export function smartBack(router: Router, targetPaths: string[] = [], fallbackPath: string = '/home') {
       // 当前路由历史
-      const history = window.history; 
+      const history = window.history;
+      const userStore = useUserStore();
+
+      // 阻止返回到的路径列表
+      const preventReturnPaths = ['/login', '/register', '/auth/login-success'];
+
+      // 判断是否为Facebook相关URL
+      const isFacebookUrl = window.location.href.includes('facebook.com');
+
+      // 如果当前是Facebook URL或者用户已登录且尝试返回登录页
+      if (isFacebookUrl || (userStore.isLoggedIn && preventReturnPaths.includes(router.currentRoute.value.path))) {
+            router.replace(fallbackPath);
+            return true;
+      }
+
+
 
       // 如果有返回历史记录
       if (history.state.back) {
             // 检查是否有要查找的目标页面
-            if (targetPaths.length > 0) { 
-                  let stepsBack = 0; 
+            if (targetPaths.length > 0) {
+                  let stepsBack = 0;
 
                   // 尝试返回并检查
                   const checkNextHistory = () => {
@@ -28,8 +44,8 @@ export function smartBack(router: Router, targetPaths: string[] = [], fallbackPa
                               const isTargetPath = targetPaths.some(path =>
                                     window.location.pathname.includes(path));
 
-                              if (isTargetPath) { 
- 
+                              if (isTargetPath) {
+
                                     router.replace(window.location.pathname + window.location.search);
                                     console.log(`找到目标路径，返回了${stepsBack}步`);
 

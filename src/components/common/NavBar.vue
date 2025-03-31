@@ -135,6 +135,7 @@ const handleLeftButtonClick = () => {
         case 'logo':
             break;
         case 'back':
+            smartBack(router);
             // 使用一个标志变量来追踪事件是否被处理
             let backEventHandled = false;
 

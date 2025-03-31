@@ -303,11 +303,15 @@ const router = createRouter({
       }
 });
 
+// 已登录用户不可访问的路由列表
+const authRedirectRoutes = ['/login', '/register'];
+
 // 全局前置守卫 
-router.beforeEach((to, _from, next) => {
+router.beforeEach((to, from, next) => {
+      const userStore = useUserStore();
+
       // 检查页面是否需要登录
       if (to.meta.requiresAuth) {
-            const userStore = useUserStore();
             if (!userStore.isLoggedIn) {
                   // 跳转到登录页面，并记录来源页面
                   next({
@@ -317,6 +321,17 @@ router.beforeEach((to, _from, next) => {
                   return;
             }
       }
+
+      // 检查已登录用户是否尝试访问登录/注册页面
+      if (authRedirectRoutes.includes(to.path) && userStore.isLoggedIn) {
+            // 已登录用户尝试访问登录页，重定向到首页或上一个页面
+            const redirectPath = from.path !== '/' && from.path !== '/login' && from.path !== '/register'
+                  ? from.path
+                  : '/home';
+            next({ path: redirectPath });
+            return;
+      }
+
 
       // 设置页面标题
       if (to.meta.title) {
