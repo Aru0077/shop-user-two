@@ -16,6 +16,7 @@ import { toast } from '@/utils/toast.service';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import type { User } from '@/types/user.type';
 
+
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
@@ -34,8 +35,7 @@ onMounted(async () => {
             return;
         }
 
-        // 设置用户令牌
-        userStore.token = token;
+
 
         // 设置用户信息
         const user: User = {
@@ -46,6 +46,8 @@ onMounted(async () => {
             updatedAt: new Date().toISOString()
         };
 
+        // 设置用户令牌
+        userStore.token = token;
         userStore.user = user;
 
         // 保存到本地存储
