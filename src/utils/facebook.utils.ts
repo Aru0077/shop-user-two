@@ -33,7 +33,7 @@ export const facebookUtils = {
             }
 
             // 异步加载SDK
-            (function(d, s, id) {
+            (function (d, s, id) {
                 var js, fjs = d.getElementsByTagName(s)[0];
                 if (d.getElementById(id)) return;
                 js = d.createElement(s) as HTMLScriptElement; js.id = id;
@@ -42,7 +42,7 @@ export const facebookUtils = {
             }(document, 'script', 'facebook-jssdk'));
 
             // 初始化SDK
-            window.fbAsyncInit = function() {
+            window.fbAsyncInit = function () {
                 window.FB.init({
                     appId: import.meta.env.VITE_FACEBOOK_APP_ID,
                     cookie: true,
@@ -53,7 +53,7 @@ export const facebookUtils = {
             };
         });
     },
-    
+
     /**
      * 检查登录状态
      */
@@ -64,22 +64,34 @@ export const facebookUtils = {
             });
         });
     },
-    
+
     /**
      * 执行Facebook登录
      */
     login(scope = 'public_profile'): Promise<FacebookAuthResponse> {
         return new Promise((resolve, reject) => {
+            // 检测是否为移动设备
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+            // 设置登录选项
+            const loginOptions = {
+                scope,
+                return_scopes: true,
+                // 在移动设备上强制使用重定向而非弹窗
+                ...(isMobile ? { auth_type: 'rerequest' } : {})
+            };
+
+            // 执行登录
             window.FB.login((response: FacebookAuthResponse) => {
                 if (response.status === 'connected') {
                     resolve(response);
                 } else {
                     reject(new Error('用户取消登录或未完全授权'));
                 }
-            }, { scope });
+            }, loginOptions);
         });
     },
-    
+
     /**
      * 获取用户信息
      */
@@ -94,7 +106,7 @@ export const facebookUtils = {
             });
         });
     },
-    
+
     /**
      * 退出登录
      */

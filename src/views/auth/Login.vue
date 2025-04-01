@@ -152,10 +152,48 @@ const error = ref('');
 onMounted(async () => {
     try {
         await facebookUtils.initSDK();
+        // 检查URL是否包含Facebook回调参数
+        const urlParams = new URLSearchParams(window.location.search);
+
+        if (urlParams.has('code') && urlParams.has('state')) {
+            // 这是Facebook回调，处理授权码登录
+            fbLoading.value = true;
+            try {
+                // 获取当前状态
+                const response = await facebookUtils.getLoginStatus(); 
+                if (response.status === 'connected') {
+                    const accessToken = response.authResponse!.accessToken;
+                    await handleFacebookToken(accessToken);
+                }
+            } catch (err) {
+                console.error('Facebook回调处理失败:', err);
+                error.value = '登录失败，请重试';
+            } finally {
+                fbLoading.value = false;
+            }
+        }
+
     } catch (err) {
         console.error('Facebook SDK加载失败:', err);
     }
 });
+
+// 提取处理令牌的逻辑为单独函数
+async function handleFacebookToken(accessToken: string) {
+    if (!accessToken) {
+        error.value = '获取访问令牌失败';
+        return;
+    }
+    // 获取用户信息
+    await facebookUtils.getUserInfo('id,name');
+    const success = await facebookStore.loginWithToken(accessToken);
+    
+    if (success) {
+        toast.success('Facebook登录成功');
+        const redirectPath = route.query.redirect || '/home';
+        router.replace(redirectPath as string);
+    }
+}
 
 // Handle traditional login
 const handleLogin = async () => {

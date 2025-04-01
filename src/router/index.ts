@@ -193,18 +193,6 @@ const routes: Array<RouteRecordRaw> = [
             }
       },
       {
-            path: '/auth/login-success',
-            name: 'LoginSuccess',
-            component: () => import('@/views/auth/LoginSuccess.vue'),
-            meta: {
-                  title: '登录成功',
-                  showTabBar: false,
-                  navbar: {
-                        leftButton: 'back'
-                  }
-            }
-      },
-      {
             path: '/register',
             name: 'Register',
             component: () => import('@/views/auth/Register.vue'),
