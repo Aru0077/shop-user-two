@@ -68,27 +68,43 @@ export const facebookUtils = {
     /**
      * 执行Facebook登录
      */
+    // 执行Facebook登录
+    // 执行Facebook登录
     login(scope = 'public_profile'): Promise<FacebookAuthResponse> {
         return new Promise((resolve, reject) => {
             // 检测是否为移动设备
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-            // 设置登录选项
-            const loginOptions = {
-                scope,
-                return_scopes: true,
-                // 在移动设备上强制使用重定向而非弹窗
-                ...(isMobile ? { auth_type: 'rerequest' } : {})
-            };
+            // 检测是否为Facebook应用内置浏览器
+            const isFacebookBrowser = navigator.userAgent.indexOf('FBAN') > -1 ||
+                navigator.userAgent.indexOf('FBAV') > -1;
 
-            // 执行登录
-            window.FB.login((response: FacebookAuthResponse) => {
-                if (response.status === 'connected') {
-                    resolve(response);
-                } else {
-                    reject(new Error('用户取消登录或未完全授权'));
-                }
-            }, loginOptions);
+            if (isMobile || isFacebookBrowser) {
+                // 移动设备或Facebook内置浏览器使用重定向方式（只使用token模式）
+                const redirectUri = `${window.location.origin}/login`;
+                const state = Math.random().toString(36).substring(2);
+
+                // 保存state用于验证
+                localStorage.setItem('fb_auth_state', state);
+
+                // 构建Facebook授权URL，明确指定response_type=token
+                const authUrl = `https://www.facebook.com/v22.0/dialog/oauth?client_id=${import.meta.env.VITE_FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=${scope}&response_type=token`;
+
+                // 重定向到Facebook授权页面
+                window.location.href = authUrl;
+            } else {
+                // 桌面设备使用弹窗方式
+                window.FB.login((response: FacebookAuthResponse) => {
+                    if (response.status === 'connected') {
+                        resolve(response);
+                    } else {
+                        reject(new Error('用户取消登录或未完全授权'));
+                    }
+                }, {
+                    scope,
+                    return_scopes: true
+                });
+            }
         });
     },
 

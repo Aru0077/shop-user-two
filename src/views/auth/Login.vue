@@ -132,6 +132,7 @@ import { useUserStore } from '@/stores/user.store';
 import { useFacebookStore } from '@/stores/facebook.store';
 import { useToast } from '@/composables/useToast';
 import { facebookUtils } from '@/utils/facebook.utils';
+import { cleanupAuthRedirect } from '@/utils/history';
 
 // Initialize router, state management and toast
 const router = useRouter();
@@ -148,22 +149,28 @@ const isLoading = computed(() => userStore.loginLoading);
 const fbLoading = ref(false);
 const error = ref('');
 
-// 初始化Facebook SDK
+// 初始化Facebook SDK 
 onMounted(async () => {
     try {
         await facebookUtils.initSDK();
-        // 检查URL是否包含Facebook回调参数
-        const urlParams = new URLSearchParams(window.location.search);
 
-        if (urlParams.has('code') && urlParams.has('state')) {
-            // 这是Facebook回调，处理授权码登录
+        // 只检查Hash片段方式的回调(token方式)
+        if (window.location.hash.includes('access_token=')) {
             fbLoading.value = true;
             try {
-                // 获取当前状态
-                const response = await facebookUtils.getLoginStatus(); 
-                if (response.status === 'connected') {
-                    const accessToken = response.authResponse!.accessToken;
+                const params = new URLSearchParams(window.location.hash.substring(1));
+                const accessToken = params.get('access_token');
+                const state = params.get('state');
+
+                // 验证state防止CSRF攻击
+                const savedState = localStorage.getItem('fb_auth_state');
+                localStorage.removeItem('fb_auth_state');
+
+                if (state && savedState && state === savedState && accessToken) {
                     await handleFacebookToken(accessToken);
+
+                    // 清理URL中的token参数
+                    cleanupAuthRedirect();
                 }
             } catch (err) {
                 console.error('Facebook回调处理失败:', err);
@@ -172,7 +179,6 @@ onMounted(async () => {
                 fbLoading.value = false;
             }
         }
-
     } catch (err) {
         console.error('Facebook SDK加载失败:', err);
     }
@@ -187,7 +193,7 @@ async function handleFacebookToken(accessToken: string) {
     // 获取用户信息
     await facebookUtils.getUserInfo('id,name');
     const success = await facebookStore.loginWithToken(accessToken);
-    
+
     if (success) {
         toast.success('Facebook登录成功');
         const redirectPath = route.query.redirect || '/home';

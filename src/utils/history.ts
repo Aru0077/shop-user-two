@@ -26,3 +26,20 @@ export function cleanupHistory(urlPatterns: string[] = ['facebook.com', 'm.faceb
             window.history.replaceState(cleanState, '', window.location.href);
       }
 }
+
+// 清理Facebook授权后的URL参数 
+export function cleanupAuthRedirect() {
+      if (window.location.hash.includes('access_token=')) {
+            // 保存当前路径中的重要查询参数(如redirect)
+            const currentParams = new URLSearchParams(window.location.search);
+            const redirect = currentParams.get('redirect');
+
+            let newUrl = window.location.pathname;
+            if (redirect) {
+                  newUrl += `?redirect=${encodeURIComponent(redirect)}`;
+            }
+
+            // 清理URL中的授权参数
+            history.replaceState({}, document.title, newUrl);
+      }
+}
