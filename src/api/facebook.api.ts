@@ -6,24 +6,10 @@ import type { FacebookLoginResponse } from '@/types/facebook.type';
  * Facebook登录API
  */
 export const facebookApi = {
-
-      /**
-     * 获取Facebook登录URL
+    /**
+     * 使用访问令牌登录
      */
-      getLoginUrl(): Promise<{ loginUrl: string }> {
-            return http.get('/facebook/auth-url');
-      },
-      /**
-       * 使用授权码登录
-       */
-      handleCallback(code: string): Promise<FacebookLoginResponse> {
-            return http.get(`/facebook/callback?code=${code}`);
-      },
-
-      /**
-       * 使用访问令牌登录
-       */
-      loginWithToken(accessToken: string): Promise<FacebookLoginResponse> {
-            return http.post('/facebook/token-login', { accessToken });
-      }
+    loginWithToken(accessToken: string): Promise<FacebookLoginResponse> {
+        return http.post('/facebook/token-login', { accessToken });
+    }
 };

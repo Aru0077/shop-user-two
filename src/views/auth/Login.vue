@@ -8,10 +8,11 @@
 
         <!-- Main Content -->
         <div class="w-full max-w-md mx-auto space-y-6">
-            <!-- Social Login Section -->
-            <button @click="handleFacebookLogin" :disabled="facebookStore.loading"
+
+            <!-- Facebook登录按钮部分 -->
+            <button @click="handleFacebookLogin" :disabled="fbLoading"
                 class="w-full flex items-center justify-center py-3 px-4 bg-[#1877F2] text-white font-medium rounded-xl hover:shadow-md transition-all duration-200">
-                <div v-if="facebookStore.loading" class="animate-spin mr-2">
+                <div v-if="fbLoading" class="animate-spin mr-2">
                     <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
                         </circle>
@@ -27,6 +28,7 @@
                 </svg>
                 Continue with Facebook
             </button>
+
 
             <!-- Facebook Error Message -->
             <div v-if="facebookStore.error" class="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
@@ -129,6 +131,7 @@ import { User, Lock, Eye, EyeOff } from 'lucide-vue-next';
 import { useUserStore } from '@/stores/user.store';
 import { useFacebookStore } from '@/stores/facebook.store';
 import { useToast } from '@/composables/useToast';
+import { facebookUtils } from '@/utils/facebook.utils';
 
 // Initialize router, state management and toast
 const router = useRouter();
@@ -142,15 +145,15 @@ const username = ref('');
 const password = ref('');
 const showPassword = ref(false);
 const isLoading = computed(() => userStore.loginLoading);
+const fbLoading = ref(false);
 const error = ref('');
 
-// Initialize Facebook SDK on component mount
+// 初始化Facebook SDK
 onMounted(async () => {
-
-    // 检查 URL 参数中是否包含来自 Facebook 登录回调的错误消息
-    const urlError = route.query.error;
-    if (urlError) {
-        error.value = decodeURIComponent(urlError as string);
+    try {
+        await facebookUtils.initSDK();
+    } catch (err) {
+        console.error('Facebook SDK加载失败:', err);
     }
 });
 
@@ -183,25 +186,40 @@ const handleLogin = async () => {
     }
 };
 
-// Handle Facebook login
+// 处理Facebook登录
 const handleFacebookLogin = async () => {
     try {
-        // 清除之前的错误
+        fbLoading.value = true;
         error.value = '';
-        
-        // 保存当前重定向路径，用于登录成功后跳转
-        const redirectPath = route.query.redirect as string || '/home';
-        sessionStorage.setItem('fb_redirect_path', redirectPath);
 
-        // 获取登录URL并重定向
-        const { loginUrl } = await facebookStore.getLoginUrl();
-        
-        // 直接重定向到Facebook登录页面
-        window.location.href = loginUrl;
+        // 1. 执行Facebook登录
+        const loginResponse = await facebookUtils.login('public_profile');
+
+        // 2. 获取访问令牌
+        const accessToken = loginResponse.authResponse?.accessToken;
+        if (!accessToken) {
+            throw new Error('获取访问令牌失败');
+        }
+
+        // 3. 获取用户信息
+        await facebookUtils.getUserInfo('id,name');
+
+        // 4. 将令牌发送给后端并获取登录结果
+        const success = await facebookStore.loginWithToken(accessToken);
+
+        if (success) {
+            toast.success('Facebook登录成功');
+
+            // 重定向到来源页或首页
+            const redirectPath = route.query.redirect as string || '/home';
+            router.replace(redirectPath);
+        }
     } catch (err: any) {
         console.error('Facebook登录失败:', err);
         error.value = err.message || 'Facebook登录失败，请重试';
         toast.error(error.value);
+    } finally {
+        fbLoading.value = false;
     }
 };
 

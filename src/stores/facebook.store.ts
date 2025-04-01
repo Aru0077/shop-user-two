@@ -1,4 +1,4 @@
-// facebook.store.ts
+// src/stores/facebook.store.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { facebookApi } from '@/api/facebook.api';
@@ -7,7 +7,7 @@ import { toast } from '@/utils/toast.service';
 
 export const useFacebookStore = defineStore('facebook', () => {
     // 状态
-    const initialized = ref(true); // 简化，直接设为true
+    const initialized = ref(false);
     const loading = ref(false);
     const error = ref<string | null>(null);
     const userStore = useUserStore();
@@ -18,18 +18,28 @@ export const useFacebookStore = defineStore('facebook', () => {
     });
 
     /**
-     * 获取Facebook登录URL
+     * 使用访问令牌登录
      */
-    async function getLoginUrl(): Promise<{ loginUrl: string }> {
+    async function loginWithToken(accessToken: string): Promise<boolean> {
         try {
             loading.value = true;
             clearError();
-            return await facebookApi.getLoginUrl();
+            
+            const response = await facebookApi.loginWithToken(accessToken);
+            
+            // 设置用户信息
+            userStore.token = response.token;
+            userStore.user = response.user;
+            
+            // 保存到本地存储
+            userStore.saveUserDataToStorage();
+            
+            return true;
         } catch (err: any) {
-            const errorMessage = err.message || '获取Facebook登录链接失败';
+            const errorMessage = err.message || 'Facebook登录失败';
             error.value = errorMessage;
             toast.error(errorMessage);
-            throw err;
+            return false;
         } finally {
             loading.value = false;
         }
@@ -50,7 +60,7 @@ export const useFacebookStore = defineStore('facebook', () => {
         isConnected,
 
         // 方法
-        getLoginUrl,
+        loginWithToken,
         clearError
     };
 });
