@@ -190,8 +190,7 @@ async function handleFacebookToken(accessToken: string) {
         error.value = '获取访问令牌失败';
         return;
     }
-    // 获取用户信息
-    await facebookUtils.getUserInfo(accessToken, 'id,name');
+    // 这里不再调用 getUserInfo，因为我们已经有了访问令牌
     const success = await facebookStore.loginWithToken(accessToken);
 
     if (success) {
@@ -200,6 +199,46 @@ async function handleFacebookToken(accessToken: string) {
         router.replace(redirectPath as string);
     }
 }
+
+
+
+// 处理Facebook登录 
+const handleFacebookLogin = async () => {
+    try {
+        fbLoading.value = true;
+        error.value = '';
+
+        // 1. 执行Facebook登录
+        const loginResponse = await facebookUtils.login('public_profile,email');
+
+        // 2. 获取访问令牌
+        const accessToken = loginResponse.authResponse?.accessToken;
+        if (!accessToken) {
+            throw new Error('获取访问令牌失败');
+        }
+
+        // 3. 获取用户信息 - 不再传递 accessToken 参数
+        await facebookUtils.getUserInfo();
+
+        // 4. 将令牌发送给后端并获取登录结果
+        const success = await facebookStore.loginWithToken(accessToken);
+
+        if (success) {
+            toast.success('Facebook登录成功');
+
+            // 重定向到来源页或首页
+            const redirectPath = route.query.redirect as string || '/home';
+            router.replace(redirectPath);
+        }
+    } catch (err: any) {
+        console.error('Facebook登录失败:', err);
+        error.value = err.message || 'Facebook登录失败，请重试';
+        toast.error(error.value);
+    } finally {
+        fbLoading.value = false;
+    }
+};
+
 
 // Handle traditional login
 const handleLogin = async () => {
@@ -229,44 +268,6 @@ const handleLogin = async () => {
         toast.error(error.value);
     }
 };
-
-// 处理Facebook登录
-const handleFacebookLogin = async () => {
-    try {
-        fbLoading.value = true;
-        error.value = '';
-
-        // 1. 执行Facebook登录
-        const loginResponse = await facebookUtils.login('public_profile');
-
-        // 2. 获取访问令牌
-        const accessToken = loginResponse.authResponse?.accessToken;
-        if (!accessToken) {
-            throw new Error('获取访问令牌失败');
-        }
-
-        // 3. 获取用户信息
-        await facebookUtils.getUserInfo('id,name');
-
-        // 4. 将令牌发送给后端并获取登录结果
-        const success = await facebookStore.loginWithToken(accessToken);
-
-        if (success) {
-            toast.success('Facebook登录成功');
-
-            // 重定向到来源页或首页
-            const redirectPath = route.query.redirect as string || '/home';
-            router.replace(redirectPath);
-        }
-    } catch (err: any) {
-        console.error('Facebook登录失败:', err);
-        error.value = err.message || 'Facebook登录失败，请重试';
-        toast.error(error.value);
-    } finally {
-        fbLoading.value = false;
-    }
-};
-
 onUnmounted(() => {
     // 清理错误状态
     facebookStore.clearError();
