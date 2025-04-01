@@ -26,11 +26,15 @@ export const facebookUtils = {
      */
     initSDK(): Promise<void> {
         return new Promise((resolve) => {
-            // 检查SDK是否已加载
+            // 添加标志，防止重复初始化
             if (window.FB) {
+                console.log('Facebook SDK已加载，跳过初始化');
                 resolve();
                 return;
             }
+
+            // 添加调试日志
+            console.log('开始加载Facebook SDK...');
 
             // 异步加载SDK
             (function (d, s, id) {
@@ -43,12 +47,14 @@ export const facebookUtils = {
 
             // 初始化SDK
             window.fbAsyncInit = function () {
+                console.log('Facebook SDK加载完成，正在初始化...');
                 window.FB.init({
                     appId: import.meta.env.VITE_FACEBOOK_APP_ID,
                     cookie: true,
                     xfbml: true,
                     version: 'v22.0'
                 });
+                console.log('Facebook SDK初始化完成');
                 resolve();
             };
         });
@@ -111,9 +117,13 @@ export const facebookUtils = {
     /**
      * 获取用户信息
      */
-    getUserInfo(fields = 'id,name'): Promise<any> {
+    getUserInfo(accessToken: string, fields = 'id,name'): Promise<any> {
         return new Promise((resolve, reject) => {
-            window.FB.api('/me', { fields }, (response: any) => {
+            // 直接将访问令牌作为参数传递，而不是使用全局设置
+            window.FB.api('/me', {
+                fields,
+                access_token: accessToken  // 关键修改：直接传递token
+            }, (response: any) => {
                 if (response && !response.error) {
                     resolve(response);
                 } else {

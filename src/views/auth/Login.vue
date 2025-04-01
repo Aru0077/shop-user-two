@@ -191,7 +191,7 @@ async function handleFacebookToken(accessToken: string) {
         return;
     }
     // 获取用户信息
-    await facebookUtils.getUserInfo('id,name');
+    await facebookUtils.getUserInfo(accessToken, 'id,name');
     const success = await facebookStore.loginWithToken(accessToken);
 
     if (success) {
