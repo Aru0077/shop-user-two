@@ -22,6 +22,36 @@ const router = useRouter();
 const userStore = useUserStore();
 const isProcessing = ref(true);
 
+// 清理历史记录的函数
+function clearBrowserHistory() {
+    // 1. 使用replaceState清除当前历史记录
+    window.history.replaceState(null, '', '/home');
+
+    // 2. 强制添加新的历史记录并立即替换，彻底断开与之前历史的链接
+    window.history.pushState(null, '', '/home');
+    window.history.replaceState({ cleared: true }, '', '/home');
+
+    // 3. 阻止返回到Facebook相关页面
+    window.addEventListener('popstate', preventFacebookReturn);
+}
+
+// 阻止返回到Facebook页面的事件处理函数
+function preventFacebookReturn(e: PopStateEvent) {
+    const currentUrl = window.location.href;
+
+    // 检测是否尝试返回到Facebook相关页面
+    if (currentUrl.includes('facebook.com') ||
+        currentUrl.includes('m.facebook.com') ||
+        currentUrl.includes('privacy/consent/gdp')) {
+        // 阻止导航并重定向到首页
+        e.preventDefault();
+        router.replace('/home');
+
+        // 显示提示消息
+        toast.info('已完成登录，无法返回到登录页面');
+    }
+}
+
 onMounted(async () => {
     try {
         // 从URL查询参数中获取令牌和用户ID
@@ -59,15 +89,11 @@ onMounted(async () => {
         // 提示用户登录成功
         toast.success('Facebook登录成功');
 
-        // 清理历史记录中的Facebook URL
-        cleanupHistory(['facebook.com', 'm.facebook.com']);
+        // 清理历史记录
+        clearBrowserHistory();
 
-        // 重定向到来源页面或主页
-        const redirectPath = sessionStorage.getItem('fb_redirect_path') || '/home';
-        sessionStorage.removeItem('fb_redirect_path');
-
-        // 使用replace而非push，防止返回到登录页
-        router.replace(redirectPath);
+        // 重定向到首页，使用replace而非push
+        router.replace('/home');
 
     } catch (error) {
         console.error('处理登录失败:', error);

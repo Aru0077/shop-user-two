@@ -83,3 +83,4 @@ export function smartBack(router: Router, targetPaths: string[] = [], fallbackPa
 export function pathMatches(currentPath: string, targetPath: string): boolean {
       return currentPath === targetPath || currentPath.startsWith(targetPath + '/');
 }
+ 
