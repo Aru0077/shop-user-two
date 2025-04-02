@@ -71,7 +71,7 @@ service.interceptors.request.use(
             addPendingRequest(config);
 
             // 从 localStorage 获取 token 并添加到请求头
-            const token = storage.get('user_token', null);
+            const token = storage.getUserToken();
 
             if (token && config.headers) {
                   config.headers['Authorization'] = `Bearer ${token}`;
@@ -145,7 +145,7 @@ service.interceptors.response.use(
 
                         // 直接重定向到首页，不保留当前页面信息
                         router.replace('/home');
-                        break; 
+                        break;
                   case ErrorCode.FORBIDDEN:
                         message = '没有权限访问该资源';
                         break;
@@ -187,25 +187,13 @@ const request = <T = any>(config: RequestConfig): Promise<T> => {
 export const http = {
       // 支持请求缓存的GET方法
       get: <T = any>(url: string, params?: any, config?: RequestConfig): Promise<T> => {
-            // 检查URL是否已包含查询参数
-            const hasQueryParams = url.includes('?');
-
-            if (hasQueryParams) {
-                  // 如果URL已包含查询参数，不再添加params对象
-                  return request<T>({
-                        ...config,
-                        method: 'get',
-                        url,
-                  });
-            } else {
-                  // 否则正常处理params
-                  return request<T>({
-                        ...config,
-                        method: 'get',
-                        url,
-                        params,
-                  });
-            }
+            // 无论URL是否已包含查询参数，都统一处理params对象
+            return request<T>({
+                  ...config,
+                  method: 'get',
+                  url,
+                  params,  // 保留params参数，axios会正确处理已有查询参数的情况
+            });
       },
 
       post: <T = any>(url: string, data?: any, config?: RequestConfig): Promise<T> => {

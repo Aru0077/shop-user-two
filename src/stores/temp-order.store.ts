@@ -10,8 +10,7 @@ import { useUserStore } from '@/stores/user.store';
 import { useAddressStore } from '@/stores/address.store';
 import type { TempOrder, CreateTempOrderParams, CheckoutInfo } from '@/types/temp-order.type';
 import type { CreateOrderResponse } from '@/types/order.type';
-import type { ApiError } from '@/types/common.type';
-import { useRouter } from 'vue-router';
+import type { ApiError } from '@/types/common.type'; 
 
 /**
  * 临时订单Store
@@ -411,13 +410,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
 
                   // 清理临时订单和相关状态
                   clearState();
-                  const router = useRouter();
-                  // 移除路由历史中的checkout页面记录
-                  const currentPath = router.currentRoute.value.path;
-                  if (currentPath !== '/checkout') {
-                        // 如果已经离开checkout页面，尝试从历史记录中删除
-                        history.pushState(null, '', currentPath);
-                  }
+
                   toast.success('订单创建成功');
                   return result;
             } catch (err: any) {
@@ -451,21 +444,15 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
                   confirming.value = true;
                   error.value = null;
 
+                  console.log('[TempOrderStore] 临时订单id:', tempOrder.value.id);
+
                   // 使用一步操作API直接完成更新和确认
                   const result = await tempOrderApi.updateAndConfirmTempOrder(tempOrder.value.id, params);
 
+                  console.log('[TempOrderStore] 更新并确认临时订单成功:', result);
+                  
                   // 清理临时订单和相关状态
-                  clearState();
-
-                  const router = useRouter();
-                  // 添加：移除URL中的tempOrderId参数
-                  const currentRoute = router.currentRoute.value;
-                  if (currentRoute.query.tempOrderId) {
-                        router.replace({
-                              path: currentRoute.path,
-                              query: {}
-                        });
-                  }
+                  clearState(); 
 
                   toast.success('订单创建成功');
                   return result;
