@@ -226,8 +226,22 @@ const handleFacebookLogin = async () => {
         if (success) {
             toast.success('Facebook登录成功');
 
-            // 清理历史记录，防止返回到登录页
-            cleanupHistory(['login', 'register', 'facebook.com']);
+            // 使用更完整的URL模式列表
+            const clearHistory = cleanupHistory([
+                'facebook.com', 
+                'm.facebook.com', 
+                '/login', 
+                '/register', 
+                'privacy/consent_framework',
+                'consent_prompt_context'
+            ]);
+            
+            // 立即执行历史清理
+            if (clearHistory) {
+                clearHistory();
+            } else {
+                console.warn('clearHistory is undefined');
+            }
 
             // 重定向到来源页或首页
             const redirectPath = route.query.redirect as string || '/home';
@@ -261,8 +275,20 @@ const handleLogin = async () => {
         if (response) {
             toast.success('Login successful');
 
-            // 清理历史记录，防止返回到登录页
-            cleanupHistory(['login', 'register', 'facebook.com']);
+           // 使用相同的清理模式
+           const clearHistory = cleanupHistory([
+                'facebook.com', 
+                'm.facebook.com', 
+                '/login', 
+                '/register'
+            ]);
+            
+            // 立即执行历史清理 
+           if (clearHistory) {
+                clearHistory();
+            } else {
+                console.warn('clearHistory is undefined');
+            }
 
             // Redirect to source page or homepage
             const redirectPath = route.query.redirect as string || '/home';

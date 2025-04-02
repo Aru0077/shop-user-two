@@ -3,28 +3,72 @@
 /**
  * 清理历史堆栈中的特定URL
  * @param urlPatterns 要清理的URL模式数组
+ * @param redirectTo 清理后重定向的URL
  */
-export function cleanupHistory(urlPatterns: string[] = ['facebook.com', 'm.facebook.com']) {
-      // 使用history.replaceState替换当前历史记录
-      // 这样无论用户点击多少次返回，都不会回到指定的URL
+export function cleanupHistory(
+      urlPatterns: string[] = ['facebook.com', 'm.facebook.com', '/login', '/register'],
+      redirectTo: string = '/home'
+) {
+      // 确保在浏览器环境中运行
+      if (typeof window === 'undefined' || !window.history) return;
 
-      if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
-            const cleanState = { blockedNavigation: true };
+      // 保存当前URL，用于后续恢复
+      const currentUrl = window.location.href;
 
-            // 在onpopstate中检测用户是否试图导航到禁止的URL
-            window.addEventListener('popstate', () => {
-                  const currentUrl = window.location.href;
-                  const shouldBlock = urlPatterns.some(pattern => currentUrl.includes(pattern));
+      // 标记，用于防止无限循环
+      let handlingPopState = false;
+
+      // 监听popstate事件以拦截后退操作
+      const handlePopState = (event: PopStateEvent) => {
+            if (handlingPopState) return;
+
+            try {
+                  handlingPopState = true;
+
+                  // 获取当前导航到的URL
+                  const targetUrl = window.location.href;
+
+                  // 更精确的匹配：检查路径部分而不仅仅是整个URL
+                  const currentPath = window.location.pathname;
+
+                  // 使用更强大的匹配逻辑
+                  const shouldBlock = urlPatterns.some(pattern => {
+                        // 对于路径模式（以/开头）
+                        if (pattern.startsWith('/')) {
+                              return currentPath === pattern || currentPath.startsWith(pattern + '/');
+                        }
+                        // 对于域名模式
+                        return targetUrl.includes(pattern);
+                  });
 
                   if (shouldBlock) {
-                        // 如果用户试图返回到匹配的URL，则重定向到首页
-                        window.history.pushState(null, '', '/home');
+                        console.log('检测到被禁止的导航目标，重定向到:', redirectTo);
+                        window.history.replaceState(null, '', redirectTo);
+                        event.stopImmediatePropagation();
                   }
-            });
+            } finally {
+                  handlingPopState = false;
+            }
+      };
 
-            // 替换当前状态
-            window.history.replaceState(cleanState, '', window.location.href);
-      }
+      // 注册事件监听
+      window.removeEventListener('popstate', handlePopState); // 确保不重复添加
+      window.addEventListener('popstate', handlePopState);
+
+      // 创建一个历史状态抹除函数
+      const clearHistoryStack = () => {
+            // 构建新的干净历史堆栈
+            window.history.pushState({ clean: true }, '', redirectTo);
+            window.history.replaceState({ clean: true }, '', redirectTo);
+
+            console.log('历史堆栈已清理，新导航起点已创建');
+      };
+
+      // 替换当前状态，防止直接返回
+      window.history.replaceState({ cleaned: true }, '', currentUrl);
+
+      // 返回清理函数，可在适当时机调用
+      return clearHistoryStack;
 }
 
 // 清理Facebook授权后的URL参数 
