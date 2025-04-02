@@ -379,7 +379,7 @@ export class StorageService {
             if (!tokenInfo) return null;
 
             // 检查是否过期
-            if (Date.now() > tokenInfo.expiresAt * 1000) { // 转换为毫秒
+            if (Date.now() / 1000 > tokenInfo.expiresAt) {
                   this.remove(STORAGE_KEYS.TOKEN);
                   return null;
             }
