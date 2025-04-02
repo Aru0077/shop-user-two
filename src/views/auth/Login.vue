@@ -209,7 +209,7 @@ const handleFacebookLogin = async () => {
         error.value = '';
 
         // 1. 执行Facebook登录
-        const loginResponse = await facebookUtils.login('public_profile,email');
+        const loginResponse = await facebookUtils.login('public_profile');
 
         // 2. 获取访问令牌
         const accessToken = loginResponse.authResponse?.accessToken;
