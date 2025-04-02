@@ -134,21 +134,18 @@ service.interceptors.response.use(
             switch (errorCode) {
                   case ErrorCode.UNAUTHORIZED:
                         // 处理401未授权错误
-                        message = '登录状态已过期，请重新登录';
+                        message = '登录状态已过期';
 
                         // 获取userStore实例并清除用户状态
                         const userStore = useUserStore();
                         userStore.clearUserState();
 
-                        // 如果当前路由需要授权，重定向到登录页
-                        const currentRoute = router.currentRoute.value;
-                        if (currentRoute.meta.requiresAuth) {
-                              router.push({
-                                    path: '/login',
-                                    query: { redirect: currentRoute.fullPath }
-                              });
-                        }
-                        break;
+                        // 清除所有本地缓存数据
+                        storage.clear();
+
+                        // 直接重定向到首页，不保留当前页面信息
+                        router.replace('/home');
+                        break; 
                   case ErrorCode.FORBIDDEN:
                         message = '没有权限访问该资源';
                         break;
@@ -190,13 +187,6 @@ const request = <T = any>(config: RequestConfig): Promise<T> => {
 export const http = {
       // 支持请求缓存的GET方法
       get: <T = any>(url: string, params?: any, config?: RequestConfig): Promise<T> => {
-            // // 无论URL是否包含查询参数，都添加params对象
-            // return request<T>({
-            //       ...config,
-            //       method: 'get',
-            //       url,
-            //       params,
-            // });
             // 检查URL是否已包含查询参数
             const hasQueryParams = url.includes('?');
 

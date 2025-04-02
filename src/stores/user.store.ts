@@ -20,6 +20,7 @@ export const useUserStore = defineStore('user', () => {
       // 状态
       const user = ref<User | null>(null);
       const token = ref<string | null>(null);
+      const tokenExpiresAt = ref<number | null>(null);
       const loading = ref(false);
       const loginLoading = ref(false);
       const registerLoading = ref(false);
@@ -53,7 +54,7 @@ export const useUserStore = defineStore('user', () => {
        */
       function saveUserDataToStorage(): void {
             if (token.value) {
-                  storage.saveUserToken(token.value);
+                  storage.saveUserToken(token.value, tokenExpiresAt.value || undefined);
             }
 
             if (user.value) {
@@ -67,10 +68,12 @@ export const useUserStore = defineStore('user', () => {
       function loadUserDataFromStorage(): boolean {
             const storedToken = storage.getUserToken();
             const storedUser = storage.getUserInfo<User>();
+            const expiresAt = storage.getTokenExpiresAt();
 
             if (storedToken && storedUser) {
                   token.value = storedToken;
                   user.value = storedUser;
+                  tokenExpiresAt.value = expiresAt;
                   return true;
             }
 
@@ -128,6 +131,11 @@ export const useUserStore = defineStore('user', () => {
                   // 保存登录状态
                   token.value = response.token;
                   user.value = response.user;
+
+                  // 保存Token过期时间
+                  if (response.expiresAt) {
+                        tokenExpiresAt.value = response.expiresAt;
+                  }
 
                   // 保存到本地存储
                   saveUserDataToStorage();
@@ -241,6 +249,18 @@ export const useUserStore = defineStore('user', () => {
       function checkAuthState(): boolean {
             if (!token.value || !user.value) {
                   return false;
+            }
+
+            // 检查Token是否过期
+            if (tokenExpiresAt.value) {
+                  const currentTimestamp = Math.floor(Date.now() / 1000);
+
+                  if (currentTimestamp >= tokenExpiresAt.value) {
+                        console.warn('Token已过期，清除用户状态');
+                        clearUserState();
+                        storage.clear(); 
+                        return false;
+                  }
             }
 
             // 可以添加Token有效期检查等逻辑

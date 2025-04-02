@@ -5,7 +5,7 @@
  * 统一管理所有缓存键名和过期时间
  * 支持数据过期和版本控制
  */
- 
+
 // 缓存键名常量定义
 export const STORAGE_KEYS = {
       // 用户相关
@@ -95,7 +95,7 @@ export const STORAGE_VERSIONS = {
       CHECKOUT: '1.0.0',
       ORDER: '1.0.0',
       TEMP_ORDER: '1.0.0',
-      PROMOTIONS: '1.0.0', 
+      PROMOTIONS: '1.0.0',
 };
 
 // 缓存项的接口定义
@@ -119,6 +119,11 @@ const defaultOptions: StorageOptions = {
       version: STORAGE_VERSIONS.DEFAULT,
       defaultExpiry: STORAGE_EXPIRY.DEFAULT,
 };
+
+interface TokenInfo {
+      value: string;
+      expiresAt: number; // 过期时间戳
+}
 
 export class StorageService {
       private options: StorageOptions;
@@ -361,12 +366,30 @@ export class StorageService {
       }
 
       // ===== 用户相关方法 =====
-      saveUserToken(token: string): boolean {
-            return this.set(STORAGE_KEYS.TOKEN, token, STORAGE_EXPIRY.AUTH);
+      saveUserToken(token: string, expiresAt?: number): boolean {
+            const tokenInfo: TokenInfo = {
+                  value: token,
+                  expiresAt: expiresAt || (Date.now() + this.STORAGE_EXPIRY.AUTH)
+            };
+            return this.set(STORAGE_KEYS.TOKEN, tokenInfo, STORAGE_EXPIRY.AUTH);
       }
 
       getUserToken(): string | null {
-            return this.get(STORAGE_KEYS.TOKEN, null);
+            const tokenInfo = this.get<TokenInfo>(STORAGE_KEYS.TOKEN, null);
+            if (!tokenInfo) return null;
+
+            // 检查是否过期
+            if (Date.now() > tokenInfo.expiresAt * 1000) { // 转换为毫秒
+                  this.remove(STORAGE_KEYS.TOKEN);
+                  return null;
+            }
+
+            return tokenInfo.value;
+      }
+
+      getTokenExpiresAt(): number | null {
+            const tokenInfo = this.get<TokenInfo>(STORAGE_KEYS.TOKEN, null);
+            return tokenInfo ? tokenInfo.expiresAt : null;
       }
 
       saveUserInfo<T>(userInfo: T): boolean {

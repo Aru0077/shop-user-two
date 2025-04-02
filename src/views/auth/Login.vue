@@ -132,7 +132,7 @@ import { useUserStore } from '@/stores/user.store';
 import { useFacebookStore } from '@/stores/facebook.store';
 import { useToast } from '@/composables/useToast';
 import { facebookUtils } from '@/utils/facebook.utils';
-import { cleanupAuthRedirect } from '@/utils/history';
+import { cleanupAuthRedirect, cleanupHistory } from '@/utils/history';
 
 // Initialize router, state management and toast
 const router = useRouter();
@@ -226,6 +226,9 @@ const handleFacebookLogin = async () => {
         if (success) {
             toast.success('Facebook登录成功');
 
+            // 清理历史记录，防止返回到登录页
+            cleanupHistory(['login', 'register', 'facebook.com']);
+
             // 重定向到来源页或首页
             const redirectPath = route.query.redirect as string || '/home';
             router.replace(redirectPath);
@@ -257,6 +260,9 @@ const handleLogin = async () => {
 
         if (response) {
             toast.success('Login successful');
+
+            // 清理历史记录，防止返回到登录页
+            cleanupHistory(['login', 'register', 'facebook.com']);
 
             // Redirect to source page or homepage
             const redirectPath = route.query.redirect as string || '/home';

@@ -2,6 +2,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
 import { useUserStore } from '@/stores/user.store';
+import { storage } from '@/utils/storage';
 
 // 主页面组件
 import HomePage from '@/views/home/HomePage.vue';
@@ -214,7 +215,7 @@ const routes: Array<RouteRecordRaw> = [
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
-                  }, 
+                  },
             }
       },
       {
@@ -226,7 +227,7 @@ const routes: Array<RouteRecordRaw> = [
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
-                  }, 
+                  },
             }
       },
       {
@@ -293,11 +294,24 @@ const router = createRouter({
             }
       }
 });
- 
+
 
 // 全局前置守卫 
 router.beforeEach((to, _from, next) => {
       const userStore = useUserStore();
+
+      // 首先检查 Token 是否过期（如果用户已登录）
+      if (userStore.isLoggedIn && !userStore.checkAuthState()) {
+            // Token 已过期，清理用户状态
+            userStore.clearUserState();
+
+            // 清除本地缓存
+            storage.clear();
+
+            // 重定向到首页
+            next('/home');
+            return;
+      }
 
       // 检查页面是否需要登录
       if (to.meta.requiresAuth && !userStore.isLoggedIn) {
@@ -313,7 +327,7 @@ router.beforeEach((to, _from, next) => {
             // 已登录用户重定向到首页
             next('/home');
             return;
-      } 
+      }
 
       // 设置页面标题
       if (to.meta.title) {

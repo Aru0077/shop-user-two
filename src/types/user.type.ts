@@ -35,6 +35,7 @@ export interface LoginParams {
 export interface LoginResponse {
       token: string;
       user: User;
+      expiresAt: number;  
 }
 
 /**
