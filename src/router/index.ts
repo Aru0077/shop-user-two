@@ -214,8 +214,7 @@ const routes: Array<RouteRecordRaw> = [
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
-                  },
-                  requiresGuest: true
+                  }, 
             }
       },
       {
@@ -227,8 +226,7 @@ const routes: Array<RouteRecordRaw> = [
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
-                  },
-                  requiresGuest: true
+                  }, 
             }
       },
       {

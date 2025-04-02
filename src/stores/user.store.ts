@@ -157,6 +157,22 @@ export const useUserStore = defineStore('user', () => {
                   loading.value = true;
                   error.value = null;
 
+                  // 检查是否通过 Facebook 登录（检查用户信息中是否有 facebookId）
+                  const isFacebookLogin = !!user.value?.facebookId;
+
+                  // 如果是通过 Facebook 登录，先调用 Facebook 退出
+                  if (isFacebookLogin) {
+                        try {
+                              // 引入 facebookUtils
+                              const { facebookUtils } = await import('@/utils/facebook.utils');
+                              await facebookUtils.logout();
+                              console.info('Facebook 退出成功');
+                        } catch (fbErr) {
+                              console.error('Facebook 退出失败:', fbErr);
+                              // 继续执行本地退出，不中断流程
+                        }
+                  }
+
                   // 调用API登出
                   await userApi.logout();
 
