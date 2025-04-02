@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
 import { useUserStore } from '@/stores/user.store';
 import { storage } from '@/utils/storage';
+import { getBackDestination, isInShoppingFlow } from '@/utils/navigation';
 
 // 主页面组件
 import HomePage from '@/views/home/HomePage.vue';
@@ -297,7 +298,7 @@ const router = createRouter({
 
 
 // 全局前置守卫 
-router.beforeEach((to, _from, next) => {
+router.beforeEach((to, from, next) => {
       const userStore = useUserStore();
 
       // 首先检查 Token 是否过期（如果用户已登录）
@@ -327,6 +328,18 @@ router.beforeEach((to, _from, next) => {
             // 已登录用户重定向到首页
             next('/home');
             return;
+      }
+
+      // 特殊处理结账流程中的导航
+      if (from.path && isInShoppingFlow(from.path)) {
+            const backDestination = getBackDestination(from.path);
+
+            // 如果是在购物流程中且有特定的返回目标
+            if (backDestination && to.path === '/') {
+                  // 如果用户点击了浏览器返回按钮(to是根路径)，则重定向到指定目标
+                  next(backDestination);
+                  return;
+            }
       }
 
       // 设置页面标题

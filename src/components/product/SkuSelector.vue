@@ -383,13 +383,11 @@ const handleBuyNow = async () => {
             return;
         }
 
-        // 跳转到结账页面，带上临时订单ID
-        router.push({
-            path: '/checkout',
-            query: {
-                tempOrderId: tempOrder.id
-            }
-        });
+        // 导入导航工具函数
+        const { navigateToCheckout } = await import('@/utils/navigation');
+
+         // 使用导航工具函数跳转到结账页
+         navigateToCheckout(router, tempOrder.id);
     } catch (error) {
         toast.error('创建订单失败，请重试');
         console.error('创建临时订单失败:', error);

@@ -1,86 +1,136 @@
 // src/utils/navigation.ts
 import type { Router } from 'vue-router';
-import { useUserStore } from '@/stores/user.store';
 
 /**
- * 智能返回函数 - 查找最近的有效返回页面并跳转
+ * 购物流程中的路由名称枚举
+ */
+export enum ShoppingFlowRoute {
+      PRODUCT_DETAIL = '/product/',
+      CART = '/cart',
+      CHECKOUT = '/checkout',
+      PAYMENT = '/payment/',
+      PAYMENT_RESULT = '/payment/result',
+      ORDER_LIST = '/order',
+      ORDER_DETAIL = '/order/'
+}
+
+/**
+ * 简化版智能返回函数 - 按优先级返回到指定页面
  * @param router Vue Router实例
- * @param targetPaths 目标路径数组，按优先级排序
  * @param fallbackPath 如果没有找到目标路径，则返回的默认路径
  */
-export function smartBack(router: Router, targetPaths: string[] = [], fallbackPath: string = '/home') {
-      // 当前路由历史
-      const history = window.history;
-      const userStore = useUserStore();
+export function navigateBack(router: Router, _fallbackPath: string = '/home'): void {
+      // 简单地使用 router.back()，让浏览器处理历史
+      router.back();
 
-      // 阻止返回到的路径列表
-      const preventReturnPaths = ['/login', '/register', '/auth/login-success'];
+      // 注意：这种方法依赖于我们在关键步骤正确使用 router.replace 而非 router.push
+      // 如果需要更精细的控制，可以检查当前路径并决定导航目标
+}
 
-      // 判断是否为Facebook相关URL
-      const isFacebookUrl = window.location.href.includes('facebook.com');
-
-      // 如果当前是Facebook URL或者用户已登录且尝试返回登录页
-      if (isFacebookUrl || (userStore.isLoggedIn && preventReturnPaths.includes(router.currentRoute.value.path))) {
-            router.replace(fallbackPath);
-            return true;
-      }
-
-
-
-      // 如果有返回历史记录
-      if (history.state.back) {
-            // 检查是否有要查找的目标页面
-            if (targetPaths.length > 0) {
-                  let stepsBack = 0;
-
-                  // 尝试返回并检查
-                  const checkNextHistory = () => {
-                        history.back();
-                        stepsBack++;
-
-                        // 使用setTimeout来等待浏览器更新location
-                        setTimeout(() => {
-                              // 检查当前路径是否匹配任何目标路径
-                              const isTargetPath = targetPaths.some(path =>
-                                    window.location.pathname.includes(path));
-
-                              if (isTargetPath) {
-
-                                    router.replace(window.location.pathname + window.location.search);
-                                    console.log(`找到目标路径，返回了${stepsBack}步`);
-
-                              } else if (stepsBack < 10 && history.state.back) { // 限制最大回退步数
-                                    // 继续查找
-                                    checkNextHistory();
-                              } else {
-                                    // 没有找到目标路径，回到默认页面
-                                    console.log('没有找到目标路径，返回默认页面');
-                                    router.replace(fallbackPath);
-                              }
-                        }, 0);
-                  };
-
-                  // 开始检查
-                  checkNextHistory();
-                  return true;
-            } else {
-                  // 没有指定目标路径，正常返回
-                  router.back();
-                  return true;
+/**
+ * 从商品详情页导航到结账页
+ * @param router Vue Router实例
+ * @param tempOrderId 临时订单ID
+ */
+export function navigateToCheckout(router: Router, tempOrderId: string): void {
+      // 使用 replace 而非 push，这样用户返回时会跳过结账页
+      router.replace({
+            path: ShoppingFlowRoute.CHECKOUT,
+            query: {
+                  tempOrderId,
+                  source: 'product' // 添加来源标记
             }
+      });
+}
+
+/**
+ * 从结账页导航到支付页
+ * @param router Vue Router实例
+ * @param orderId 订单ID
+ */
+export function navigateToPayment(router: Router, orderId: string): void {
+      // 使用 replace 而非 push，这样用户返回时会跳过支付页
+      router.replace({
+            path: `${ShoppingFlowRoute.PAYMENT}${orderId}`,
+            query: {
+                  source: 'checkout' // 添加来源标记
+            }
+      });
+}
+
+/**
+ * 从支付页导航到支付结果页
+ * @param router Vue Router实例
+ * @param orderId 订单ID
+ * @param status 支付状态
+ */
+export function navigateToPaymentResult(router: Router, orderId: string, status: string): void {
+      // 使用 replace 而非 push，这样用户返回时会跳过支付结果页
+      router.replace({
+            path: ShoppingFlowRoute.PAYMENT_RESULT,
+            query: {
+                  id: orderId,
+                  status,
+                  source: 'payment' // 添加来源标记
+            }
+      });
+}
+
+/**
+ * 从支付结果页导航到订单详情
+ * @param router Vue Router实例
+ * @param orderId 订单ID
+ */
+export function navigateToOrderDetail(router: Router, orderId: string): void {
+      router.replace(`${ShoppingFlowRoute.ORDER_DETAIL}${orderId}`);
+}
+
+/**
+ * 取消支付流程，返回到合适的页面
+ * @param router Vue Router实例
+ * @param currentPage 当前页面
+ */
+export function cancelPaymentFlow(router: Router, currentPage: string): void {
+      if (currentPage.includes(ShoppingFlowRoute.PAYMENT)) {
+            // 从支付页取消，返回订单列表
+            router.replace(ShoppingFlowRoute.ORDER_LIST);
+      } else if (currentPage.includes(ShoppingFlowRoute.CHECKOUT)) {
+            // 从结账页取消，返回购物车
+            router.replace(ShoppingFlowRoute.CART);
       } else {
-            // 没有返回历史，去往fallback
-            router.replace(fallbackPath);
-            return true;
+            // 默认返回首页
+            router.replace('/home');
       }
 }
 
 /**
- * 检查两个路径是否匹配
- * @param currentPath 当前路径
- * @param targetPath 目标路径
+ * 判断是否处于购物流程中
+ * @param path 当前路径
  */
-export function pathMatches(currentPath: string, targetPath: string): boolean {
-      return currentPath === targetPath || currentPath.startsWith(targetPath + '/');
+export function isInShoppingFlow(path: string): boolean {
+      return (
+            path.includes(ShoppingFlowRoute.CHECKOUT) ||
+            path.includes(ShoppingFlowRoute.PAYMENT)
+      );
 }
- 
+
+/**
+ * 获取返回按钮目标路径
+ * @param currentPath 当前路径
+ */
+export function getBackDestination(currentPath: string): string {
+      // 根据当前路径决定返回目标
+      if (currentPath.includes(ShoppingFlowRoute.PAYMENT_RESULT)) {
+            // 支付结果页 => 订单列表
+            return ShoppingFlowRoute.ORDER_LIST;
+      } else if (currentPath.includes(ShoppingFlowRoute.PAYMENT)) {
+            // 支付页 => 订单列表
+            return ShoppingFlowRoute.ORDER_LIST;
+      } else if (currentPath === ShoppingFlowRoute.CHECKOUT) {
+            // 结账页 => 购物车
+            return ShoppingFlowRoute.CART;
+      } else {
+            // 默认行为
+            return '';  // 空字符串表示使用浏览器默认后退
+      }
+}

@@ -253,7 +253,7 @@ import { useToast } from '@/composables/useToast';
 import { formatPrice } from '@/utils/price.utils';
 import type { OrderDetail } from '@/types/order.type';
 import { eventBus } from '@/core/event-bus';
-import { smartBack } from '@/utils/navigation';
+import { cancelPaymentFlow, navigateToPaymentResult,  } from '@/utils/navigation';
 
 
 // 初始化
@@ -424,17 +424,20 @@ const cancelPayment = async () => {
 
     try {
         // 清除QPay支付数据
-        qPayStore.clearQPayState();
-        // 返回上一页
-        router.replace('/order');
+        qPayStore.clearQPayState(); 
+        
+        // 取消支付流程，回到订单列表页面
+        cancelPaymentFlow(router, '/payment');
     } catch (err) {
         console.error('取消支付失败:', err);
     }
 };
 
 // 查看支付结果
-const viewPaymentResult = () => {
-    router.push(`/payment/result?id=${orderId.value}&status=success`);
+const viewPaymentResult = () => { 
+    
+    // 使用导航工具函数跳转到支付结果页
+    navigateToPaymentResult(router, orderId.value, 'success');
 };
 
 // 返回首页
@@ -448,9 +451,10 @@ const goBack = () => {
 };
 
 // 处理返回按钮点击
-const handleBackClick = () => {
-    // 按优先级查找结账页、购物车页或商品详情页
-    smartBack(router, [ '/cart', '/product/'], '/order');
+const handleBackClick = () => { 
+    
+    // 取消支付流程，回到订单列表页面
+    cancelPaymentFlow(router, '/payment');
 
     // 发送一个事件表示已经处理了返回事件
     eventBus.emit('navbar:back:handled');

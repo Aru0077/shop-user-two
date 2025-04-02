@@ -134,8 +134,8 @@ import { useAddressStore } from '@/stores/address.store';
 import { useToast } from '@/composables/useToast';
 import AddressSelector from '@/components/checkout/AddressSelector.vue';
 import { formatPrice } from '@/utils/price.utils';
-import { eventBus } from '@/core/event-bus';
-import { smartBack } from '@/utils/navigation';
+import { eventBus } from '@/core/event-bus'; 
+import { navigateToPayment, cancelPaymentFlow } from '@/utils/navigation';
 
 // 初始化
 const route = useRoute();
@@ -194,7 +194,7 @@ const loadTempOrder = async () => {
         const referrer = document.referrer;
         if (referrer && referrer.includes('/payment/')) {
             // 返回到上一页或首页
-            smartBack(router, ['/cart', '/product/'], '/cart');
+            // smartBack(router, ['/cart', '/product/'], '/cart');
             return;
         }
 
@@ -204,7 +204,7 @@ const loadTempOrder = async () => {
         if (!order) {
             error.value = '未找到订单信息';
              // 订单不存在，返回购物车页
-             smartBack(router, ['/cart', '/product/'], '/cart');
+            //  smartBack(router, ['/cart', '/product/'], '/cart');
             return;
         } 
 
@@ -243,10 +243,10 @@ const submitOrder = async () => {
 
         if (!order) {
             throw new Error('提交订单失败');
-        }
+        } 
 
-        // 跳转到支付页面
-        router.push(`/payment/${order.id}`);
+       // 使用导航工具函数跳转到支付页面
+       navigateToPayment(router, order.id);
 
         toast.success('订单创建成功');
     } catch (err: any) {
@@ -261,10 +261,12 @@ const goBack = () => {
 }; 
 
 // 处理返回按钮点击
-const handleBackClick = () => {
-    // 按优先级查找购物车页或商品详情页
-    smartBack(router, ['/cart', '/product/'], '/cart');
+const handleBackClick =  () => {
+   // 导入取消支付流程函数 
     
+    // 取消支付流程，回到购物车页面
+    cancelPaymentFlow(router, '/checkout');
+
     // 发送一个事件表示已经处理了返回事件
     eventBus.emit('navbar:back:handled');
 };

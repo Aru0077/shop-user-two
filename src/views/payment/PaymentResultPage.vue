@@ -185,6 +185,8 @@ import { useToast } from '@/composables/useToast';
 import { formatPrice } from '@/utils/price.utils';
 import type { OrderDetail } from '@/types/order.type';
 import { PaymentStatus } from '@/types/common.type';
+import { navigateToOrderDetail, navigateToPayment } from '@/utils/navigation';
+
 
 // 初始化
 const route = useRoute();
@@ -292,8 +294,10 @@ const checkPaymentStatus = async () => {
 
 // 查看订单详情
 const viewOrder = () => {
-    if (orderId.value) {
-        router.push(`/order/${orderId.value}`);
+    if (orderId.value) { 
+        
+        // 使用导航工具函数跳转到订单详情页
+        navigateToOrderDetail(router, orderId.value);
     } else {
         router.push('/order');
     }
@@ -301,8 +305,10 @@ const viewOrder = () => {
 
 // 重试支付
 const retryPayment = () => {
-    if (orderId.value) {
-        router.push(`/payment/${orderId.value}`);
+    if (orderId.value) { 
+        
+        // 使用导航工具函数跳转到支付页面
+        navigateToPayment(router, orderId.value);
     } else {
         router.push('/cart');
     }
@@ -310,7 +316,7 @@ const retryPayment = () => {
 
 // 继续购物
 const continueShopping = () => {
-    router.push('/home');
+    router.replace('/home');
 };
 
 // 返回上一页
