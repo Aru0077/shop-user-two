@@ -44,6 +44,22 @@ export function navigateToCheckout(router: Router, tempOrderId: string): void {
 }
 
 /**
+ * 从购物车导航到结账页
+ * @param router Vue Router实例
+ * @param tempOrderId 临时订单ID
+ */
+export function navigateFromCartToCheckout(router: Router, tempOrderId: string): void {
+      // 使用 replace 而非 push，确保用户返回时跳过结账页
+      router.replace({
+            path: ShoppingFlowRoute.CHECKOUT,
+            query: {
+                  tempOrderId,
+                  source: 'cart' // 添加来源标记
+            }
+      });
+}
+
+/**
  * 从结账页导航到支付页
  * @param router Vue Router实例
  * @param orderId 订单ID

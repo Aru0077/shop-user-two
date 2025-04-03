@@ -5,6 +5,7 @@ import { useCartStore } from '@/stores/cart.store';
 import { useUserStore } from '@/stores/user.store';
 import { useTempOrderStore } from '@/stores/temp-order.store';
 import { useToast } from '@/composables/useToast';
+import { navigateFromCartToCheckout } from '@/utils/navigation';
 
 /**
  * 购物车页面业务逻辑
@@ -150,12 +151,7 @@ export function useCartPage() {
                   }
 
                   // 跳转到结账页面
-                  router.push({
-                        path: '/checkout',
-                        query: {
-                              tempOrderId: tempOrder.id
-                        }
-                  });
+                  navigateFromCartToCheckout(router, tempOrder.id);
             } catch (error: any) {
                   toast.error(error.message || 'Failed to create order, please try again');
                   console.error('创建临时订单失败:', error);

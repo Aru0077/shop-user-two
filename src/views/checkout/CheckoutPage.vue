@@ -189,12 +189,12 @@ const loadTempOrder = async () => {
             return;
         }   
 
-        // 添加：检查是否从PaymentPage返回
+        // 添加：检查是否从PaymentPage返回  
         // 如果是从PaymentPage返回，则不尝试加载临时订单
         const referrer = document.referrer;
         if (referrer && referrer.includes('/payment/')) {
-            // 返回到上一页或首页
-            // smartBack(router, ['/cart', '/product/'], '/cart');
+            // 不允许返回到结账页，应该跳转到订单列表或购物车
+            router.replace('/order'); // 或者 router.replace('/cart')
             return;
         }
 
@@ -204,7 +204,7 @@ const loadTempOrder = async () => {
         if (!order) {
             error.value = '未找到订单信息';
              // 订单不存在，返回购物车页
-            //  smartBack(router, ['/cart', '/product/'], '/cart');
+             router.replace('/cart');
             return;
         } 
 
