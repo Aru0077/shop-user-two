@@ -515,7 +515,18 @@ watch(() => qPayStore.paymentStatus, (newStatus) => {
         if (countdownTimer.value) {
             clearInterval(countdownTimer.value);
         }
+    } else if (newStatus === 'CANCELLED' || newStatus === 'EXPIRED') {
+        // 支付取消或过期，跳转到订单列表
+        setTimeout(() => {
+            router.replace('/order');
+        }, 2000); // 显示取消状态2秒后跳转
+        
+        // 清除倒计时
+        if (countdownTimer.value) {
+            clearInterval(countdownTimer.value);
+        }
     }
+
 });
 
 // 组件挂载时
