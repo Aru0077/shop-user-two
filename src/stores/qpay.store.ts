@@ -274,7 +274,7 @@ export const useQPayStore = defineStore('qpay', () => {
                         console.error('轮询支付状态失败:', err);
                         // 错误时不停止轮询，继续尝试
                   }
-            }, 3000);
+            }, 5000);
       }
 
       /**
