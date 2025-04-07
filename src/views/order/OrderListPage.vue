@@ -1,13 +1,15 @@
 <template>
-    <div class="page-container pb-16">
+    <div class=" p-4 flex flex-col h-full overflow-hidden">
         <!-- Page Title -->
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex justify-between items-center mb-4 flex-shrink-0">
             <PageTitle mainTitle="My Orders" />
             <div @click="refreshOrders" class="text-sm font-medium cursor-pointer flex items-center">
                 <RefreshCw :size="16" class="mr-1" :class="{ 'animate-spin': loading }" />
                 Refresh
             </div>
         </div>
+
+        <div class="flex-1 overflow-y-auto min-h-0">
 
         <!-- Loading State -->
         <div v-if="loading && orders.length === 0" class="flex justify-center items-center h-40">
@@ -50,16 +52,16 @@
                     <div class="space-y-3">
                         <div v-for="(item, index) in getOrderItems(order)" :key="index" class="flex items-center">
                             <div class="w-16 h-16 rounded-lg overflow-hidden border border-gray-100 mr-3">
-                                <img :src="item.image || 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png'"
-                                    :alt="item.name" class="w-full h-full object-cover">
+                                <img :src="item.sku?.image || item.mainImage || 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png'"
+                                    :alt="item.productName" class="w-full h-full object-cover">
                             </div>
                             <div class="flex-1 min-w-0">
-                                <div class="text-sm font-medium line-clamp-1">{{ item.name }}</div>
+                                <div class="text-sm font-medium line-clamp-1">{{ item.productName }}</div>
                                 <div class="text-xs text-gray-500 mt-1">
-                                    {{ item.specText || '' }}
+                                    {{ formatSkuSpecs(item.skuSpecs) }}
                                 </div>
                                 <div class="flex justify-between items-end mt-1">
-                                    <div class="text-sm text-gray-900">{{ formatPrice(item.price) }}</div>
+                                    <div class="text-sm text-gray-900">{{ formatPrice(item.unitPrice) }}</div>
                                     <div class="text-xs text-gray-500">x{{ item.quantity }}</div>
                                 </div>
                             </div>
@@ -117,6 +119,9 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="mt-4 flex-shrink-0">
 
         <!-- Load More -->
         <div v-if="hasMoreOrders && !loading" class="flex justify-center mt-6">
@@ -137,6 +142,7 @@
         <div v-if="!hasMoreOrders && orders.length > 0" class="text-center text-sm text-gray-500 mt-6">
             All orders have been displayed
         </div>
+    </div>
     </div>
 </template>
 
@@ -206,6 +212,15 @@ const fetchOrders = async (reset: boolean = false) => {
     }
 };
 
+// 格式化SKU规格
+const formatSkuSpecs = (skuSpecs: any[]) => {
+    if (!skuSpecs || !Array.isArray(skuSpecs) || skuSpecs.length === 0) {
+        return '';
+    }
+    
+    return skuSpecs.map(spec => `${spec.specName}: ${spec.specValue}`).join(' / ');
+};
+
 // 加载更多订单
 const loadMoreOrders = () => {
     if (loading.value || !hasMoreOrders.value) return;
@@ -252,25 +267,21 @@ const getStatusColor = (status: number | null): string => {
 
 // 获取订单商品列表（模拟，因为OrderBasic中不包含OrderItems）
 const getOrderItems = (order: OrderBasic) => {
-    // 实际应用中，这里可能需要根据OrderBasic的其他信息来显示简化版的订单项
-    // 或者在获取订单列表时请求包含简化版订单项的数据
-    // 这里使用模拟数据进行展示
-    return [
-        {
-            name: '商品名称', // 实际中可能无法直接从OrderBasic获取
-            image: '', // 实际中可能无法直接从OrderBasic获取
-            price: order.paymentAmount, // 使用支付金额代替，实际中应显示单价
-            quantity: 1, // 实际中可能无法直接从OrderBasic获取
-            specText: '' // 实际中可能无法直接从OrderBasic获取
-        }
-    ];
+    // 服务器返回的数据中可能包含orderItems，即使类型定义中没有
+    const items = (order as any).orderItems || [];
+    return items.map((item: any) => ({
+        name: item.productName,
+        image: item.sku?.image || item.mainImage,
+        price: item.unitPrice,
+        quantity: item.quantity,
+        specText: formatSkuSpecs(item.skuSpecs),
+        ...item  // 保留原始数据的其他属性
+    }));
 };
 
 // 获取订单商品总数
-const getOrderItemsCount = (_order: OrderBasic) => {
-    // 实际应用中，这里应该从order对象中获取商品总数
-    // 由于OrderBasic不包含此信息，这里使用模拟数据
-    return 1;
+const getOrderItemsCount = (order: OrderBasic) => {
+    return (order as any).orderItems?.length || 0;
 };
 
 // 查看订单详情
@@ -355,18 +366,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.hide-scrollbar {
-    scrollbar-width: none;
-    /* Firefox */
-    -ms-overflow-style: none;
-    /* IE and Edge */
-}
-
-.hide-scrollbar::-webkit-scrollbar {
-    display: none;
-    /* Chrome, Safari, and Opera */
-}
-
+ 
 .page-container {
     padding: 16px;
 }

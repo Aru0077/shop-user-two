@@ -216,7 +216,7 @@ import { useUserStore } from '@/stores/user.store';
 import { useToast } from '@/composables/useToast';
 import { formatPrice } from '@/utils/price.utils';
 import { OrderStatus } from '@/types/common.type';
-import type { OrderItemSpec } from '@/types/order.type';
+import type { OrderItemSpec } from '@/types/order.type'; 
 
 // 初始化
 const route = useRoute();
@@ -247,6 +247,7 @@ const fetchOrderDetail = async () => {
 
     try {
         loading.value = true;
+        
         await orderStore.getOrderDetail(orderId.value);
 
         // 如果是待付款订单，启动倒计时

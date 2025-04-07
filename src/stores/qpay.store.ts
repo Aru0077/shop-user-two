@@ -237,6 +237,9 @@ export const useQPayStore = defineStore('qpay', () => {
                               });
 
                               toast.success('支付成功');
+                              
+                              // 添加这一行：清除订单缓存
+                              storage.clearOrderCache();
 
                               // 刷新订单详情
                               if (orderStore.isInitialized()) {

@@ -295,6 +295,8 @@ const checkPaymentStatus = async () => {
 // 查看订单详情
 const viewOrder = () => {
     if (orderId.value) { 
+         // 添加这一行：清除订单缓存
+         orderStore.clearOrderState();
         
         // 使用导航工具函数跳转到订单详情页
         navigateToOrderDetail(router, orderId.value);
