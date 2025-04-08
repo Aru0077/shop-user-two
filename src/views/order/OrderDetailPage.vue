@@ -60,7 +60,7 @@
                     <div v-for="item in orderDetail.orderItems" :key="item.id" class="py-3 first:pt-0 last:pb-0">
                         <div class="flex">
                             <div class="w-20 h-20 rounded-lg overflow-hidden border border-gray-100 mr-3 flex-shrink-0">
-                                <img :src="item.mainImage || 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png'"
+                                <img :src="getSkuImage(item)"
                                     :alt="item.productName" class="w-full h-full object-cover">
                             </div>
                             <div class="flex-1 min-w-0">
@@ -217,13 +217,39 @@ import { useToast } from '@/composables/useToast';
 import { formatPrice } from '@/utils/price.utils';
 import { OrderStatus } from '@/types/common.type';
 import type { OrderItemSpec } from '@/types/order.type'; 
+import { useProductStore } from '@/stores/product.store';
 
 // 初始化
 const route = useRoute();
 const router = useRouter();
 const orderStore = useOrderStore();
 const userStore = useUserStore();
+const productStore = useProductStore();
 const toast = useToast();
+
+// 添加获取 SKU 图片的方法 
+const getSkuImage = (item:any) => {
+    // 默认使用商品主图作为回退
+    let imageSrc = item.mainImage || 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png';
+    
+    try {
+        // 通过 skuId 直接查找 SKU 图片
+        // 遍历所有已知的产品详情
+        for (const [_, product] of productStore.productDetails.entries()) {
+            if (product && product.skus) {
+                const sku = product.skus.find(s => s.id === item.skuId);
+                if (sku && sku.image) {
+                    imageSrc = sku.image;
+                    break;  // 找到匹配的 SKU 后退出循环
+                }
+            }
+        }
+    } catch (error) {
+        console.error('获取 SKU 图片失败:', error);
+    }
+    
+    return imageSrc;
+};
 
 // 状态
 const loading = ref(false);
@@ -249,6 +275,7 @@ const fetchOrderDetail = async () => {
         loading.value = true;
         
         await orderStore.getOrderDetail(orderId.value);
+
 
         // 如果是待付款订单，启动倒计时
         if (orderDetail.value?.orderStatus === OrderStatus.PENDING_PAYMENT &&

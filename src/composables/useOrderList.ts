@@ -5,6 +5,7 @@ import { useOrderStore } from '@/stores/order.store';
 import { useUserStore } from '@/stores/user.store';
 import { useToast } from '@/composables/useToast';
 import { storage } from '@/utils/storage';
+import { navigateToPayment } from '@/utils/navigation';
 
 export function useOrderList() {
       // Stores
@@ -114,14 +115,9 @@ export function useOrderList() {
       /**
        * Pay for an order
        */
-      const payOrder = (orderId: string) => {
-            router.push({
-                  path: `/payment`,
-                  query: {
-                        id: orderId,
-                        type: 'order'
-                  }
-            });
+      const payOrder = (orderId: string) => { 
+            // 使用导航工具函数来确保一致的导航行为
+            navigateToPayment(router, orderId);
       };
 
       /**

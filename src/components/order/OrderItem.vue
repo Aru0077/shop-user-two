@@ -101,7 +101,7 @@
   
   // Methods
   function getItemImage(item: any) {
-    return item.mainImage || item.sku?.image || 'https://img.js.design/assets/img/60f77157d961d24e3cf7493e.png';
+    return item.sku?.image || item.mainImage;
   }
   
   function formatSkuSpecs(skuSpecs: any[]) {

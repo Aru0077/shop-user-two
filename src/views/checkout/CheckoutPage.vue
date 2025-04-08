@@ -23,7 +23,7 @@
                         class="flex mb-4 pb-4 border-b border-gray-100 last:border-b-0 last:mb-0 last:pb-0">
                         <!-- Product Image -->
                         <div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50">
-                            <img :src="item.mainImage" :alt="item.productName" class="w-full h-full object-cover">
+                            <img :src="getSkuImage(item)" :alt="item.productName" class="w-full h-full object-cover">
                         </div>
 
                         <!-- Product Details -->
@@ -63,11 +63,11 @@
                 <div class="h-px my-1"></div>
 
                 <!-- Order Notes -->
-                <div class="bg-white p-4">
+                <!-- <div class="bg-white p-4">
                     <textarea v-model="localRemark" placeholder="Add notes to your order (optional)"
                         class="w-full p-3 bg-gray-50 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-400 resize-none"
                         rows="2"></textarea>
-                </div>
+                </div> -->
 
                 <!-- Divider -->
                 <div class="h-px my-1"></div>
@@ -131,6 +131,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { AlertCircle } from 'lucide-vue-next';
 import { useTempOrderStore } from '@/stores/temp-order.store';
 import { useAddressStore } from '@/stores/address.store';
+import { useProductStore } from '@/stores/product.store';
 import { useToast } from '@/composables/useToast';
 import AddressSelector from '@/components/checkout/AddressSelector.vue';
 import { formatPrice } from '@/utils/price.utils';
@@ -142,7 +143,42 @@ const route = useRoute();
 const router = useRouter();
 const tempOrderStore = useTempOrderStore();
 const addressStore = useAddressStore();
+const productStore = useProductStore();
 const toast = useToast();
+
+// 获取SKU图片的方法
+const getSkuImage = (item:any) => {
+    // 如果商品详情已加载
+    if (productStore.productDetails.has(item.productId)) {
+        const product = productStore.productDetails.get(item.productId);
+        // 查找对应的SKU
+        const sku = product!.skus?.find(s => s.id === item.skuId);
+        // 如果找到SKU且有图片，返回SKU图片
+        if (sku && sku.image) {
+            return sku.image;
+        }
+    }
+    
+    // 默认返回商品主图
+    return item.mainImage;
+};
+
+// 在页面加载时预加载商品详情
+const preloadProductDetails = async () => {
+    if (!tempOrder.value) return;
+    
+    // 加载临时订单中所有商品的详情
+    for (const item of tempOrder.value.items) {
+        // 如果商品详情还未加载
+        if (!productStore.productDetails.has(item.productId)) {
+            try {
+                await productStore.getProductFullDetail(item.productId);
+            } catch (error) {
+                console.error(`加载商品${item.productId}详情失败:`, error);
+            }
+        }
+    }
+};
 
 // 状态
 const isLoading = ref(true);
@@ -284,6 +320,8 @@ onMounted(async () => {
 
     // 加载订单数据
     await loadTempOrder();
+      // 加载商品详情
+      await preloadProductDetails();
 }); 
 
 onUnmounted(() => {
