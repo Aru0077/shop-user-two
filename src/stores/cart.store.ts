@@ -295,6 +295,9 @@ export const useCartStore = defineStore('cart', () => {
                 // 保存到本地缓存
                 saveToLocalStorage();
 
+                // 确保items.value的变化能触发响应式更新
+                items.value = [...items.value];
+
                 // 发布购物车更新事件
                 eventBus.emit(EVENT_NAMES.CART_ITEM_DELETED, id);
                 eventBus.emit(EVENT_NAMES.CART_UPDATED, items.value);

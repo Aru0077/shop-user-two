@@ -79,6 +79,8 @@ export function useCartPage() {
             try {
                   processingIds.value.push(id);
                   await cartStore.deleteCartItem(id);
+                  // 确保UI更新反映删除的变化
+                  await initCart(); // 或使用更轻量级的方法刷新购物车状态
             } catch (error: any) {
                   toast.error(error.message || 'Failed to delete');
             } finally {
@@ -95,10 +97,12 @@ export function useCartPage() {
 
             loading.value = true;
             let hasError = false;
+            // 保存要删除的项目ID
+            const idsToDelete = [...selectedItems.value];
 
             try {
                   // 一个个删除，因为 API 不支持批量删除
-                  for (const id of [...selectedItems.value]) {
+                  for (const id of idsToDelete) {
                         try {
                               await cartStore.deleteCartItem(id);
                         } catch (error) {
@@ -107,6 +111,9 @@ export function useCartPage() {
                         }
                   }
 
+                  // 无论成功或部分失败，都刷新购物车确保UI与实际状态同步
+                  await initCart();
+
                   if (hasError) {
                         toast.warning('Some items failed to delete, please try again');
                   } else {
@@ -114,10 +121,12 @@ export function useCartPage() {
                   }
             } catch (error: any) {
                   toast.error(error.message || 'Batch delete failed');
+                  // 发生错误也需要刷新以确保UI状态正确
+                  await initCart();
             } finally {
                   loading.value = false;
             }
-      };
+      };;
 
       // 去结算 创建临时订单
       const checkout = async () => {
