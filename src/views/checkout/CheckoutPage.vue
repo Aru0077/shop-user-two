@@ -136,7 +136,7 @@ import { useToast } from '@/composables/useToast';
 import AddressSelector from '@/components/checkout/AddressSelector.vue';
 import { formatPrice } from '@/utils/price.utils';
 import { eventBus } from '@/core/event-bus'; 
-import { navigateToPayment, cancelPaymentFlow } from '@/utils/navigation';
+import { navigateToPayment } from '@/utils/navigation';
 
 // 初始化
 const route = useRoute();
@@ -298,10 +298,22 @@ const goBack = () => {
 
 // 处理返回按钮点击
 const handleBackClick =  () => {
-   // 导入取消支付流程函数 
-    
-    // 取消支付流程，回到购物车页面
-    cancelPaymentFlow(router, '/checkout');
+     // 获取来源参数
+   const source = route.query.source as string;
+
+   if (source === 'product') {
+     // 如果是从商品详情页来的，获取商品ID并返回商品详情页
+     const productId = route.query.productId as string;
+     if (productId) {
+       router.replace(`/product/${productId}`);
+     } else {
+       // 如果没有商品ID，返回首页
+       router.replace('/home');
+     }
+   } else {
+     // 其他情况(包括从购物车来的)返回购物车页面
+     router.replace('/cart');
+   }
 
     // 发送一个事件表示已经处理了返回事件
     eventBus.emit('navbar:back:handled');

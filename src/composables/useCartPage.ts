@@ -175,14 +175,14 @@ export function useCartPage() {
       };
 
       // 初始化数据
-      const initCart = async () => {
+      const initCart = async (refresh = false) => {
             loading.value = true;
             try {
                   // 确保购物车已初始化
-                  cartStore.isInitialized();
-
-                  // 刷新购物车数据
-                  if (authStore.isLoggedIn) {
+                  if (!cartStore.isInitialized()) {
+                        await cartStore.init();
+                  } else if (refresh) {
+                        // 只有在明确需要刷新时才重新加载数据
                         await cartStore.loadCartItems();
                   }
 

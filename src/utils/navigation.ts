@@ -86,13 +86,14 @@ export function getBackDestination(currentPath: string): string {
  * @param router Vue Router实例
  * @param tempOrderId 临时订单ID
  */
-export function navigateToCheckout(router: Router, tempOrderId: string): void {
+export function navigateToCheckout(router: Router, tempOrderId: string, productId?: string): void {
       // 使用 replace 避免在历史中留下快照，防止用户返回时重新提交订单
       router.replace({
             path: ShoppingFlowRoute.CHECKOUT,
             query: {
                   tempOrderId,
-                  source: 'product' // 添加来源标记
+                  source: 'product', // 添加来源标记
+                  productId: productId // 添加商品ID
             }
       });
 }
