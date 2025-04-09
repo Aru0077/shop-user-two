@@ -1,9 +1,10 @@
 // src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
-import { useUserStore } from '@/stores/user.store';
-import { storage } from '@/utils/storage';
+import { useUserStore } from '@/stores/user.store'; 
+import { authService } from '@/services/auth.service';
 import { getBackDestination, isInShoppingFlow } from '@/utils/navigation';
+
 
 // 主页面组件
 import HomePage from '@/views/home/HomePage.vue';
@@ -302,20 +303,18 @@ router.beforeEach((to, from, next) => {
       const userStore = useUserStore();
 
       // 首先检查 Token 是否过期（如果用户已登录）
-      if (userStore.isLoggedIn && !userStore.checkAuthState()) {
-            // Token 已过期，清理用户状态
-            userStore.clearUserState();
-
-            // 清除本地缓存
-            storage.clear();
-
-            // 重定向到首页
-            next('/home');
+      if (userStore.isLoggedIn && authService.isTokenExpired()) {
+            // 使用authService统一处理Token过期
+            // 静默处理，不显示提示（路由守卫中的过期处理不需要额外提示）
+            authService.handleTokenExpired(false);
             return;
       }
 
       // 检查页面是否需要登录
       if (to.meta.requiresAuth && !userStore.isLoggedIn) {
+            // 保存目标路径
+            authService.setRedirectUrl(to.fullPath);
+
             next({
                   path: '/login',
                   query: { redirect: to.fullPath }

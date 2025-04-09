@@ -1,9 +1,8 @@
 // src/utils/request.ts
 import axios from 'axios';
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { storage } from '@/utils/storage';
-import { useUserStore } from '@/stores/user.store';
-import router from '@/router';
+import { storage } from '@/utils/storage'; 
+import { authService } from '@/services/auth.service';
 
 // 定义接口响应类型与后端对应
 interface ApiResponse<T = any> {
@@ -133,18 +132,8 @@ service.interceptors.response.use(
             // 根据状态码处理不同类型的错误
             switch (errorCode) {
                   case ErrorCode.UNAUTHORIZED:
-                        // 处理401未授权错误
-                        message = '登录状态已过期';
-
-                        // 获取userStore实例并清除用户状态
-                        const userStore = useUserStore();
-                        userStore.clearUserState();
-
-                        // 清除所有本地缓存数据
-                        storage.clear();
-
-                        // 直接重定向到首页，不保留当前页面信息
-                        router.replace('/home');
+                        // 统一使用authService处理Token过期
+                        authService.handleTokenExpired();
                         break;
                   case ErrorCode.FORBIDDEN:
                         message = '没有权限访问该资源';

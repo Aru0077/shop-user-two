@@ -1,6 +1,7 @@
 // src/utils/app-initializer.ts
 import { serviceInitializer } from '@/core/service.init';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus'; 
+import { authService } from '@/services/auth.service';
 
 /**
  * 应用初始化类
@@ -28,6 +29,11 @@ export class AppInitializer {
             console.info('开始初始化应用...');
 
             try {
+                  // 0. 预先检查Token是否过期
+                  if (authService.isTokenExpired()) {
+                        // Token已过期，静默处理
+                        authService.handleTokenExpired(false);
+                  }
 
                   // 1. 确保核心服务层初始化完成
                   await serviceInitializer.initialize();

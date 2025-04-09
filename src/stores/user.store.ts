@@ -8,6 +8,7 @@ import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import { toast } from '@/utils/toast.service';
 import type { User, RegisterParams, LoginParams, LoginResponse, DeleteAccountParams } from '@/types/user.type';
 import type { ApiError } from '@/types/common.type';
+import { authService } from '@/services/auth.service';
 
 /**
  * 用户状态管理
@@ -143,6 +144,9 @@ export const useUserStore = defineStore('user', () => {
                   // 发布登录成功事件
                   eventBus.emit(EVENT_NAMES.USER_LOGIN, response.user);
 
+                  // 使用authService处理登录成功后的重定向
+                  authService.handleLoginRedirect();
+
                   toast.success('登录成功');
                   return response;
             } catch (err: any) {
@@ -238,9 +242,7 @@ export const useUserStore = defineStore('user', () => {
       function clearUserState(): void {
             user.value = null;
             token.value = null;
-
-            // 清除本地存储
-            clearUserDataFromStorage();
+            tokenExpiresAt.value = null;
       }
 
       /**
@@ -251,20 +253,9 @@ export const useUserStore = defineStore('user', () => {
                   return false;
             }
 
-            // 检查Token是否过期
-            if (tokenExpiresAt.value) {
-                  const currentTimestamp = Math.floor(Date.now() / 1000);
-
-                  if (currentTimestamp >= tokenExpiresAt.value) {
-                        console.warn('Token已过期，清除用户状态');
-                        clearUserState();
-                        storage.clear(); 
-                        return false;
-                  }
-            }
-
-            // 可以添加Token有效期检查等逻辑
-            return true;
+            // 使用authService检查Token是否过期
+            const isExpired = authService.isTokenExpired();
+            return !isExpired;
       }
 
       /**

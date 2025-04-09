@@ -329,6 +329,8 @@ export const EVENT_NAMES = {
       USER_LOGOUT: 'user:logout',
       USER_REGISTER: 'user:register',
       USER_UPDATE: 'user:update',
+      TOKEN_EXPIRED: 'user:token-expired', // 新增事件类型
+      TOKEN_REFRESH_NEEDED: 'user:token-refresh-needed', // 新增事件类型
 
       // 地址相关事件
       ADDRESS_LIST_UPDATED: 'address:list-updated',
