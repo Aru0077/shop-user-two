@@ -176,6 +176,9 @@ export const useAuthStore = defineStore('auth', () => {
                   // 发布登录成功事件
                   eventBus.emit(EVENT_NAMES.USER_LOGIN, response.user);
 
+                  // 添加以下行 - 使用authService处理登录成功后的重定向
+                  authService.handleLoginRedirect();
+
                   toast.success('Facebook登录成功');
                   return true;
             } catch (err: any) {

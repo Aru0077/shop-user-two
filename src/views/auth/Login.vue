@@ -31,8 +31,8 @@
 
 
             <!-- Facebook Error Message -->
-            <div v-if="facebookStore.error" class="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
-                {{ facebookStore.error }}
+            <div v-if="error" class="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+                {{ error }}
             </div>
 
             <!-- Divider -->
@@ -128,7 +128,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { User, Lock, Eye, EyeOff } from 'lucide-vue-next'; 
-import { useFacebookStore } from '@/stores/facebook.store';
 import { useToast } from '@/composables/useToast';
 import { facebookUtils } from '@/utils/facebook.utils';
 import { cleanupAuthRedirect, cleanupHistory } from '@/utils/history';
@@ -138,7 +137,6 @@ import { useAuthStore } from '@/stores/auth.store';
 // Initialize router, state management and toast
 const router = useRouter();
 const authStore = useAuthStore(); 
-const facebookStore = useFacebookStore();
 const toast = useToast();
 
 // 设置路由到服务中

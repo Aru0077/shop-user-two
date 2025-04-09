@@ -45,22 +45,22 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router'
 import logoImg from '@/assets/logo.png'
-import PageTitle from '@/components/common/PageTitle.vue';
-import { useUserStore } from '@/stores/user.store';
+import PageTitle from '@/components/common/PageTitle.vue'; 
+import { useAuthStore } from '@/stores/auth.store';
 import { useToast } from '@/composables/useToast';
 import { ChevronRight, ShoppingBag, ShoppingCart, Heart, MapPin, Shield, FileText, UserX, LogOut } from 'lucide-vue-next';
 
 // 初始化
-const router = useRouter();
-const userStore = useUserStore();
+const router = useRouter(); 
+const authStore = useAuthStore();
 const toast = useToast();
 
 // 状态
 const loading = ref(false);
 
 // 用户信息
-const isLoggedIn = computed(() => userStore.isLoggedIn);
-const username = computed(() => userStore.user?.username || '未登录');
+const isLoggedIn = computed(() => authStore.isLoggedIn);
+const username = computed(() => authStore.user?.username || '未登录');
 
 // 菜单列表
 const menuList = [
@@ -123,7 +123,7 @@ const handleMenuClick = async (item) => {
     if (item.name === 'Log Out') {
         try {
             loading.value = true;
-            const success = await userStore.logout();
+            const success = await authStore.logout();
             if (success) {
                 toast.success('已退出登录');
                 router.push('/login');
@@ -142,11 +142,11 @@ const handleMenuClick = async (item) => {
 const initProfile = async () => {
     loading.value = true;
     try {
-        // 初始化userStore
-        await userStore.init();
-        
+        // authStore 初始化
+        await authStore.init();
+
         // 如果未登录，跳转到登录页
-        if (!userStore.isLoggedIn) {
+        if (!authStore.isLoggedIn) {
             router.push({
                 path: '/login',
                 query: { redirect: router.currentRoute.value.fullPath }
