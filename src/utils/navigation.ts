@@ -5,13 +5,13 @@ import type { Router } from 'vue-router';
  * 购物流程中的路由名称枚举
  */
 export enum ShoppingFlowRoute {
-      PRODUCT_DETAIL = '/product/',
+      PRODUCT_DETAIL = '/product',
       CART = '/cart',
       CHECKOUT = '/checkout',
-      PAYMENT = '/payment/',
+      PAYMENT = '/payment',
       PAYMENT_RESULT = '/payment/result',
       ORDER_LIST = '/order',
-      ORDER_DETAIL = '/order/'
+      ORDER_DETAIL = '/order'
 }
 
 /**
@@ -107,10 +107,10 @@ export function navigateToOrderDetail(router: Router, orderId: string): void {
  * @param currentPage 当前页面
  */
 export function cancelPaymentFlow(router: Router, currentPage: string): void {
-      if (currentPage.includes(ShoppingFlowRoute.PAYMENT)) {
+      if (currentPage.startsWith(ShoppingFlowRoute.PAYMENT)) {
             // 从支付页取消，返回订单列表
             router.replace(ShoppingFlowRoute.ORDER_LIST);
-      } else if (currentPage.includes(ShoppingFlowRoute.CHECKOUT)) {
+      } else if (currentPage.startsWith(ShoppingFlowRoute.CHECKOUT)) {
             // 从结账页取消，返回购物车
             router.replace(ShoppingFlowRoute.CART);
       } else {
@@ -125,8 +125,8 @@ export function cancelPaymentFlow(router: Router, currentPage: string): void {
  */
 export function isInShoppingFlow(path: string): boolean {
       return (
-            path.includes(ShoppingFlowRoute.CHECKOUT) ||
-            path.includes(ShoppingFlowRoute.PAYMENT)
+            path.startsWith(ShoppingFlowRoute.CHECKOUT) ||
+            path.startsWith(ShoppingFlowRoute.PAYMENT)
       );
 }
 
@@ -136,10 +136,10 @@ export function isInShoppingFlow(path: string): boolean {
  */
 export function getBackDestination(currentPath: string): string {
       // 根据当前路径决定返回目标
-      if (currentPath.includes(ShoppingFlowRoute.PAYMENT_RESULT)) {
+      if (currentPath.startsWith(ShoppingFlowRoute.PAYMENT_RESULT)) {
             // 支付结果页 => 订单列表
             return ShoppingFlowRoute.ORDER_LIST;
-      } else if (currentPath.includes(ShoppingFlowRoute.PAYMENT)) {
+      } else if (currentPath.startsWith(ShoppingFlowRoute.PAYMENT)) {
             // 支付页 => 订单列表
             return ShoppingFlowRoute.ORDER_LIST;
       } else if (currentPath === ShoppingFlowRoute.CHECKOUT) {

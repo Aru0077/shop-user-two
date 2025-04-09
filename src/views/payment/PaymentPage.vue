@@ -426,8 +426,8 @@ const cancelPayment = async () => {
         // 清除QPay支付数据
         qPayStore.clearQPayState(); 
         
-        // 取消支付流程，回到订单列表页面
-        cancelPaymentFlow(router, '/payment');
+       // 使用当前路由的完整路径
+       cancelPaymentFlow(router, router.currentRoute.value.path);
     } catch (err) {
         console.error('取消支付失败:', err);
     }
