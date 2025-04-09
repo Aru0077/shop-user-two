@@ -6,7 +6,7 @@ import { storage, STORAGE_VERSIONS } from '@/utils/storage';
 import { createInitializeHelper } from '@/utils/store-helpers';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import { toast } from '@/utils/toast.service';
-import { useUserStore } from '@/stores/user.store';
+import { useAuthStore } from '@/stores/auth.store';
 import { useAddressStore } from '@/stores/address.store';
 import type { TempOrder, CreateTempOrderParams, CheckoutInfo } from '@/types/temp-order.type';
 import type { CreateOrderResponse } from '@/types/order.type';
@@ -38,7 +38,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
       const orderRemark = ref<string>('');
 
       // 获取其他store
-      const userStore = useUserStore();
+      const authStore = useAuthStore();
       const addressStore = useAddressStore();
 
       // ==================== 计算属性 ====================
@@ -129,7 +129,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
        * 获取结算信息
        */
       async function getCheckoutInfo(): Promise<CheckoutInfo | null> {
-            if (!userStore.isLoggedIn) {
+            if (!authStore.isLoggedIn) {
                   console.info('用户未登录，无法获取结算信息');
                   return null;
             }
@@ -228,7 +228,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
        * 创建临时订单
        */
       async function createTempOrder(params: CreateTempOrderParams): Promise<TempOrder | null> {
-            if (!userStore.isLoggedIn) {
+            if (!authStore.isLoggedIn) {
                   toast.warning('请先登录后再创建订单');
                   return null;
             }
@@ -275,7 +275,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
        * 加载临时订单
        */
       async function loadTempOrder(id: string): Promise<TempOrder | null> {
-            if (!userStore.isLoggedIn) {
+            if (!authStore.isLoggedIn) {
                   toast.warning('请先登录');
                   return null;
             }
@@ -555,7 +555,7 @@ export const useTempOrderStore = defineStore('tempOrder', () => {
             initHelper.startInitialization();
 
             try {
-                  if (userStore.isLoggedIn) {
+                  if (authStore.isLoggedIn) {
                         // 确保地址store已初始化
                         if (!addressStore.isInitialized()) {
                               await addressStore.init();

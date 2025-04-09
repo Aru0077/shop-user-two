@@ -1,6 +1,6 @@
 // src/core/service.init.ts
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
-import { useUserStore } from '@/stores/user.store';
+import { useAuthStore } from '@/stores/auth.store';
 import { useAddressStore } from '@/stores/address.store';
 import { useProductStore } from '@/stores/product.store';
 import { useCartStore } from '@/stores/cart.store';
@@ -34,8 +34,8 @@ export class ServiceInitializer {
 
             try {
                   // 1. 初始化用户认证模块（最优先）
-                  const userStore = useUserStore();
-                  await userStore.init();
+                  const authStore = useAuthStore();
+                  await authStore.init();
 
                   // 2. 初始化基础数据模块（所有用户共用，不依赖登录状态）
                   const baseStores = [
@@ -47,7 +47,7 @@ export class ServiceInitializer {
                   await Promise.all(baseStores.map(store => store.init()));
 
                   // 3. 根据登录状态初始化用户相关数据模块
-                  if (userStore.isLoggedIn) {
+                  if (authStore.isLoggedIn) {
                         console.info('用户已登录，初始化用户相关数据模块');
 
                         const userDataStores = [

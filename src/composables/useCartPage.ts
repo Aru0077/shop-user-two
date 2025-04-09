@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useCartStore } from '@/stores/cart.store';
-import { useUserStore } from '@/stores/user.store';
+import { useAuthStore } from '@/stores/auth.store';
 import { useTempOrderStore } from '@/stores/temp-order.store';
 import { useToast } from '@/composables/useToast';
 import { navigateFromCartToCheckout } from '@/utils/navigation';
@@ -14,7 +14,7 @@ export function useCartPage() {
       // 初始化
       const router = useRouter();
       const cartStore = useCartStore();
-      const userStore = useUserStore();
+      const authStore = useAuthStore();
       const tempOrderStore = useTempOrderStore();
       const toast = useToast();
 
@@ -136,7 +136,7 @@ export function useCartPage() {
             }
 
             // 检查用户是否登录
-            if (!userStore.isLoggedIn) {
+            if (!authStore.isLoggedIn) {
                   toast.info('Please log in first');
                   router.push({
                         path: '/login',
@@ -182,7 +182,7 @@ export function useCartPage() {
                   cartStore.isInitialized();
 
                   // 刷新购物车数据
-                  if (userStore.isLoggedIn) {
+                  if (authStore.isLoggedIn) {
                         await cartStore.loadCartItems();
                   }
 

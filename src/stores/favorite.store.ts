@@ -5,8 +5,8 @@ import { favoriteApi } from '@/api/favorite.api';
 import { createInitializeHelper } from '@/utils/store-helpers';
 import { storage } from '@/utils/storage';
 import { toast } from '@/utils/toast.service';
-import { eventBus, EVENT_NAMES } from '@/core/event-bus';
-import { useUserStore } from '@/stores/user.store';
+import { eventBus, EVENT_NAMES } from '@/core/event-bus'; 
+import { useAuthStore } from '@/stores/auth.store';
 import type { UserFavorite, AddFavoriteParams, BatchRemoveFavoritesParams, FavoritesResponse } from '@/types/favorite.type';
 import type { ApiError } from '@/types/common.type';
 
@@ -70,8 +70,8 @@ export const useFavoriteStore = defineStore('favorite', () => {
        * 获取收藏商品ID列表
        */
       async function getFavoriteIds(): Promise<number[]> {
-            const userStore = useUserStore();
-            if (!userStore.isLoggedIn) {
+            const authStore = useAuthStore();
+            if (!authStore.isLoggedIn) {
                   console.info('用户未登录，无法获取收藏列表');
                   return [];
             }
@@ -108,8 +108,8 @@ export const useFavoriteStore = defineStore('favorite', () => {
        * 获取收藏商品列表
        */
       async function getFavorites(page: number = 1, limit: number = 10): Promise<FavoritesResponse | null> {
-            const userStore = useUserStore();
-            if (!userStore.isLoggedIn) {
+            const authStore = useAuthStore();
+            if (!authStore.isLoggedIn) {
                   console.info('用户未登录，无法获取收藏列表');
                   return null;
             }
@@ -150,8 +150,8 @@ export const useFavoriteStore = defineStore('favorite', () => {
             // 确保初始化
             await ensureInitialized();
 
-            const userStore = useUserStore();
-            if (!userStore.isLoggedIn) {
+            const authStore = useAuthStore();
+            if (!authStore.isLoggedIn) {
                   toast.warning('请先登录后再添加收藏');
                   return null;
             }
@@ -217,8 +217,8 @@ export const useFavoriteStore = defineStore('favorite', () => {
       async function removeFavorite(productId: number): Promise<boolean> {
             await ensureInitialized();
 
-            const userStore = useUserStore();
-            if (!userStore.isLoggedIn) {
+            const authStore = useAuthStore();
+            if (!authStore.isLoggedIn) {
                   toast.warning('请先登录');
                   return false;
             }
@@ -280,8 +280,8 @@ export const useFavoriteStore = defineStore('favorite', () => {
       async function batchRemoveFavorites(productIds: number[]): Promise<boolean> {
             await ensureInitialized();
 
-            const userStore = useUserStore();
-            if (!userStore.isLoggedIn) {
+            const authStore = useAuthStore();
+            if (!authStore.isLoggedIn) {
                   toast.warning('请先登录');
                   return false;
             }
@@ -347,8 +347,8 @@ export const useFavoriteStore = defineStore('favorite', () => {
             initHelper.startInitialization();
 
             try {
-                  const userStore = useUserStore();
-                  if (userStore.isLoggedIn) {
+                  const authStore = useAuthStore();
+                  if (authStore.isLoggedIn) {
                         await getFavoriteIds();
                   }
 

@@ -93,7 +93,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { X, Minus, Plus } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
 import { useCartStore } from '@/stores/cart.store';
-import { useUserStore } from '@/stores/user.store';
+import { useAuthStore } from '@/stores/auth.store';
 import { useTempOrderStore } from '@/stores/temp-order.store';
 import { useToast } from '@/composables/useToast';
 import { formatPrice } from '@/utils/price.utils';
@@ -115,7 +115,7 @@ const emit = defineEmits<{
 
 // 引入stores和工具
 const router = useRouter();
-const userStore = useUserStore();
+const authStore = useAuthStore();
 const cartStore = useCartStore();
 const tempOrderStore = useTempOrderStore();
 const toast = useToast();
@@ -301,7 +301,7 @@ const handleAddToCart = async () => {
     }
 
     // 检查用户是否登录
-    if (!userStore.isLoggedIn) {
+    if (!authStore.isLoggedIn) {
         router.push({
             path: '/login',
             query: { redirect: router.currentRoute.value.fullPath }
@@ -347,7 +347,7 @@ const handleBuyNow = async () => {
     if (!props.product || !selectedSkuId.value) return;
 
     // 检查是否登录
-    if (!userStore.isLoggedIn) {
+    if (!authStore.isLoggedIn) {
         router.push({
             path: '/login',
             query: { redirect: router.currentRoute.value.fullPath }
@@ -449,9 +449,9 @@ watch(() => props.isOpen, (newValue) => {
 // 组件初始化
 onMounted(async () => {
     // 确保用户store已初始化
-    if (!userStore.isInitialized()) {
+    if (!authStore.isInitialized()) {
         try {
-            await userStore.init();
+            await authStore.init();
         } catch (error) {
             console.error('初始化用户信息失败:', error);
         }

@@ -180,7 +180,7 @@ import {
 } from 'lucide-vue-next';
 import { useQPayStore } from '@/stores/qpay.store';
 import { useOrderStore } from '@/stores/order.store';
-import { useUserStore } from '@/stores/user.store';
+import { useAuthStore } from '@/stores/auth.store';
 import { useToast } from '@/composables/useToast';
 import { formatPrice } from '@/utils/price.utils';
 import type { OrderDetail } from '@/types/order.type';
@@ -193,7 +193,7 @@ const route = useRoute();
 const router = useRouter();
 const qPayStore = useQPayStore();
 const orderStore = useOrderStore();
-const userStore = useUserStore();
+const authStore = useAuthStore();
 const toast = useToast();
 
 // 状态
@@ -347,7 +347,7 @@ const formatDate = (dateString: string): string => {
 // 组件挂载时
 onMounted(async () => {
     // 检查用户登录状态
-    if (!userStore.isLoggedIn) {
+    if (!authStore.isLoggedIn) {
         toast.warning('请先登录');
         router.push({
             path: '/login',

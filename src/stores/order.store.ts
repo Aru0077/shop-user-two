@@ -6,7 +6,7 @@ import { storage } from '@/utils/storage';
 import { createInitializeHelper } from '@/utils/store-helpers';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import { toast } from '@/utils/toast.service';
-import { useUserStore } from '@/stores/user.store';
+import { useAuthStore } from '@/stores/auth.store';
 import type {
     OrderBasic,
     OrderDetail,
@@ -37,7 +37,7 @@ export const useOrderStore = defineStore('order', () => {
     const error = ref<string | null>(null);
 
     // 获取用户store
-    const userStore = useUserStore();
+    const authStore = useAuthStore();
 
     // 计算属性
     const pendingPaymentOrders = computed(() => {
@@ -104,7 +104,7 @@ export const useOrderStore = defineStore('order', () => {
      * @param status 订单状态
      */
     async function getOrderList(page: number = 1, limit: number = 10, status?: number): Promise<PaginatedResponse<OrderBasic> | null> {
-        if (!userStore.isLoggedIn) {
+        if (!authStore.isLoggedIn) {
             toast.warning('请先登录');
             return null;
         }
@@ -143,7 +143,7 @@ export const useOrderStore = defineStore('order', () => {
      * @param id 订单ID
      */
     async function getOrderDetail(id: string): Promise<OrderDetail | null> {
-        if (!userStore.isLoggedIn) {
+        if (!authStore.isLoggedIn) {
             toast.warning('请先登录');
             return null;
         }
@@ -180,7 +180,7 @@ export const useOrderStore = defineStore('order', () => {
      * @param params 创建订单参数
      */
     async function createOrder(params: CreateOrderParams): Promise<CreateOrderResponse | null> {
-        if (!userStore.isLoggedIn) {
+        if (!authStore.isLoggedIn) {
             toast.warning('请先登录');
             return null;
         }
@@ -209,7 +209,7 @@ export const useOrderStore = defineStore('order', () => {
      * @param params 快速购买参数
      */
     async function quickBuy(params: QuickBuyParams): Promise<CreateOrderResponse | null> {
-        if (!userStore.isLoggedIn) {
+        if (!authStore.isLoggedIn) {
             toast.warning('请先登录');
             return null;
         }
@@ -239,7 +239,7 @@ export const useOrderStore = defineStore('order', () => {
      * @param params 支付订单参数
      */
     async function payOrder(id: string, params: PayOrderParams): Promise<PayOrderResponse | null> {
-        if (!userStore.isLoggedIn) {
+        if (!authStore.isLoggedIn) {
             toast.warning('请先登录');
             return null;
         }
@@ -274,7 +274,7 @@ export const useOrderStore = defineStore('order', () => {
      * @param id 订单ID
      */
     async function cancelOrder(id: string): Promise<boolean> {
-        if (!userStore.isLoggedIn) {
+        if (!authStore.isLoggedIn) {
             toast.warning('请先登录');
             return false;
         }
@@ -314,7 +314,7 @@ export const useOrderStore = defineStore('order', () => {
      * @param id 订单ID
      */
     async function confirmReceipt(id: string): Promise<boolean> {
-        if (!userStore.isLoggedIn) {
+        if (!authStore.isLoggedIn) {
             toast.warning('请先登录');
             return false;
         }
@@ -373,7 +373,7 @@ export const useOrderStore = defineStore('order', () => {
         initHelper.startInitialization();
 
         try {
-            if (userStore.isLoggedIn) {
+            if (authStore.isLoggedIn) {
                 // 加载用户订单列表
                 await getOrderList(1, 10);
             }

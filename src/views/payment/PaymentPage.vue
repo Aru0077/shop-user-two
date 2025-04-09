@@ -248,7 +248,7 @@ import {
 } from 'lucide-vue-next';
 import { useQPayStore } from '@/stores/qpay.store';
 import { useOrderStore } from '@/stores/order.store';
-import { useUserStore } from '@/stores/user.store';
+import { useAuthStore } from '@/stores/auth.store';
 import { useToast } from '@/composables/useToast';
 import { formatPrice } from '@/utils/price.utils';
 import type { OrderDetail } from '@/types/order.type';
@@ -261,7 +261,7 @@ const route = useRoute();
 const router = useRouter();
 const qPayStore = useQPayStore();
 const orderStore = useOrderStore();
-const userStore = useUserStore();
+const authStore = useAuthStore();
 const toast = useToast();
 
 // 状态
@@ -289,7 +289,7 @@ const countdownPercentage = computed(() => {
 
 // 获取订单信息
 const fetchOrderDetail = async () => {
-    if (!userStore.isLoggedIn) {
+    if (!authStore.isLoggedIn) {
         toast.warning('请先登录');
         router.push({
             path: '/login',
@@ -534,7 +534,7 @@ onMounted(async () => {
     eventBus.on('navbar:back', handleBackClick);
 
     // 检查用户登录状态
-    if (!userStore.isLoggedIn) {
+    if (!authStore.isLoggedIn) {
         toast.warning('请先登录');
         router.push({
             path: '/login',

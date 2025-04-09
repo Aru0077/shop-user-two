@@ -31,7 +31,7 @@ import { Heart, SquareArrowOutUpRight, Wallet } from 'lucide-vue-next';
 import ShoppingCartPlus from '@/components/icon/ShoppingCartPlus.vue';
 import type { ProductDetail } from '@/types/product.type';
 import { useFavoriteStore } from '@/stores/favorite.store';
-import { useUserStore } from '@/stores/user.store';
+import { useAuthStore } from '@/stores/auth.store';
 import { useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 
@@ -48,13 +48,13 @@ const emit = defineEmits<{
 
 // 初始化store
 const favoriteStore = useFavoriteStore();
-const userStore = useUserStore();
+const authStore = useAuthStore();
 const router = useRouter();
 const toast = useToast();
 
 // 计算属性：是否已收藏
 const isFavorite = computed(() => {
-    if (!props.product?.id || !userStore.isLoggedIn) {
+    if (!props.product?.id || !authStore.isLoggedIn) {
         return false;
     }
     return favoriteStore.isFavorite(props.product.id);
@@ -66,7 +66,7 @@ const toggleFavorite = async () => {
     if (!props.product?.id) return;
 
     // 检查用户登录状态
-    if (!userStore.isLoggedIn) {
+    if (!authStore.isLoggedIn) {
         router.push({
             path: '/login',
             query: { redirect: router.currentRoute.value.fullPath }
@@ -88,7 +88,7 @@ const toggleFavorite = async () => {
 
         } else {
             // 添加收藏
-            await favoriteStore.addFavorite(productId); 
+            await favoriteStore.addFavorite(productId);
         }
     } catch (error) {
         console.error('收藏操作失败:', error);

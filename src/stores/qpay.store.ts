@@ -6,7 +6,7 @@ import { storage } from '@/utils/storage';
 import { createInitializeHelper } from '@/utils/store-helpers';
 import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import { toast } from '@/utils/toast.service';
-import { useUserStore } from '@/stores/user.store';
+import { useAuthStore } from '@/stores/auth.store';
 import { useOrderStore } from '@/stores/order.store';
 import type {
       QPayInvoice,
@@ -36,7 +36,7 @@ export const useQPayStore = defineStore('qpay', () => {
       const pollingInterval = ref<number | null>(null);
 
       // 获取其他store
-      const userStore = useUserStore();
+      const authStore = useAuthStore();
       const orderStore = useOrderStore();
 
       // 计算属性
@@ -141,7 +141,7 @@ export const useQPayStore = defineStore('qpay', () => {
        * @param params 创建支付参数
        */
       async function createPayment(params: CreateQPayPaymentParams): Promise<QPayInvoice | null> {
-            if (!userStore.isLoggedIn) {
+            if (!authStore.isLoggedIn) {
                   toast.warning('请先登录');
                   return null;
             }
@@ -203,7 +203,7 @@ export const useQPayStore = defineStore('qpay', () => {
        * @param orderId 订单ID
        */
       async function checkPaymentStatus(orderId: string): Promise<QPayStatusResponse | null> {
-            if (!userStore.isLoggedIn) {
+            if (!authStore.isLoggedIn) {
                   toast.warning('请先登录');
                   return null;
             }

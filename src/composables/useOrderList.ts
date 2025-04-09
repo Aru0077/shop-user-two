@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useOrderStore } from '@/stores/order.store';
-import { useUserStore } from '@/stores/user.store';
+import { useAuthStore } from '@/stores/auth.store';
 import { useToast } from '@/composables/useToast';
 import { storage } from '@/utils/storage';
 import { navigateToPayment } from '@/utils/navigation';
@@ -11,7 +11,7 @@ export function useOrderList() {
       // Stores
       const router = useRouter();
       const orderStore = useOrderStore();
-      const userStore = useUserStore();
+      const authStore = useAuthStore();
       const toast = useToast();
 
       // State
@@ -34,7 +34,7 @@ export function useOrderList() {
        * @param reset Whether to reset the list or append to it
        */
       const fetchOrders = async (reset: boolean = false) => {
-            if (!userStore.isLoggedIn) {
+            if (!authStore.isLoggedIn) {
                   toast.warning('Please log in first');
                   router.push('/login');
                   return;
@@ -177,7 +177,7 @@ export function useOrderList() {
       // Lifecycle hooks
       onMounted(async () => {
             // Check login status
-            if (!userStore.isLoggedIn) {
+            if (!authStore.isLoggedIn) {
                   toast.warning('Please log in first');
                   router.push({
                         path: '/login',

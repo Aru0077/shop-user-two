@@ -211,8 +211,8 @@ import {
     CheckCircle,
     XCircle
 } from 'lucide-vue-next';
-import { useOrderStore } from '@/stores/order.store';
-import { useUserStore } from '@/stores/user.store';
+import { useOrderStore } from '@/stores/order.store'; 
+import { useAuthStore } from '@/stores/auth.store';
 import { useToast } from '@/composables/useToast';
 import { formatPrice } from '@/utils/price.utils';
 import { OrderStatus } from '@/types/common.type';
@@ -222,8 +222,8 @@ import { useProductStore } from '@/stores/product.store';
 // 初始化
 const route = useRoute();
 const router = useRouter();
-const orderStore = useOrderStore();
-const userStore = useUserStore();
+const orderStore = useOrderStore(); 
+const authStore = useAuthStore();
 const productStore = useProductStore();
 const toast = useToast();
 
@@ -259,7 +259,7 @@ let countdownTimer: number | null = null;
 
 // 获取订单详情
 const fetchOrderDetail = async () => {
-    if (!userStore.isLoggedIn) {
+    if (!authStore.isLoggedIn) {
         toast.warning('请先登录');
         router.push('/login');
         return;
@@ -504,7 +504,7 @@ const goBack = () => {
 // 组件挂载时
 onMounted(async () => {
     // 检查用户登录状态
-    if (!userStore.isLoggedIn) {
+    if (!authStore.isLoggedIn) {
         toast.warning('请先登录');
         router.push({
             path: '/login',

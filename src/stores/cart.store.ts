@@ -13,8 +13,8 @@ import type {
     AddToCartResponse,
     PreviewOrderParams,
     OrderAmountPreview
-} from '@/types/cart.type';
-import { useUserStore } from '@/stores/user.store';
+} from '@/types/cart.type'; 
+import { useAuthStore } from '@/stores/auth.store';
 
 /**
  * 购物车Store
@@ -64,9 +64,9 @@ export const useCartStore = defineStore('cart', () => {
      * 加载购物车列表
      */
     async function loadCartItems(page: number = 1, limit: number = 50) {
-        const userStore = useUserStore();
+        const authStore = useAuthStore();
         // 检查用户是否已登录
-        if (!userStore.isLoggedIn) {
+        if (!authStore.isLoggedIn) {
             return null;
         }
 
