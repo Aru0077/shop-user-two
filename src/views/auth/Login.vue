@@ -133,6 +133,7 @@ import { useFacebookStore } from '@/stores/facebook.store';
 import { useToast } from '@/composables/useToast';
 import { facebookUtils } from '@/utils/facebook.utils';
 import { cleanupAuthRedirect, cleanupHistory } from '@/utils/history';
+import { authService } from '@/services/auth.service';
 
 // Initialize router, state management and toast
 const router = useRouter();
@@ -167,7 +168,14 @@ onMounted(async () => {
                 localStorage.removeItem('fb_auth_state');
 
                 if (state && savedState && state === savedState && accessToken) {
-                    await handleFacebookToken(accessToken);
+                    // await handleFacebookToken(accessToken);
+                    const success = await facebookStore.loginWithToken(accessToken);
+                    
+                    if (success) {
+                        // 使用authService处理重定向
+                        authService.handleLoginRedirect();
+                    }
+
 
                     // 清理URL中的token参数
                     cleanupAuthRedirect();
@@ -185,20 +193,20 @@ onMounted(async () => {
 });
 
 // 提取处理令牌的逻辑为单独函数
-async function handleFacebookToken(accessToken: string) {
-    if (!accessToken) {
-        error.value = '获取访问令牌失败';
-        return;
-    }
-    // 这里不再调用 getUserInfo，因为我们已经有了访问令牌
-    const success = await facebookStore.loginWithToken(accessToken);
+// async function handleFacebookToken(accessToken: string) {
+//     if (!accessToken) {
+//         error.value = '获取访问令牌失败';
+//         return;
+//     }
+//     // 这里不再调用 getUserInfo，因为我们已经有了访问令牌
+//     const success = await facebookStore.loginWithToken(accessToken);
 
-    if (success) {
-        toast.success('Facebook登录成功');
-        const redirectPath = route.query.redirect || '/home';
-        router.replace(redirectPath as string);
-    }
-}
+//     if (success) {
+//         toast.success('Facebook登录成功');
+//         const redirectPath = route.query.redirect || '/home';
+//         router.replace(redirectPath as string);
+//     }
+// }
 
 
 
@@ -207,6 +215,12 @@ const handleFacebookLogin = async () => {
     try {
         fbLoading.value = true;
         error.value = '';
+
+         // 检查当前token是否已过期
+         if (userStore.isLoggedIn && authService.isTokenExpired()) {
+            // 先处理token过期
+            authService.handleTokenExpired(false); // 静默处理
+        }
 
         // 1. 执行Facebook登录
         const loginResponse = await facebookUtils.login('public_profile');
@@ -225,27 +239,13 @@ const handleFacebookLogin = async () => {
 
         if (success) {
             toast.success('Facebook登录成功');
-
-            // 使用更完整的URL模式列表
-            const clearHistory = cleanupHistory([
-                'facebook.com', 
-                'm.facebook.com', 
-                '/login', 
-                '/register', 
-                'privacy/consent_framework',
-                'consent_prompt_context'
-            ]);
             
-            // 立即执行历史清理
-            if (clearHistory) {
-                clearHistory();
-            } else {
-                console.warn('clearHistory is undefined');
-            }
-
-            // 重定向到来源页或首页
-            const redirectPath = route.query.redirect as string || '/home';
-            router.replace(redirectPath);
+            // 清理历史记录
+            const clearHistory = cleanupHistory([/*...*/]);
+            if (clearHistory) clearHistory();
+            
+            // 使用authService处理重定向
+            authService.handleLoginRedirect();
         }
     } catch (err: any) {
         console.error('Facebook登录失败:', err);

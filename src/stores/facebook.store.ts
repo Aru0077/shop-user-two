@@ -4,6 +4,7 @@ import { ref, computed } from 'vue';
 import { facebookApi } from '@/api/facebook.api';
 import { useUserStore } from '@/stores/user.store';
 import { toast } from '@/utils/toast.service';
+import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 
 export const useFacebookStore = defineStore('facebook', () => {
     // 状态
@@ -24,16 +25,24 @@ export const useFacebookStore = defineStore('facebook', () => {
         try {
             loading.value = true;
             clearError();
-            
+
             const response = await facebookApi.loginWithToken(accessToken);
-            
+
             // 设置用户信息
             userStore.token = response.token;
             userStore.user = response.user;
-            
+
+            // 保存token过期时间（重要！）
+            if (response.expiresAt) {
+                userStore.tokenExpiresAt = response.expiresAt;
+            }
+
             // 保存到本地存储
             userStore.saveUserDataToStorage();
-            
+
+            // 发布登录成功事件
+            eventBus.emit(EVENT_NAMES.USER_LOGIN, response.user);
+
             return true;
         } catch (err: any) {
             const errorMessage = err.message || 'Facebook登录失败';

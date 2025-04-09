@@ -29,6 +29,7 @@ export interface FacebookLoginOptions {
 export interface FacebookLoginResponse {
       token: string;
       user: User;
+      expiresAt?: number;
 }
 
 /**

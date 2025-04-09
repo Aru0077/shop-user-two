@@ -312,6 +312,7 @@ export const useUserStore = defineStore('user', () => {
             loginLoading,
             registerLoading,
             error,
+            tokenExpiresAt,
 
             // 计算属性
             isLoggedIn,
