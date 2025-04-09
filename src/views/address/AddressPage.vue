@@ -91,6 +91,7 @@ import PageTitle from '@/components/common/PageTitle.vue';
 import type { UserAddress } from '@/types/address.type';
 // 导入临时订单store
 import { useTempOrderStore } from '@/stores/temp-order.store';
+import { navigateToNewAddress } from '@/utils/navigation';
 
 const router = useRouter();
 const route = useRoute();
@@ -153,13 +154,7 @@ const formatDate = (dateString: string): string => {
 
 // 新增地址
 const handleAddAddress = () => {
-    router.push({
-        path: '/new-address',
-        query: {
-            redirect: redirectPath,
-            from: 'address'
-        }
-    });
+    navigateToNewAddress(router, redirectPath, 'address', fromCheckout ? route.query.tempOrderId as string : undefined);
 };
 
 // 编辑地址

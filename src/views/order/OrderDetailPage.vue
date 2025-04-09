@@ -218,6 +218,7 @@ import { formatPrice } from '@/utils/price.utils';
 import { OrderStatus } from '@/types/common.type';
 import type { OrderItemSpec } from '@/types/order.type'; 
 import { useProductStore } from '@/stores/product.store';
+import { navigateToPayment } from '@/utils/navigation';
 
 // 初始化
 const route = useRoute();
@@ -450,14 +451,7 @@ const cancelOrder = async () => {
 // 去支付
 const goToPay = () => {
     if (!orderDetail.value) return;
-    router.push({
-        path: `/payment`,
-        query: {
-            id: orderDetail.value.id,
-            type: 'order',
-            amount: orderDetail.value.paymentAmount
-        }
-    });
+    navigateToPayment(router, orderDetail.value.id);
 };
 
 // 确认收货

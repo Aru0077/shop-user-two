@@ -186,6 +186,7 @@ import { formatPrice } from '@/utils/price.utils';
 import type { OrderDetail } from '@/types/order.type';
 import { PaymentStatus } from '@/types/common.type';
 import { navigateToOrderDetail, navigateToPayment } from '@/utils/navigation';
+import { navigateToHome } from '@/utils/navigation';
 
 
 // 初始化
@@ -318,7 +319,7 @@ const retryPayment = () => {
 
 // 继续购物
 const continueShopping = () => {
-    router.replace('/home');
+    navigateToHome(router);
 };
 
 // 返回上一页
