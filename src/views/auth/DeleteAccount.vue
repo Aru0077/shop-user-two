@@ -63,17 +63,17 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { AlertTriangle } from 'lucide-vue-next';
-import { useUserStore } from '@/stores/user.store';
+import { useAuthStore } from '@/stores/auth.store'; 
 import { useToast } from '@/composables/useToast';
 import PageTitle from '@/components/common/PageTitle.vue';
 
 // Initialize router, state management and toast
 const router = useRouter();
-const userStore = useUserStore();
+const authStore = useAuthStore(); 
 const toast = useToast();
 
 // Component state
-const isLoading = computed(() => userStore.loading);
+const isLoading = computed(() => authStore.loading);
 const error = ref('');
 const showConfirmDialog = ref(false);
 
@@ -83,23 +83,23 @@ const confirmDelete = () => {
     showConfirmDialog.value = true;
 };
 
-// Execute account deletion
+// 执行账号删除
 const deleteAccount = async () => {
-    try {
-        const success = await userStore.deleteAccount({
-            password: '' // Pass empty string instead of password
-        });
+  try {
+    const success = await authStore.deleteAccount({
+      password: '' // 传递空字符串代替密码
+    });
 
-        if (success) {
-            toast.success('Your account has been successfully deleted');
-            showConfirmDialog.value = false;
-            router.replace('/home');
-        }
-    } catch (err: any) {
-        error.value = err.message || 'Failed to delete account';
-        toast.error(error.value);
-        showConfirmDialog.value = false;
+    if (success) {
+      toast.success('您的账号已成功删除');
+      showConfirmDialog.value = false;
+      router.replace('/home');
     }
+  } catch (err: any) {
+    error.value = err.message || '删除账号失败';
+    toast.error(error.value);
+    showConfirmDialog.value = false;
+  }
 };
 
 // Go back to previous page

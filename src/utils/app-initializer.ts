@@ -1,7 +1,8 @@
 // src/utils/app-initializer.ts
 import { serviceInitializer } from '@/core/service.init';
-import { eventBus, EVENT_NAMES } from '@/core/event-bus'; 
+import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import { authService } from '@/services/auth.service';
+import { useAuthStore } from '@/stores/auth.store';
 
 /**
  * 应用初始化类
@@ -29,25 +30,27 @@ export class AppInitializer {
             console.info('开始初始化应用...');
 
             try {
-                  // 0. 预先检查Token是否过期
-                  if (authService.isTokenExpired()) {
+                  // 检查Token是否过期
+                  const authStore = useAuthStore();
+                  if (authStore.isLoggedIn && authService.isTokenExpired()) {
                         // Token已过期，静默处理
                         authService.handleTokenExpired(false);
                   }
 
-                  // 1. 确保核心服务层初始化完成
+                  // 确保核心服务层初始化完成
                   await serviceInitializer.initialize();
 
-                  // 2. 执行UI层特定的初始化逻辑
+                  // 初始化UI层特定逻辑
                   this.initializeUI();
 
-                  // 3. 发布应用完全初始化完成事件
+                  // 发布应用初始化完成事件
                   eventBus.emit(EVENT_NAMES.APP_INIT);
 
                   this.initialized = true;
                   console.info('应用初始化完成');
 
                   return Promise.resolve();
+
             } catch (error) {
                   console.error('应用初始化过程中发生错误:', error);
                   return Promise.reject(error);
@@ -59,10 +62,7 @@ export class AppInitializer {
        */
       private initializeUI(): void {
             // 初始化路由守卫
-            this.setupRouterGuards();
-
-            // 可添加其他UI层面初始化逻辑
-            // 如：全局组件注册、主题初始化等
+            this.setupRouterGuards(); 
       }
 
       /**

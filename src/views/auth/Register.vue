@@ -114,14 +114,18 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { User, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-vue-next';
-import { useUserStore } from '@/stores/user.store';
+import { useAuthStore } from '@/stores/auth.store'; 
 import { useToast } from '@/composables/useToast';
 import { cleanupHistory } from '@/utils/history';
+import { authService } from '@/services/auth.service';
 
 // 初始化路由、状态管理和 toast
 const router = useRouter();
-const userStore = useUserStore();
+const authStore = useAuthStore(); 
 const toast = useToast();
+
+// 设置路由到服务中
+authService.setRouter(router);
 
 // 组件状态
 const username = ref('');
@@ -129,10 +133,10 @@ const password = ref('');
 const confirmPassword = ref('');
 const showPassword = ref(false);
 const showConfirmPassword = ref(false);
-const isLoading = computed(() => userStore.registerLoading);
+const isLoading = computed(() => authStore.loading);
 const error = ref('');
 
-// 处理注册
+// 处理注册 
 const handleRegister = async () => {
     // 表单验证
     error.value = '';
@@ -154,19 +158,12 @@ const handleRegister = async () => {
 
     try {
         // 注册用户
-        const newUser = await userStore.register({
+        const newUser = await authStore.register({
             username: username.value,
             password: password.value
         });
 
         if (newUser) {
-            // 注册成功后自动登录
-            await userStore.login({
-                username: username.value,
-                password: password.value
-            });
-
-            toast.success('注册成功');
             // 添加历史清理
             const clearHistory = cleanupHistory([
                 'facebook.com',
@@ -174,14 +171,11 @@ const handleRegister = async () => {
                 '/login',
                 '/register'
             ]);
+
             // 立即执行历史清理
             if (clearHistory) {
                 clearHistory();
-            } else {
-                console.warn('clearHistory is undefined');
             }
-
-            router.replace('/home');
         }
     } catch (err: any) {
         console.error('注册失败:', err);
