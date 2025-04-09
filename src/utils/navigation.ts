@@ -121,7 +121,7 @@ export function navigateFromCartToCheckout(router: Router, tempOrderId: string):
 export function navigateToPayment(router: Router, orderId: string): void {
       // 使用 replace 避免在历史中留下支付页记录
       router.replace({
-            path: `${ShoppingFlowRoute.PAYMENT}${orderId}`,
+            path: `${ShoppingFlowRoute.PAYMENT}/${orderId}`,
             query: {
                   source: 'checkout' // 添加来源标记
             }
