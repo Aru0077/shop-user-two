@@ -103,7 +103,10 @@ export function useOrderList() {
                   loading.value = true;
                   await orderStore.cancelOrder(orderId);
                   toast.success('Order cancelled');
-                  refreshOrders();
+                  setTimeout(() => {
+                        refreshOrders();
+                  }, 500);
+                  
             } catch (error: any) {
                   toast.error('Failed to cancel order');
                   console.error('Cancel order error:', error);
