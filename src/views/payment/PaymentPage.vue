@@ -253,8 +253,7 @@ import { useToast } from '@/composables/useToast';
 import { formatPrice } from '@/utils/price.utils';
 import type { OrderDetail } from '@/types/order.type';
 import { eventBus } from '@/core/event-bus';
-import { cancelPaymentFlow, navigateToPaymentResult,  } from '@/utils/navigation';
-
+import { cancelPaymentFlow, navigateToPaymentResult,  } from '@/utils/navigation'; 
 
 // 初始化
 const route = useRoute();
@@ -505,7 +504,7 @@ const startCountdown = () => {
 
 // 监听支付状态变化
 watch(() => qPayStore.paymentStatus, (newStatus) => {
-    if (newStatus === 'PAID') {
+    if (newStatus === 'PAID') { 
         // 支付成功，准备跳转到成功页面
         setTimeout(() => {
             viewPaymentResult();

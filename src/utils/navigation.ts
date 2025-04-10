@@ -154,7 +154,7 @@ export function navigateToPaymentResult(router: Router, orderId: string, status:
  */
 export function navigateToOrderDetail(router: Router, orderId: string): void {
       // 使用 push 而不是 replace，因为这是正常的导航流程
-      router.push(`${ShoppingFlowRoute.ORDER_DETAIL}${orderId}`);
+      router.replace(`${ShoppingFlowRoute.ORDER_DETAIL}${orderId}`);
 }
 
 /**

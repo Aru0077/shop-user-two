@@ -8,6 +8,7 @@ import { eventBus, EVENT_NAMES } from '@/core/event-bus';
 import { toast } from '@/utils/toast.service';
 import { useAuthStore } from '@/stores/auth.store';
 import { useOrderStore } from '@/stores/order.store';
+import { useCartStore } from '@/stores/cart.store';
 import type {
       QPayInvoice,
       QPayStatusResponse,
@@ -244,6 +245,12 @@ export const useQPayStore = defineStore('qpay', () => {
                               // 刷新订单详情
                               if (orderStore.isInitialized()) {
                                     await orderStore.getOrderDetail(response.orderId);
+                              }
+
+                               // 添加这段代码：刷新购物车数据
+                              const cartStore = useCartStore();
+                              if (cartStore.isInitialized()) {
+                                    await cartStore.loadCartItems();
                               }
                         }
                   }
