@@ -71,7 +71,7 @@ const initCategories = async () => {
         await productStore.getCategoryTree();
     } catch (error) {
         console.error('初始化分类数据失败:', error);
-        toast.error('加载分类失败，请刷新页面重试');
+        toast.error('Please Refresh');
     } finally {
         loading.value = false;
     }

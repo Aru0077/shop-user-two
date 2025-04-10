@@ -88,7 +88,7 @@ const isLoading = computed(() => productStore.loading);
 // 打开SKU选择器
 const openSkuSelector = (mode: 'cart' | 'buy') => {
     if (!currentProduct.value) {
-        toast.warning('商品信息不完整，请稍后再试');
+        toast.warning('Product information is incomplete, please try again later');
         return;
     }
 
@@ -107,11 +107,11 @@ const fetchProductDetail = async () => {
         if (product) {
             currentProduct.value = product;
         } else {
-            toast.error('获取商品详情失败');
+            toast.error('Failed to get product details');
         }
     } catch (error) {
         console.error('获取商品详情错误:', error);
-        toast.error('获取商品详情失败，请重试');
+        toast.error('Failed to get product details, please try again later');
     }
 };
 

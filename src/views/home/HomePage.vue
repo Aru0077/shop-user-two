@@ -71,9 +71,9 @@ onMounted(async () => {
         // 获取首页数据 - 使用正确的方法名
         await productStore.getHomePageData();
     } catch (err: any) {
-        console.error('加载首页数据失败:', err);
-        error.value = err.message || '加载数据失败';
-        toast.error('加载首页数据失败，请刷新页面重试');
+        console.error('Failed to load homepage data:', err);
+        error.value = err.message || 'Failed to load data';
+        toast.error('Failed to load homepage data, please refresh the page and try again');
     } finally {
         loading.value = false;
     }

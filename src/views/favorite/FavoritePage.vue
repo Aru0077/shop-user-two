@@ -164,12 +164,12 @@ const removeFavorite = async (productId: number) => {
     try {
         const success = await favoriteStore.removeFavorite(productId);
         if (success) {
-            toast.success('已从收藏中移除');
+            toast.success('Removed from favorites');
         } else {
-            toast.error('移除收藏失败');
+            toast.error('Failed to remove from favorites');
         }
     } catch (error: any) {
-        toast.error(error.message || '移除收藏失败');
+        toast.error(error.message || 'Failed to remove from favorites');
     }
 };
 
@@ -191,7 +191,7 @@ const batchRemoveFavorites = async () => {
 
         const success = await favoriteStore.batchRemoveFavorites(productIds);
         if (success) {
-            toast.success(`已移除${productIds.length}项收藏`);
+            toast.success(`Removed${productIds.length}items from favorites`);
             // 清空选择
             selectedItems.value = [];
             // 如果已经没有收藏了，退出编辑模式
@@ -199,10 +199,10 @@ const batchRemoveFavorites = async () => {
                 isEditMode.value = false;
             }
         } else {
-            toast.error('批量移除收藏失败');
+            toast.error('Failed to batch remove from favorites');
         }
     } catch (error: any) {
-        toast.error(error.message || '批量移除收藏失败');
+        toast.error(error.message || 'Failed to batch remove from favorites');
     }
 };
 
@@ -212,7 +212,7 @@ const fetchFavorites = async (page = 1) => {
     try {
         await favoriteStore.getFavorites(page, pageSize.value);
     } catch (error) {
-        toast.error((error as Error).message || '加载收藏失败');
+        toast.error((error as Error).message || 'Failed to load favorites');
     } finally {
         loading.value = false;
     }
@@ -226,8 +226,8 @@ onMounted(async () => {
         await favoriteStore.ensureInitialized();
         await fetchFavorites(1);
     } catch (error) {
-        console.error('获取收藏列表失败:', error);
-        toast.error('加载收藏失败');
+        console.error('Failed to get favorites list:', error);
+        toast.error('Failed to get favorites list');
     } finally {
         loading.value = false;
     }

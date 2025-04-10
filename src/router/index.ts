@@ -23,7 +23,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'Home',
             component: HomePage,
             meta: {
-                  title: '首页',
+                  title: 'Home',
                   showTabBar: true,
                   keepAlive: true,
                   navbar: {
@@ -38,7 +38,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'Category',
             component: CategoryPage,
             meta: {
-                  title: '商品分类',
+                  title: 'Product Categories',
                   showTabBar: true,
                   navbar: {
                         leftButton: 'logo',
@@ -52,7 +52,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'Profile',
             component: ProfilePage,
             meta: {
-                  title: '个人中心',
+                  title: 'Profile',
                   showTabBar: true,
                   navbar: {
                         leftButton: 'logo',
@@ -68,7 +68,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'ProductDetail',
             component: () => import('@/views/product/ProductDetailPage.vue'),
             meta: {
-                  title: '商品详情',
+                  title: 'Product Details',
                   showTabBar: false,
                   showNavbar: false,
             }
@@ -78,7 +78,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'ProductList',
             component: () => import('@/views/product/ProductListPage.vue'),
             meta: {
-                  title: '商品列表',
+                  title: 'Product List',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back',
@@ -92,7 +92,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'Cart',
             component: () => import('@/views/cart/CartPage.vue'),
             meta: {
-                  title: '购物车',
+                  title: 'Shopping Cart',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back',
@@ -106,7 +106,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'Checkout',
             component: () => import('@/views/checkout/CheckoutPage.vue'),
             meta: {
-                  title: '结算',
+                  title: 'Checkout',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
@@ -120,7 +120,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'OrderList',
             component: () => import('@/views/order/OrderListPage.vue'),
             meta: {
-                  title: '我的订单',
+                  title: 'My Orders',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
@@ -133,7 +133,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'OrderDetail',
             component: () => import('@/views/order/OrderDetailPage.vue'),
             meta: {
-                  title: '订单详情',
+                  title: 'Order Details',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
@@ -146,7 +146,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'Address',
             component: () => import('@/views/address/AddressPage.vue'),
             meta: {
-                  title: '收货地址',
+                  title: 'Shipping Address',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back',
@@ -160,7 +160,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'NewAddress',
             component: () => import('@/views/address/NewAddress.vue'),
             meta: {
-                  title: '新增地址',
+                  title: 'Add Address',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back',
@@ -173,7 +173,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'Favorite',
             component: () => import('@/views/favorite/FavoritePage.vue'),
             meta: {
-                  title: '我的收藏',
+                  title: 'My Favorites',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back',
@@ -187,7 +187,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'Login',
             component: () => import('@/views/auth/Login.vue'),
             meta: {
-                  title: '登录',
+                  title: 'Login',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
@@ -200,7 +200,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'Register',
             component: () => import('@/views/auth/Register.vue'),
             meta: {
-                  title: '注册',
+                  title: 'Register',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
@@ -213,7 +213,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'PrivacyPolicy',
             component: () => import('@/views/auth/PrivacyPolicy.vue'),
             meta: {
-                  title: '隐私政策',
+                  title: 'Privacy Policy',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
@@ -225,7 +225,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'TermsOfService',
             component: () => import('@/views/auth/TermsOfService.vue'),
             meta: {
-                  title: '服务条款',
+                  title: 'Terms of Service',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
@@ -237,7 +237,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'DeleteAccount',
             component: () => import('@/views/auth/DeleteAccount.vue'),
             meta: {
-                  title: '删除账号',
+                  title: 'Delete Account',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
@@ -250,7 +250,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'Payment',
             component: () => import('@/views/payment/PaymentPage.vue'),
             meta: {
-                  title: '支付',
+                  title: 'Payment',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
@@ -263,7 +263,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'PaymentResult',
             component: () => import('@/views/payment/PaymentResultPage.vue'),
             meta: {
-                  title: '支付结果',
+                  title: 'Payment Result',
                   showTabBar: false,
                   navbar: {
                         leftButton: 'back'
@@ -277,7 +277,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'NotFound',
             component: () => import('@/views/error/NotFoundPage.vue'),
             meta: {
-                  title: '页面不存在',
+                  title: 'Page Not Found',
                   showTabBar: false,
                   requiresGuest: true
             }
@@ -342,7 +342,7 @@ router.beforeEach((to, from, next) => {
 
       // 设置页面标题
       if (to.meta.title) {
-            document.title = `${to.meta.title} - 购物商城`;
+            document.title = `${to.meta.title} - UniMall`;
       }
 
       // 预加载逻辑保持不变

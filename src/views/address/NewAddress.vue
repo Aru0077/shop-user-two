@@ -1,7 +1,7 @@
 <template>
     <div class="pageContent">
         <!-- 页面标题 -->
-        <PageTitle :mainTitle="isEdit ? '编辑地址' : '添加新地址'" />
+        <PageTitle :mainTitle="isEdit ? 'Edit Address' : 'Add New Address'" />
 
         <!-- 间距占位符 -->
         <div class="w-full h-4"></div>
@@ -10,36 +10,36 @@
         <form @submit.prevent="handleSubmit" class="space-y-5">
             <!-- 收件人姓名 -->
             <div>
-                <label for="receiverName" class="block text-sm font-medium text-gray-700 mb-1">姓名</label>
+                <label for="receiverName" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
                 <input type="text" id="receiverName" v-model="form.receiverName"
                     class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-black"
-                    placeholder="请输入收件人姓名" required />
+                    placeholder="Please enter recipient's name" required />
                 <div v-if="errors.receiverName" class="text-red-500 text-xs mt-1">{{ errors.receiverName }}</div>
             </div>
 
             <!-- 收件人电话 -->
             <div>
-                <label for="receiverPhone" class="block text-sm font-medium text-gray-700 mb-1">手机号码</label>
+                <label for="receiverPhone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                 <input type="tel" id="receiverPhone" v-model="form.receiverPhone"
                     class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-black"
-                    placeholder="请输入手机号码" required />
+                    placeholder="Please enter phone number" required />
                 <div v-if="errors.receiverPhone" class="text-red-500 text-xs mt-1">{{ errors.receiverPhone }}</div>
             </div>
 
             <!-- 省份 (固定为 Ulaanbaatar) -->
             <div>
-                <label for="province" class="block text-sm font-medium text-gray-700 mb-1">省份/自治区</label>
+                <label for="province" class="block text-sm font-medium text-gray-700 mb-1">Province</label>
                 <input type="text" id="province" v-model="form.province"
                     class="w-full p-3 border border-gray-200 bg-gray-50 rounded-lg" disabled />
             </div>
 
             <!-- 城市 -->
             <div>
-                <label for="city" class="block text-sm font-medium text-gray-700 mb-1">城市</label>
+                <label for="city" class="block text-sm font-medium text-gray-700 mb-1">City</label>
                 <select id="city" v-model="form.city"
                     class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-black"
                     required>
-                    <option value="" disabled>请选择城市</option>
+                    <option value="" disabled>Please select a city</option>
                     <option v-for="city in cities" :key="city.id" :value="city.name">
                         {{ city.name }}
                     </option>
@@ -49,17 +49,17 @@
 
             <!-- 详细地址 -->
             <div>
-                <label for="detailAddress" class="block text-sm font-medium text-gray-700 mb-1">详细地址</label>
+                <label for="detailAddress" class="block text-sm font-medium text-gray-700 mb-1">Detailed Address</label>
                 <textarea id="detailAddress" v-model="form.detailAddress"
                     class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-black resize-none"
-                    rows="3" placeholder="请输入详细地址，如街道、小区、楼栋号、单元室等" required></textarea>
+                    rows="3" placeholder="Please enter detailed address" required></textarea>
                 <div v-if="errors.detailAddress" class="text-red-500 text-xs mt-1">{{ errors.detailAddress }}</div>
             </div>
 
             <!-- 设为默认地址 -->
             <div class="flex items-center mb-3">
                 <input type="checkbox" id="isDefault" v-model="form.isDefault" class="w-4 h-4 accent-black" />
-                <label for="isDefault" class="ml-2 text-sm text-gray-700">设为默认地址</label>
+                <label for="isDefault" class="ml-2 text-sm text-gray-700">Set as Default Address</label>
             </div>
 
             <!-- 提交按钮 -->
@@ -67,14 +67,14 @@
                 <button type="submit"
                     class="w-full py-3 bg-black text-white rounded-lg flex items-center justify-center"
                     :disabled="loading">
-                    <span v-if="!loading">{{ isEdit ? '保存修改' : '保存地址' }}</span>
+                    <span v-if="!loading">{{ isEdit ? 'Save Changes' : 'Save Address' }}</span>
                     <div v-else class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin">
                     </div>
                 </button>
 
                 <button type="button" @click="handleCancel" class="w-full py-3 bg-gray-100 text-gray-800 rounded-lg"
                     :disabled="loading">
-                    取消
+                    Cancel
                 </button>
             </div>
         </form>
@@ -152,7 +152,7 @@ onMounted(async () => {
         if (address) {
             fillFormWithAddress(address);
         } else {
-            toast.error('未找到地址信息');
+            toast.error('Address information not found');
             router.push('/address');
         }
     }
@@ -179,28 +179,28 @@ const validateForm = (): boolean => {
 
     // 验证收件人姓名
     if (!form.receiverName.trim()) {
-        errors.receiverName = '请输入收件人姓名';
+        errors.receiverName = `Please enter recipient's name`;
         isValid = false;
     }
 
     // 验证收件人电话
     if (!form.receiverPhone.trim()) {
-        errors.receiverPhone = '请输入手机号码';
+        errors.receiverPhone = 'Please enter phone number';
         isValid = false;
     } else if (!/^\d{8,11}$/.test(form.receiverPhone)) {
-        errors.receiverPhone = '请输入8-11位有效的手机号码';
+        errors.receiverPhone = 'Please enter a valid 8 digit phone number';
         isValid = false;
     }
 
     // 验证城市
     if (!form.city) {
-        errors.city = '请选择城市';
+        errors.city = 'Please select a city';
         isValid = false;
     }
 
     // 验证详细地址
     if (!form.detailAddress.trim()) {
-        errors.detailAddress = '请输入详细地址';
+        errors.detailAddress = 'Please enter detailed address';
         isValid = false;
     }
 
@@ -226,11 +226,11 @@ const handleSubmit = async () => {
         if (isEdit.value && addressId.value) {
             // 编辑地址
             await addressStore.updateAddress(addressId.value, params);
-            toast.success('地址更新成功');
+            toast.success('Address updated successfully');
         } else {
             // 新建地址
             await addressStore.createAddress(params);
-            toast.success('地址添加成功');
+            toast.success('Address added successfully');
         }
 
         // 检查是否有重定向路径
@@ -244,7 +244,7 @@ const handleSubmit = async () => {
             });
         }
     } catch (error: any) {
-        toast.error(error.message || '保存地址失败');
+        toast.error(error.message || 'Failed to save address');
     }
 };
 

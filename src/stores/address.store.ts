@@ -57,8 +57,8 @@ export const useAddressStore = defineStore('address', () => {
 
                   return addressList;
             } catch (err: any) {
-                  error.value = err.message || '加载地址列表失败';
-                  console.error('加载地址列表失败:', err);
+                  error.value = err.message || 'Failed to load address list';
+                  console.error('Failed to load address list:', err);
                   throw err;
             } finally {
                   loading.value = false;
@@ -97,8 +97,8 @@ export const useAddressStore = defineStore('address', () => {
 
                   return newAddress;
             } catch (err: any) {
-                  error.value = err.message || '创建地址失败';
-                  console.error('创建地址失败:', err);
+                  error.value = err.message || 'Failed to create address';
+                  console.error('Failed to create address:', err);
                   throw err;
             } finally {
                   loading.value = false;
@@ -140,8 +140,8 @@ export const useAddressStore = defineStore('address', () => {
 
                   return updatedAddress;
             } catch (err: any) {
-                  error.value = err.message || '更新地址失败';
-                  console.error('更新地址失败:', err);
+                  error.value = err.message || 'Failed to update address';
+                  console.error('Failed to update address:', err);
                   throw err;
             } finally {
                   loading.value = false;
@@ -174,8 +174,8 @@ export const useAddressStore = defineStore('address', () => {
 
                   return true;
             } catch (err: any) {
-                  error.value = err.message || '删除地址失败';
-                  console.error('删除地址失败:', err);
+                  error.value = err.message || 'Failed to delete address';
+                  console.error('Failed to delete address:', err);
                   throw err;
             } finally {
                   loading.value = false;
@@ -208,8 +208,8 @@ export const useAddressStore = defineStore('address', () => {
 
                   return updatedAddress;
             } catch (err: any) {
-                  error.value = err.message || '设置默认地址失败';
-                  console.error('设置默认地址失败:', err);
+                  error.value = err.message || 'Failed to set default address';
+                  console.error('Failed to set default address:', err);
                   throw err;
             } finally {
                   loading.value = false;

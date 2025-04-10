@@ -62,7 +62,7 @@ export const useQPayStore = defineStore('qpay', () => {
        */
       function handleError(error: ApiError, customMessage?: string): void {
             console.error(`[QPayStore] Error:`, error);
-            const message = customMessage || error.message || '发生未知错误';
+            const message = customMessage || error.message || 'An unknown error occurred';
             toast.error(message);
       }
 
@@ -142,7 +142,7 @@ export const useQPayStore = defineStore('qpay', () => {
        */
       async function createPayment(params: CreateQPayPaymentParams): Promise<QPayInvoice | null> {
             if (!authStore.isLoggedIn) {
-                  toast.warning('请先登录');
+                  toast.warning('Please login first');
                   return null;
             }
 
@@ -172,7 +172,7 @@ export const useQPayStore = defineStore('qpay', () => {
                                     paymentId: response.paymentId
                               });
 
-                              toast.success('支付成功');
+                              toast.success('Payment successful');
                         }
 
                         return null;
@@ -191,7 +191,7 @@ export const useQPayStore = defineStore('qpay', () => {
 
                   return response;
             } catch (err: any) {
-                  handleError(err, '创建支付失败');
+                  handleError(err, 'Failed to create payment');
                   return null;
             } finally {
                   loading.value = false;
@@ -204,7 +204,7 @@ export const useQPayStore = defineStore('qpay', () => {
        */
       async function checkPaymentStatus(orderId: string): Promise<QPayStatusResponse | null> {
             if (!authStore.isLoggedIn) {
-                  toast.warning('请先登录');
+                  toast.warning('Please login first');
                   return null;
             }
 
@@ -250,7 +250,7 @@ export const useQPayStore = defineStore('qpay', () => {
 
                   return response;
             } catch (err: any) {
-                  handleError(err, '检查支付状态失败');
+                  handleError(err, 'Failed to check payment status');
                   return null;
             } finally {
                   if (!polling.value) {

@@ -1,7 +1,7 @@
 <template>
     <div class="flex flex-col overflow-hidden h-full p-4">
         <!-- 页面标题 -->
-        <PageTitle mainTitle="我的地址" />
+        <PageTitle mainTitle="My Addresses" />
 
         <div class="flex-1 overflow-y-auto">
             <!-- 间距占位符 -->
@@ -17,10 +17,10 @@
             <!-- 空地址状态 -->
             <div v-else-if="addresses.length === 0" class="flex flex-col items-center justify-center h-60">
                 <MapPin class="w-12 h-12 text-gray-300 mb-2" />
-                <div class="text-gray-500 mb-4">您还没有添加任何地址</div>
+                <div class="text-gray-500 mb-4">You haven't added any addresses yet</div>
                 <button @click="handleAddAddress" class="bg-black text-white py-2 px-6 rounded-full flex items-center">
                     <Plus class="w-4 h-4 mr-1" />
-                    添加新地址
+                    Add New Address
                 </button>
             </div>
 
@@ -51,11 +51,11 @@
                     <div class="flex justify-between items-center">
                         <div v-if="address.isDefault === 1"
                             class="inline-flex items-center text-xs px-4 py-1 bg-black text-white rounded-full">
-                            默认地址
+                            Default Address
                         </div>
                         <button v-else @click.stop="handleSetDefault(address.id)"
                             class="text-xs text-gray-500 underline">
-                            设为默认地址
+                            Set as Default Address
                         </button>
 
                         <div class="flex items-center text-xs text-gray-400">
@@ -74,7 +74,7 @@
 
                 <!-- 提示已达到地址上限 -->
                 <div v-else class="text-center text-gray-500 mt-4">
-                    您最多可以添加10个地址
+                    You can add up to 10 addresses
                 </div>
             </div>
         </div>
@@ -174,15 +174,15 @@ const handleEdit = (address: UserAddress) => {
 const handleSetDefault = async (id: number) => {
     try {
         await addressStore.setDefaultAddress(id);
-        toast.success('默认地址设置成功');
+        toast.success('Default address set successfully');
     } catch (error: any) {
-        toast.error(error.message || '设置默认地址失败');
+        toast.error(error.message || 'Failed to set default address');
     }
 };
 
 // 确认删除地址
 const confirmDelete = (id: number) => {
-    if (window.confirm('确定要删除这个地址吗？')) {
+    if (window.confirm('Are you sure you want to delete this address?')) {
         handleDelete(id);
     }
 };
@@ -191,9 +191,9 @@ const confirmDelete = (id: number) => {
 const handleDelete = async (id: number) => {
     try {
         await addressStore.deleteAddress(id);
-        toast.success('地址删除成功');
+        toast.success('Address deleted successfully');
     } catch (error: any) {
-        toast.error(error.message || '删除地址失败');
+        toast.error(error.message || 'Failed to delete address');
     }
 };
 </script>

@@ -25,7 +25,7 @@
                         <div v-if="loadingMore"
                             class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-gray-500 border-r-transparent align-middle mr-2">
                         </div>
-                        {{ loadingMore ? '加载中...' : '加载更多' }}
+                        {{ loadingMore ? 'Loading...' : 'Load More' }}
                     </button>
                 </div>
             </div>
@@ -33,10 +33,10 @@
             <!-- 空结果 -->
             <div v-else class="flex flex-col items-center justify-center h-60">
                 <Package class="w-12 h-12 text-gray-300 mb-2" />
-                <div class="text-gray-500 mb-4">暂无商品</div>
+                <div class="text-gray-500 mb-4">No Products Available</div>
                 <button @click="goToHome" class="bg-black text-white py-2 px-6 rounded-full flex items-center">
                     <Home class="w-4 h-4 mr-1" />
-                    返回首页
+                    Return to Home
                 </button>
             </div>
         </div>
@@ -93,9 +93,9 @@ const pageTitle = computed(() => {
             if (listType.value?.startsWith('category-')) {
                 const categoryId = Number(listType.value.split('-')[1]);
                 const category = findCategory(categoryId);
-                return category?.name || '分类商品';
+                return category?.name || 'Category Products';
             }
-            return '商品列表';
+            return 'Product List';
     }
 });
 
@@ -151,7 +151,7 @@ const loadProducts = async (isLoadMore = false) => {
                     response = searchResponse;
                 } else {
                     // 不调用API，而是显示提示
-                    toast.warning('请输入搜索关键词');
+                    toast.warning('Please enter search keywords');
                 }
                 break;
             default:
@@ -178,7 +178,7 @@ const loadProducts = async (isLoadMore = false) => {
         }
     } catch (error) {
         console.error('加载商品列表失败:', error);
-        toast.error('加载商品失败，请重试');
+        toast.error('Failed to load products, please try again');
     } finally {
         loading.value = false;
         loadingMore.value = false;

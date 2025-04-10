@@ -83,8 +83,8 @@ export const useCartStore = defineStore('cart', () => {
 
             return response;
         } catch (err: any) {
-            error.value = err.message || '加载购物车失败';
-            console.error('加载购物车失败:', err);
+            error.value = err.message || 'Failed to load cart';
+            console.error('Failed to load cart:', err);
             throw err;
         } finally {
             loading.value = false;
@@ -188,11 +188,11 @@ export const useCartStore = defineStore('cart', () => {
 
             return response;
         } catch (err: any) {
-            error.value = err.message || '添加到购物车失败';
-            console.error('添加到购物车失败:', err);
+            error.value = err.message || 'Failed to add to cart';
+            console.error('Failed to add to cart:', err);
 
             // 显示错误提示
-            toast.error(error.value || 'Failed to add to cart ');
+            toast.error(error.value || 'Failed to add to cart');
 
             // 如果是乐观更新，需要回滚本地状态
             if (params.optimistic) {
@@ -245,8 +245,8 @@ export const useCartStore = defineStore('cart', () => {
                 } catch (err: any) {
                     // 更新失败，恢复原来的数量
                     items.value[index].quantity = oldQuantity;
-                    error.value = err.message || '更新购物车失败';
-                    console.error('更新购物车失败:', err);
+                    error.value = err.message || 'Failed to update cart';
+                    console.error('Failed to update cart:', err);
                     throw err;
                 } finally {
                     loading.value = false;
@@ -255,8 +255,8 @@ export const useCartStore = defineStore('cart', () => {
                 throw new Error('购物车项不存在');
             }
         } catch (err: any) {
-            error.value = err.message || '更新购物车失败';
-            console.error('更新购物车失败:', err);
+            error.value = err.message || 'Failed to update cart';
+            console.error('Failed to update cart:', err);
 
             // 显示错误提示
             toast.error(error.value || 'Failed to update cart ');
@@ -311,15 +311,15 @@ export const useCartStore = defineStore('cart', () => {
                 items.value.splice(index, 0, itemToDelete);
                 totalCount.value += 1;
 
-                error.value = err.message || '删除购物车项失败';
-                console.error('删除购物车项失败:', err);
+                error.value = err.message || 'Failed to remove cart item';
+                console.error('Failed to remove cart item:', err);
                 throw err;
             } finally {
                 loading.value = false;
             }
         } catch (err: any) {
-            error.value = err.message || '删除购物车项失败';
-            console.error('删除购物车项失败:', err);
+            error.value = err.message || 'Failed to remove cart item';
+            console.error('Failed to remove cart item:', err);
 
             // 显示错误提示
             toast.error(error.value || 'Failed to remove cart item');
@@ -352,8 +352,8 @@ export const useCartStore = defineStore('cart', () => {
 
             return true;
         } catch (err: any) {
-            error.value = err.message || '清空购物车失败';
-            console.error('清空购物车失败:', err);
+            error.value = err.message || 'Failed to clear cart';
+            console.error('Failed to clear cart:', err);
 
             // 显示错误提示
             toast.error(error.value || 'Failed to clear cart');
@@ -375,8 +375,8 @@ export const useCartStore = defineStore('cart', () => {
 
             return preview;
         } catch (err: any) {
-            error.value = err.message || '获取订单预览失败';
-            console.error('获取订单预览失败:', err);
+            error.value = err.message || 'Failed to get order preview';
+            console.error('Failed to get order preview:', err);
             throw err;
         } finally {
             loading.value = false;

@@ -24,10 +24,10 @@
                             {{ formattedTotalPrice }}
                         </div>
                         <div v-if="selectedSku" class="text-gray-500 text-sm mt-1">
-                            库存: {{ selectedSku.stock || 0 }}
+                            Stock: {{ selectedSku.stock || 0 }}
                         </div>
                         <div class="text-gray-500 text-sm mt-1">
-                            已选: {{ getSelectedSpecsText() }}
+                            Selected: {{ getSelectedSpecsText() }}
                         </div>
                     </div>
                 </div>
@@ -287,7 +287,7 @@ const handleAction = async () => {
         }
     } catch (error) {
         console.error('操作失败:', error);
-        toast.error('操作失败，请重试');
+        toast.error('Please try again');
     } finally {
         isSubmitting.value = false;
     }
@@ -296,7 +296,7 @@ const handleAction = async () => {
 // 方法：加入购物车
 const handleAddToCart = async () => {
     if (!props.product || !selectedSkuId.value) {
-        toast.error('请选择商品规格');
+        toast.error('Please select product specifications');
         return;
     }
 
@@ -338,7 +338,7 @@ const handleAddToCart = async () => {
         }
     } catch (error: any) {
         console.error('添加到购物车失败:', error);
-        toast.error(error.message || '添加购物车失败，请重试');
+        toast.error(error.message || 'Failed to add to cart');
     }
 };
 
@@ -379,7 +379,7 @@ const handleBuyNow = async () => {
 
         // 如果临时订单创建失败，提示用户并返回
         if (!tempOrder) {
-            toast.error('创建临时订单失败，请重试');
+            toast.error('Failed to create temporary order, please try again');
             return;
         }
 
@@ -389,7 +389,7 @@ const handleBuyNow = async () => {
          // 使用导航工具函数跳转到结账页
          navigateToCheckout(router, tempOrder.id);
     } catch (error) {
-        toast.error('创建订单失败，请重试');
+        toast.error('Failed to create order, please try again');
         console.error('创建临时订单失败:', error);
     } finally {
         loading.value = false;

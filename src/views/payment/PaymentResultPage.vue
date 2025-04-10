@@ -12,29 +12,29 @@
             <div class="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center mb-6">
                 <CheckCircle :size="40" class="text-green-500" />
             </div>
-            <h1 class="text-2xl font-bold text-gray-800 mb-2">支付成功！</h1>
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Payment Successful!</h1>
             <p class="text-gray-600 text-center mb-6 max-w-md">
-                您的订单支付已成功完成，感谢您的购买。
+                Your order payment has been successfully completed, thank you for your purchase.
             </p>
 
             <!-- 订单信息卡片 -->
             <div v-if="orderDetail" class="w-full max-w-md bg-white rounded-xl shadow-sm p-5 mb-8">
-                <h2 class="text-lg font-semibold mb-4">订单摘要</h2>
+                <h2 class="text-lg font-semibold mb-4">Order Summary</h2>
                 <div class="space-y-3">
                     <div class="flex justify-between">
-                        <span class="text-gray-500">订单编号</span>
+                        <span class="text-gray-500">Order Number</span>
                         <span class="font-medium">{{ orderDetail.orderNo }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-500">支付金额</span>
+                        <span class="text-gray-500">Payment Amount</span>
                         <span class="font-medium">{{ formatPrice(orderDetail.paymentAmount) }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-500">支付方式</span>
+                        <span class="text-gray-500">Payment Method</span>
                         <span class="font-medium">QPAY</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-500">支付时间</span>
+                        <span class="text-gray-500">Payment Time</span>
                         <span class="font-medium">{{ formatDate(orderDetail.updatedAt) }}</span>
                     </div>
                 </div>
@@ -45,12 +45,12 @@
                 <button @click="viewOrder"
                     class="bg-black text-white py-3 px-6 rounded-full flex-1 flex items-center justify-center">
                     <ShoppingBag :size="18" class="mr-2" />
-                    查看订单
+                    View Order
                 </button>
                 <button @click="continueShopping"
                     class="border border-gray-300 py-3 px-6 rounded-full flex-1 flex items-center justify-center">
                     <Home :size="18" class="mr-2" />
-                    继续购物
+                    Continue Shopping
                 </button>
             </div>
         </div>
@@ -60,14 +60,14 @@
             <div class="w-24 h-24 rounded-full bg-red-100 flex items-center justify-center mb-6">
                 <XCircle :size="40" class="text-red-500" />
             </div>
-            <h1 class="text-2xl font-bold text-gray-800 mb-2">支付失败</h1>
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Payment Failed</h1>
             <p class="text-gray-600 text-center mb-8 max-w-md">
-                支付未能完成。请重试或使用其他支付方式。
+                Payment could not be completed. Please try again or use another payment method.
             </p>
 
             <!-- 错误信息 -->
             <div v-if="errorMessage" class="w-full max-w-md bg-red-50 border border-red-100 rounded-lg p-4 mb-8">
-                <p class="text-red-700 font-medium">错误详情：</p>
+                <p class="text-red-700 font-medium">Error Details:</p>
                 <p class="text-red-600">{{ errorMessage }}</p>
             </div>
 
@@ -76,12 +76,12 @@
                 <button @click="retryPayment"
                     class="bg-black text-white py-3 px-6 rounded-full flex-1 flex items-center justify-center">
                     <RefreshCw :size="18" class="mr-2" />
-                    重试支付
+                    Retry Payment
                 </button>
                 <button @click="goBack"
                     class="border border-gray-300 py-3 px-6 rounded-full flex-1 flex items-center justify-center">
                     <ArrowLeft :size="18" class="mr-2" />
-                    返回
+                    Back
                 </button>
             </div>
         </div>
@@ -91,9 +91,9 @@
             <div class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-6">
                 <Ban :size="40" class="text-gray-500" />
             </div>
-            <h1 class="text-2xl font-bold text-gray-800 mb-2">支付已取消</h1>
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Payment Cancelled</h1>
             <p class="text-gray-600 text-center mb-8 max-w-md">
-                您的支付已取消。您的账户未被扣款。
+                Your payment has been cancelled. Your account has not been charged.
             </p>
 
             <!-- 操作按钮 -->
@@ -101,12 +101,12 @@
                 <button @click="retryPayment"
                     class="bg-black text-white py-3 px-6 rounded-full flex-1 flex items-center justify-center">
                     <RefreshCw :size="18" class="mr-2" />
-                    重试支付
+                    Retry Payment
                 </button>
                 <button @click="continueShopping"
                     class="border border-gray-300 py-3 px-6 rounded-full flex-1 flex items-center justify-center">
                     <Home :size="18" class="mr-2" />
-                    继续购物
+                    Continue Shopping
                 </button>
             </div>
         </div>
@@ -116,9 +116,9 @@
             <div class="w-24 h-24 rounded-full bg-orange-100 flex items-center justify-center mb-6">
                 <Clock :size="40" class="text-orange-500" />
             </div>
-            <h1 class="text-2xl font-bold text-gray-800 mb-2">支付已超时</h1>
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Payment Timed Out</h1>
             <p class="text-gray-600 text-center mb-8 max-w-md">
-                支付会话已过期。请重新发起支付以完成购买。
+                Payment session has expired. Please initiate payment again to complete your purchase.
             </p>
 
             <!-- 操作按钮 -->
@@ -126,12 +126,12 @@
                 <button @click="retryPayment"
                     class="bg-black text-white py-3 px-6 rounded-full flex-1 flex items-center justify-center">
                     <RefreshCw :size="18" class="mr-2" />
-                    重试支付
+                    Retry Payment
                 </button>
                 <button @click="continueShopping"
                     class="border border-gray-300 py-3 px-6 rounded-full flex-1 flex items-center justify-center">
                     <Home :size="18" class="mr-2" />
-                    继续购物
+                    Continue Shopping
                 </button>
             </div>
         </div>
@@ -141,9 +141,9 @@
             <div class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-6">
                 <HelpCircle :size="40" class="text-gray-500" />
             </div>
-            <h1 class="text-2xl font-bold text-gray-800 mb-2">支付状态未知</h1>
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Payment Status Unknown</h1>
             <p class="text-gray-600 text-center mb-8 max-w-md">
-                无法确定您的支付状态。请检查您的账户，确认支付是否已处理。
+                Unable to determine your payment status. Please check your account to confirm if the payment has been processed.
             </p>
 
             <!-- 操作按钮 -->
@@ -151,12 +151,12 @@
                 <button @click="checkStatus"
                     class="bg-black text-white py-3 px-6 rounded-full flex-1 flex items-center justify-center">
                     <Search :size="18" class="mr-2" />
-                    检查状态
+                    Check Status
                 </button>
                 <button @click="continueShopping"
                     class="border border-gray-300 py-3 px-6 rounded-full flex-1 flex items-center justify-center">
                     <Home :size="18" class="mr-2" />
-                    继续购物
+                    Continue Shopping
                 </button>
             </div>
         </div>
@@ -273,21 +273,21 @@ const checkPaymentStatus = async () => {
                 if (detail) {
                     orderDetail.value = detail;
                 }
-                toast.success('支付确认成功');
+                toast.success('Payment confirmation successful');
             } else if (qPayStore.isCancelled) {
                 resultStatus.value = 'cancelled';
-                toast.info('支付已取消');
+                toast.info('Payment cancelled');
             } else if (qPayStore.isExpired) {
                 resultStatus.value = 'expired';
-                toast.warning('支付已过期');
+                toast.warning('Payment expired');
             } else if (qPayStore.isPending) {
                 resultStatus.value = 'unknown';
-                toast.info('支付处理中');
+                toast.info('Payment processing');
             }
         }
     } catch (error) {
         console.error('检查支付状态失败:', error);
-        toast.error('检查支付状态失败');
+        toast.error('Failed to check payment status');
     } finally {
         loading.value = false;
     }

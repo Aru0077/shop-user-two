@@ -1,7 +1,7 @@
 <template>
     <aside class="sidenav">
         <div class="sidenav-header">
-            <h2>购物商城</h2>
+            <h2>UniMall</h2>
         </div>
 
         <nav class="sidenav-menu">

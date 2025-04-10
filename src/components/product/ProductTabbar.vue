@@ -92,7 +92,7 @@ const toggleFavorite = async () => {
         }
     } catch (error) {
         console.error('收藏操作失败:', error);
-        toast.error('操作失败，请重试');
+        toast.error('Please try again');
     }
 };
 </script>

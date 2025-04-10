@@ -4,9 +4,9 @@
         <!-- 顶部标题栏（固定） -->
         <div class="z-10 bg-white px-4 pt-4">
             <div class="flex justify-between items-center">
-                <PageTitle mainTitle="我的购物车" />
+                <PageTitle mainTitle="My Cart" />
                 <div v-if="cartItems.length > 0" @click="toggleEditMode" class="text-sm font-medium cursor-pointer">
-                    {{ isEditMode ? '完成' : '编辑' }}
+                    {{ isEditMode ? 'Done' : 'Edit' }}
                 </div>
             </div>
         </div>

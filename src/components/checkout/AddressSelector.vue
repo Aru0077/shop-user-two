@@ -113,7 +113,7 @@ onMounted(async () => {
             }
         }
     } catch (error) {
-        toast.error('获取地址失败');
+        toast.error('Failed to get address');
     }
 });
 </script>

@@ -63,7 +63,7 @@ class AuthService {
 
             // 显示提示消息
             if (showToast) {
-                  toast.warning('登录已过期，请重新登录');
+                  toast.warning('Login has expired, please login again');
             }
 
             // 保存当前路径

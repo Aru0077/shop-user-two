@@ -35,7 +35,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
        */
       function handleError(error: ApiError, customMessage?: string): void {
             console.error(`[FavoriteStore] Error:`, error);
-            const message = customMessage || error.message || '发生未知错误';
+            const message = customMessage || error.message || 'An unknown error occurred';
             toast.error(message);
       }
 
@@ -97,7 +97,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
 
                   return response.data;
             } catch (err: any) {
-                  handleError(err, '获取收藏列表失败');
+                  handleError(err, 'Failed to get favorites list');
                   return [];
             } finally {
                   loading.value = false;
@@ -110,7 +110,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
       async function getFavorites(page: number = 1, limit: number = 10): Promise<FavoritesResponse | null> {
             const authStore = useAuthStore();
             if (!authStore.isLoggedIn) {
-                  console.info('用户未登录，无法获取收藏列表');
+                  console.info('User not logged in, unable to get favorites list');
                   return null;
             }
 
@@ -152,13 +152,13 @@ export const useFavoriteStore = defineStore('favorite', () => {
 
             const authStore = useAuthStore();
             if (!authStore.isLoggedIn) {
-                  toast.warning('请先登录后再添加收藏');
+                  toast.warning('Please login before adding to favorites');
                   return null;
             }
 
             // 如果已经收藏，直接返回
             if (isFavorite(productId)) {
-                  toast.info('该商品已经收藏');
+                  toast.info('This item is already in your favorites');
                   return null;
             }
 
@@ -176,7 +176,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   eventBus.emit(EVENT_NAMES.FAVORITE_UPDATED, favoriteIds.value);
 
                   // 显示提示（可选，也可以等API请求完成后再显示）
-                  toast.success('收藏成功');
+                  toast.success('Added to favorites successfully');
 
                   // 然后发送API请求
                   loading.value = true;
@@ -203,8 +203,8 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   // 再次发布事件，使UI回滚变更
                   eventBus.emit(EVENT_NAMES.FAVORITE_UPDATED, favoriteIds.value);
 
-                  handleError(err, '添加收藏失败');
-                  toast.error('添加收藏失败，请重试');
+                  handleError(err, 'Failed to add to favorites');
+                  toast.error('Failed to add to favorites, please try again');
                   return null;
             } finally {
                   loading.value = false;
@@ -219,7 +219,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
 
             const authStore = useAuthStore();
             if (!authStore.isLoggedIn) {
-                  toast.warning('请先登录');
+                  toast.warning('Please login first');
                   return false;
             }
 
@@ -247,7 +247,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   eventBus.emit(EVENT_NAMES.FAVORITE_UPDATED, favoriteIds.value);
 
                   // 显示提示
-                  toast.success('已取消收藏');
+                  toast.success('Removed from favorites');
 
                   // 然后发送API请求
                   loading.value = true;
@@ -267,7 +267,7 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   eventBus.emit(EVENT_NAMES.FAVORITE_UPDATED, favoriteIds.value);
 
                   handleError(err, '取消收藏失败');
-                  toast.error('取消收藏失败，请重试');
+                  toast.error('Failed to remove from favorites, please try again');
                   return false;
             } finally {
                   loading.value = false;
@@ -312,10 +312,10 @@ export const useFavoriteStore = defineStore('favorite', () => {
                   // 发布事件
                   eventBus.emit(EVENT_NAMES.FAVORITE_UPDATED, favoriteIds.value);
 
-                  toast.success('已批量取消收藏');
+                  toast.success('Batch removed from favorites');
                   return true;
             } catch (err: any) {
-                  handleError(err, '批量取消收藏失败');
+                  handleError(err, 'Failed to batch remove from favorites');
                   return false;
             } finally {
                   loading.value = false;

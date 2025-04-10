@@ -173,7 +173,7 @@ onMounted(async () => {
                 }
             } catch (err) {
                 console.error('Facebook回调处理失败:', err);
-                error.value = '登录失败，请重试';
+                error.value = 'Login failed. Please try again.';
             }
         }
     } catch (err) {
@@ -213,7 +213,7 @@ const handleFacebookLogin = async () => {
         }
     } catch (err: any) {
         console.error('Facebook登录失败:', err);
-        error.value = err.message || 'Facebook登录失败，请重试';
+        error.value = err.message || 'Login failed, please try again';
         toast.error(error.value);
     }
 };

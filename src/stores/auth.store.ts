@@ -53,7 +53,7 @@ export const useAuthStore = defineStore('auth', () => {
       // 处理API错误
       function handleError(error: ApiError, customMessage?: string): void {
             console.error(`[AuthStore] Error:`, error);
-            const message = customMessage || error.message || '发生未知错误';
+            const message = customMessage || error.message || 'An unknown error occurred';
             toast.error(message);
       }
 
@@ -107,10 +107,10 @@ export const useAuthStore = defineStore('auth', () => {
                   // 发布注册成功事件
                   eventBus.emit(EVENT_NAMES.USER_REGISTER, newUser);
 
-                  toast.success('注册成功');
+                  toast.success('Registration successful');
                   return newUser;
             } catch (err: any) {
-                  handleError(err, '注册失败');
+                  handleError(err, 'Registration failed');
                   return null;
             } finally {
                   loading.value = false;
@@ -143,10 +143,10 @@ export const useAuthStore = defineStore('auth', () => {
                   // 使用authService处理登录成功后的重定向
                   authService.handleLoginRedirect();
 
-                  toast.success('登录成功');
+                  toast.success('Login successful');
                   return response;
             } catch (err: any) {
-                  handleError(err, '登录失败');
+                  handleError(err, 'Login failed');
                   return null;
             } finally {
                   authLoading.value = false;
@@ -179,10 +179,10 @@ export const useAuthStore = defineStore('auth', () => {
                   // 添加以下行 - 使用authService处理登录成功后的重定向
                   authService.handleLoginRedirect();
 
-                  toast.success('Facebook登录成功');
+                  toast.success('Facebook login successful');
                   return true;
             } catch (err: any) {
-                  const errorMessage = err.message || 'Facebook登录失败';
+                  const errorMessage = err.message || 'Facebook login failed';
                   error.value = errorMessage;
                   toast.error(errorMessage);
                   return false;
@@ -209,9 +209,9 @@ export const useAuthStore = defineStore('auth', () => {
                         try {
                               const { facebookUtils } = await import('@/utils/facebook.utils');
                               await facebookUtils.logout();
-                              console.info('Facebook退出成功');
+                              console.info('Logged out successfully');
                         } catch (fbErr) {
-                              console.error('Facebook退出失败:', fbErr);
+                              console.error('Failed to log out:', fbErr);
                               // 继续执行本地退出，不中断流程
                         }
                   }
@@ -225,10 +225,10 @@ export const useAuthStore = defineStore('auth', () => {
                   // 发布登出事件
                   eventBus.emit(EVENT_NAMES.USER_LOGOUT);
 
-                  toast.success('已退出登录');
+                  toast.success('Logged out successfully');
                   return true;
             } catch (err: any) {
-                  handleError(err, '退出登录失败');
+                  handleError(err, 'Failed to log out');
                   return false;
             } finally {
                   loading.value = false;
@@ -238,7 +238,7 @@ export const useAuthStore = defineStore('auth', () => {
       // 删除账号
       async function deleteAccount(params: DeleteAccountParams): Promise<boolean> {
             if (!isLoggedIn.value) {
-                  toast.warning('请先登录');
+                  toast.warning('Please login first');
                   return false;
             }
 
@@ -255,10 +255,10 @@ export const useAuthStore = defineStore('auth', () => {
                   // 发布登出事件
                   eventBus.emit(EVENT_NAMES.USER_LOGOUT);
 
-                  toast.success('账号已删除');
+                  toast.success('Account has been deleted');
                   return true;
             } catch (err: any) {
-                  handleError(err, '删除账号失败');
+                  handleError(err, 'Failed to delete account');
                   return false;
             } finally {
                   loading.value = false;

@@ -72,7 +72,7 @@ export const useProductStore = defineStore('product', () => {
      */
     function handleError(error: ApiError, customMessage?: string): void {
         console.error(`[ProductStore] Error:`, error);
-        const message = customMessage || error.message || '发生未知错误';
+        const message = customMessage || error.message || 'An unknown error occurred';
         toast.error(message);
     }
 
@@ -144,7 +144,7 @@ export const useProductStore = defineStore('product', () => {
 
             return categoryTree;
         } catch (err: any) {
-            handleError(err, '获取商品分类失败');
+            handleError(err, 'Failed to get product categories');
             return [];
         } finally {
             loading.value = false;
@@ -166,7 +166,7 @@ export const useProductStore = defineStore('product', () => {
 
             return response;
         } catch (err: any) {
-            handleError(err, '获取最新商品失败');
+            handleError(err, 'Failed to get latest products');
             return null;
         } finally {
             loading.value = false;
@@ -188,7 +188,7 @@ export const useProductStore = defineStore('product', () => {
 
             return response;
         } catch (err: any) {
-            handleError(err, '获取热销商品失败');
+            handleError(err, 'Failed to get top-selling products');
             return null;
         } finally {
             loading.value = false;
@@ -210,7 +210,7 @@ export const useProductStore = defineStore('product', () => {
 
             return response;
         } catch (err: any) {
-            handleError(err, '获取促销商品失败');
+            handleError(err, 'Failed to get promotional products');
             return null;
         } finally {
             loading.value = false;
@@ -261,7 +261,7 @@ export const useProductStore = defineStore('product', () => {
 
             return response;
         } catch (err: any) {
-            handleError(err, '获取分类商品失败');
+            handleError(err, 'Failed to get category products');
             return null;
         } finally {
             loading.value = false;
@@ -310,7 +310,7 @@ export const useProductStore = defineStore('product', () => {
 
             return detail;
         } catch (err: any) {
-            handleError(err, '获取商品详情失败');
+            handleError(err, 'Failed to get product details');
             return null;
         } finally {
             loading.value = false;
@@ -343,7 +343,7 @@ export const useProductStore = defineStore('product', () => {
 
             return skusData;
         } catch (err: any) {
-            handleError(err, '获取商品规格信息失败');
+            handleError(err, 'Failed to get product specification information');
             return null;
         } finally {
             loading.value = false;
@@ -366,7 +366,7 @@ export const useProductStore = defineStore('product', () => {
 
             return response;
         } catch (err: any) {
-            handleError(err, '搜索商品失败');
+            handleError(err, 'Failed to search products');
             return null;
         } finally {
             searching.value = false;
@@ -401,7 +401,7 @@ export const useProductStore = defineStore('product', () => {
 
             return data;
         } catch (err: any) {
-            handleError(err, '获取首页数据失败');
+            handleError(err, 'Failed to get homepage data');
             return null;
         } finally {
             loading.value = false;
@@ -463,7 +463,7 @@ export const useProductStore = defineStore('product', () => {
 
             return detail;
         } catch (err: any) {
-            handleError(err, '获取商品完整信息失败');
+            handleError(err, 'Failed to get complete product information');
             return null;
         } finally {
             loading.value = false;

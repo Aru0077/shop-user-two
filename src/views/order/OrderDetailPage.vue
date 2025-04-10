@@ -19,7 +19,7 @@
                         <div class="text-lg font-bold">{{ getStatusText(orderDetail.orderStatus) }}</div>
                         <div v-if="orderDetail.orderStatus === OrderStatus.PENDING_PAYMENT && orderDetail.timeoutSeconds"
                             class="text-sm text-red-500 mt-1">
-                            剩余支付时间: {{ formatCountdown(orderDetail.timeoutSeconds) }}
+                            Remaining payment time: {{ formatCountdown(orderDetail.timeoutSeconds) }}
                         </div>
                         <div v-else class="text-sm text-gray-500 mt-1">
                             {{ getStatusDescription(orderDetail.orderStatus) }}
@@ -55,7 +55,7 @@
 
             <!-- 订单商品列表 -->
             <div class="bg-white rounded-xl p-5 shadow-sm">
-                <div class="text-base font-medium mb-3">订单商品</div>
+                <div class="text-base font-medium mb-3">Order Items</div>
                 <div class="divide-y divide-gray-100">
                     <div v-for="item in orderDetail.orderItems" :key="item.id" class="py-3 first:pt-0 last:pb-0">
                         <div class="flex">
@@ -84,24 +84,24 @@
 
             <!-- 订单信息 -->
             <div class="bg-white rounded-xl p-5 shadow-sm">
-                <div class="text-base font-medium mb-3">订单信息</div>
+                <div class="text-base font-medium mb-3">Order Summary</div>
                 <div class="text-sm space-y-2">
                     <div class="flex justify-between">
-                        <span class="text-gray-500">订单编号</span>
+                        <span class="text-gray-500">Order Number</span>
                         <span>{{ orderDetail.orderNo }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-500">创建时间</span>
+                        <span class="text-gray-500">Creation Time</span>
                         <span>{{ formatDate(orderDetail.createdAt) }}</span>
                     </div>
                     <div v-if="orderDetail.paymentLogs && orderDetail.paymentLogs.length > 0"
                         class="flex justify-between">
-                        <span class="text-gray-500">支付时间</span>
+                        <span class="text-gray-500">Payment Time</span>
                         <span>{{ formatDate(orderDetail.paymentLogs[0].createdAt) }}</span>
                     </div>
                     <div v-if="orderDetail.paymentLogs && orderDetail.paymentLogs.length > 0"
                         class="flex justify-between">
-                        <span class="text-gray-500">支付方式</span>
+                        <span class="text-gray-500">Payment Method</span>
                         <span>{{ orderDetail.paymentLogs[0].paymentType }}</span>
                     </div>
                 </div>
@@ -109,18 +109,18 @@
 
             <!-- 订单金额 -->
             <div class="bg-white rounded-xl p-5 shadow-sm">
-                <div class="text-base font-medium mb-3">订单金额</div>
+                <div class="text-base font-medium mb-3">Order Amount</div>
                 <div class="text-sm space-y-2">
                     <div class="flex justify-between">
-                        <span class="text-gray-500">商品金额</span>
+                        <span class="text-gray-500">Product Amount</span>
                         <span>{{ formatPrice(orderDetail.totalAmount) }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-500">优惠金额</span>
+                        <span class="text-gray-500">Discount Amount</span>
                         <span>-{{ formatPrice(orderDetail.discountAmount) }}</span>
                     </div>
                     <div class="flex justify-between font-medium border-t border-gray-100 pt-2 mt-2">
-                        <span>实付金额</span>
+                        <span>Actual Payment</span>
                         <span class="text-red-500">{{ formatPrice(orderDetail.paymentAmount) }}</span>
                     </div>
                 </div>
@@ -133,11 +133,11 @@
                     <template v-if="orderDetail.orderStatus === OrderStatus.PENDING_PAYMENT">
                         <button @click="cancelOrder" class="px-5 py-2 text-sm border border-gray-300 rounded-full"
                             :disabled="loading">
-                            取消订单
+                            Cancel Order
                         </button>
                         <button @click="goToPay" class="px-5 py-2 text-sm bg-red-500 text-white rounded-full"
                             :disabled="loading">
-                            去支付
+                            Go to Pay
                         </button>
                     </template>
 
@@ -145,7 +145,7 @@
                     <template v-else-if="orderDetail.orderStatus === OrderStatus.PENDING_SHIPMENT">
                         <button @click="goBack" class="px-5 py-2 text-sm border border-gray-300 rounded-full"
                             :disabled="loading">
-                            返回列表
+                            Back to List
                         </button>
                     </template>
 
@@ -153,11 +153,11 @@
                     <template v-else-if="orderDetail.orderStatus === OrderStatus.SHIPPED">
                         <button @click="viewLogistics" class="px-5 py-2 text-sm border border-gray-300 rounded-full"
                             :disabled="loading">
-                            查看物流
+                            View Logistics
                         </button>
                         <button @click="confirmReceipt" class="px-5 py-2 text-sm bg-black text-white rounded-full"
                             :disabled="loading">
-                            确认收货
+                            Confirm Receipt
                         </button>
                     </template>
 
@@ -165,11 +165,11 @@
                     <template v-else-if="orderDetail.orderStatus === OrderStatus.COMPLETED">
                         <button @click="viewLogistics" class="px-5 py-2 text-sm border border-gray-300 rounded-full"
                             :disabled="loading">
-                            查看物流
+                            View Logistics
                         </button>
                         <button @click="buyAgain" class="px-5 py-2 text-sm bg-black text-white rounded-full"
                             :disabled="loading">
-                            再次购买
+                            Buy Again
                         </button>
                     </template>
 
@@ -177,7 +177,7 @@
                     <template v-else-if="orderDetail.orderStatus === OrderStatus.CANCELLED">
                         <button @click="goBack" class="px-5 py-2 text-sm border border-gray-300 rounded-full"
                             :disabled="loading">
-                            返回列表
+                            Back to List
                         </button>
                     </template>
                 </div>
@@ -189,10 +189,10 @@
             <div class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                 <FileX :size="36" class="text-gray-400" />
             </div>
-            <div class="text-gray-500 mb-6">订单不存在或已被删除</div>
+            <div class="text-gray-500 mb-6">Order does not exist or has been deleted</div>
             <button @click="goBack" class="bg-black text-white py-3 px-8 rounded-full flex items-center">
                 <ArrowLeft :size="16" class="mr-2" />
-                返回订单列表
+                Back to Order List
             </button>
         </div>
     </div>
@@ -261,7 +261,7 @@ let countdownTimer: number | null = null;
 // 获取订单详情
 const fetchOrderDetail = async () => {
     if (!authStore.isLoggedIn) {
-        toast.warning('请先登录');
+        toast.warning('Please login first');
         router.push('/login');
         return;
     }
@@ -284,7 +284,7 @@ const fetchOrderDetail = async () => {
             startCountdown();
         }
     } catch (error: any) {
-        toast.error('获取订单详情失败');
+        toast.error('Failed to get order details');
         console.error('获取订单详情失败:', error);
     } finally {
         loading.value = false;
@@ -370,12 +370,12 @@ const getStatusText = (status: number | null): string => {
     if (status === null) return '未知状态';
 
     switch (status) {
-        case OrderStatus.PENDING_PAYMENT: return '待付款';
-        case OrderStatus.PENDING_SHIPMENT: return '待发货';
-        case OrderStatus.SHIPPED: return '已发货';
-        case OrderStatus.COMPLETED: return '已完成';
-        case OrderStatus.CANCELLED: return '已取消';
-        default: return '未知状态';
+        case OrderStatus.PENDING_PAYMENT: return 'Pending Payment';
+        case OrderStatus.PENDING_SHIPMENT: return 'Pending Shipment';
+        case OrderStatus.SHIPPED: return 'Shipped';
+        case OrderStatus.COMPLETED: return 'Completed';
+        case OrderStatus.CANCELLED: return 'Cancelled';
+        default: return 'Unknown Status';
     }
 };
 
@@ -385,15 +385,15 @@ const getStatusDescription = (status: number | null): string => {
 
     switch (status) {
         case OrderStatus.PENDING_PAYMENT:
-            return '请尽快完成支付';
+            return 'Please complete payment as soon as possible';
         case OrderStatus.PENDING_SHIPMENT:
-            return '商家正在处理您的订单';
+            return 'The merchant is processing your order';
         case OrderStatus.SHIPPED:
-            return '商品已发出，请注意查收';
+            return 'Product has been shipped, please check for delivery';
         case OrderStatus.COMPLETED:
-            return '订单已完成，感谢您的购买';
+            return 'Order completed, thank you for your purchase';
         case OrderStatus.CANCELLED:
-            return '订单已取消';
+            return 'Order cancelled';
         default:
             return '';
     }
@@ -431,17 +431,17 @@ const getStatusIconClass = (status: number | null): string => {
 const cancelOrder = async () => {
     if (!orderDetail.value) return;
 
-    if (!confirm('确定要取消此订单吗？')) {
+    if (!confirm('Are you sure you want to cancel this order?')) {
         return;
     }
 
     try {
         loading.value = true;
         await orderStore.cancelOrder(orderDetail.value.id);
-        toast.success('订单已取消');
+        toast.success('Order cancelled');
         fetchOrderDetail();
     } catch (error: any) {
-        toast.error('取消订单失败');
+        toast.error('Failed to cancel order');
         console.error('取消订单失败:', error);
     } finally {
         loading.value = false;
@@ -458,17 +458,17 @@ const goToPay = () => {
 const confirmReceipt = async () => {
     if (!orderDetail.value) return;
 
-    if (!confirm('确认已收到商品吗？')) {
+    if (!confirm('Confirm that you have received the product?')) {
         return;
     }
 
     try {
         loading.value = true;
         await orderStore.confirmReceipt(orderDetail.value.id);
-        toast.success('已确认收货');
+        toast.success('Receipt confirmed');
         fetchOrderDetail();
     } catch (error: any) {
-        toast.error('确认收货失败');
+        toast.error('Failed to confirm receipt');
         console.error('确认收货失败:', error);
     } finally {
         loading.value = false;
@@ -477,7 +477,7 @@ const confirmReceipt = async () => {
 
 // 查看物流
 const viewLogistics = () => {
-    toast.info('物流查询功能暂未开放');
+    toast.info('Logistics tracking function is not yet available');
 };
 
 // 再次购买
@@ -487,7 +487,7 @@ const buyAgain = () => {
     // 这里可以实现再次购买逻辑，例如：
     // 1. 将订单中的商品添加到购物车
     // 2. 或者直接跳转到下单页面
-    toast.info('再次购买功能暂未实现');
+    toast.info('Buy again function is not yet implemented');
 };
 
 // 返回订单列表

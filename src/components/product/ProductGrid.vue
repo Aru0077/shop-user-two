@@ -14,7 +14,7 @@
                     </div>
                 </div>
                 <div class="flex flex-col items-center justify-center mt-1">
-                    <div class="text-[13px] font-bold">{{ item.name || '商品名称' }}</div>
+                    <div class="text-[13px] font-bold">{{ item.name || 'Product Name' }}</div>
                     <div class="text-[12px] font-bold">{{ getFormattedPrice(item) }}</div>
                 </div>
             </div>
@@ -29,8 +29,8 @@
                         class="w-full h-full object-cover rounded-xl">
                 </div>
                 <div class="flex flex-col items-center justify-center mt-1">
-                    <div class="text-[16px] font-bold">充电器</div>
-                    <div class="text-[14px] font-bold">价格未知</div>
+                    <div class="text-[16px] font-bold">Product Name</div>
+                    <div class="text-[14px] font-bold">xxx</div>
                 </div>
             </div>
         </div>

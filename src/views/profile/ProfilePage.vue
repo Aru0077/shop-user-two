@@ -60,7 +60,7 @@ const loading = ref(false);
 
 // 用户信息
 const isLoggedIn = computed(() => authStore.isLoggedIn);
-const username = computed(() => authStore.user?.username || '未登录');
+const username = computed(() => authStore.user?.username || 'Not Logged In');
 
 // 菜单列表
 const menuList = [
@@ -125,11 +125,11 @@ const handleMenuClick = async (item) => {
             loading.value = true;
             const success = await authStore.logout();
             if (success) {
-                toast.success('已退出登录');
+                toast.success('Logged out successfully');
                 router.push('/login');
             }
         } catch (err) {
-            toast.error('退出登录失败');
+            toast.error('Failed to log out');
         } finally {
             loading.value = false;
         }

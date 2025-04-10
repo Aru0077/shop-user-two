@@ -66,7 +66,7 @@ export const useOrderStore = defineStore('order', () => {
      */
     function handleError(error: ApiError, customMessage?: string): void {
         console.error(`[OrderStore] Error:`, error);
-        const message = customMessage || error.message || '发生未知错误';
+        const message = customMessage || error.message || 'An unknown error occurred';
         toast.error(message);
     }
 
@@ -105,7 +105,7 @@ export const useOrderStore = defineStore('order', () => {
      */
     async function getOrderList(page: number = 1, limit: number = 10, status?: number): Promise<PaginatedResponse<OrderBasic> | null> {
         if (!authStore.isLoggedIn) {
-            toast.warning('请先登录');
+            toast.warning('Please login first');
             return null;
         }
 
@@ -131,7 +131,7 @@ export const useOrderStore = defineStore('order', () => {
 
             return response;
         } catch (err: any) {
-            handleError(err, '获取订单列表失败');
+            handleError(err, 'Failed to get order list');
             return null;
         } finally {
             loading.value = false;
@@ -144,7 +144,7 @@ export const useOrderStore = defineStore('order', () => {
      */
     async function getOrderDetail(id: string): Promise<OrderDetail | null> {
         if (!authStore.isLoggedIn) {
-            toast.warning('请先登录');
+            toast.warning('Please login first');
             return null;
         }
 
@@ -168,7 +168,7 @@ export const useOrderStore = defineStore('order', () => {
 
             return detail;
         } catch (err: any) {
-            handleError(err, '获取订单详情失败');
+            handleError(err, 'Failed to get order details');
             return null;
         } finally {
             loading.value = false;
@@ -181,7 +181,7 @@ export const useOrderStore = defineStore('order', () => {
      */
     async function createOrder(params: CreateOrderParams): Promise<CreateOrderResponse | null> {
         if (!authStore.isLoggedIn) {
-            toast.warning('请先登录');
+            toast.warning('Please login first');
             return null;
         }
 
@@ -194,10 +194,10 @@ export const useOrderStore = defineStore('order', () => {
             // 清除订单列表缓存，因为已经创建了新订单
             storage.clearOrderCache();
 
-            toast.success('订单创建成功');
+            toast.success('Order created successfully');
             return response;
         } catch (err: any) {
-            handleError(err, '创建订单失败');
+            handleError(err, 'Failed to create order');
             return null;
         } finally {
             creating.value = false;
@@ -210,7 +210,7 @@ export const useOrderStore = defineStore('order', () => {
      */
     async function quickBuy(params: QuickBuyParams): Promise<CreateOrderResponse | null> {
         if (!authStore.isLoggedIn) {
-            toast.warning('请先登录');
+            toast.warning('Please login first');
             return null;
         }
 
@@ -223,10 +223,10 @@ export const useOrderStore = defineStore('order', () => {
             // 清除订单列表缓存
             storage.clearOrderCache();
 
-            toast.success('下单成功');
+            toast.success('Order placed successfully');
             return response;
         } catch (err: any) {
-            handleError(err, '快速购买失败');
+            handleError(err, 'Quick purchase failed');
             return null;
         } finally {
             creating.value = false;
@@ -240,7 +240,7 @@ export const useOrderStore = defineStore('order', () => {
      */
     async function payOrder(id: string, params: PayOrderParams): Promise<PayOrderResponse | null> {
         if (!authStore.isLoggedIn) {
-            toast.warning('请先登录');
+            toast.warning('Please login first');
             return null;
         }
 
@@ -259,10 +259,10 @@ export const useOrderStore = defineStore('order', () => {
                 currentOrder.value.paymentStatus = response.paymentStatus;
             }
 
-            toast.success('支付成功');
+            toast.success('Payment successful');
             return response;
         } catch (err: any) {
-            handleError(err, '支付订单失败');
+            handleError(err, 'Failed to pay for order');
             return null;
         } finally {
             paying.value = false;
@@ -275,7 +275,7 @@ export const useOrderStore = defineStore('order', () => {
      */
     async function cancelOrder(id: string): Promise<boolean> {
         if (!authStore.isLoggedIn) {
-            toast.warning('请先登录');
+            toast.warning('Please login first');
             return false;
         }
 
@@ -299,10 +299,10 @@ export const useOrderStore = defineStore('order', () => {
                 orders.value[orderIndex].orderStatus = 5; // 已取消状态
             }
 
-            toast.success('订单已取消');
+            toast.success('Order cancelled');
             return true;
         } catch (err: any) {
-            handleError(err, '取消订单失败');
+            handleError(err, 'Failed to cancel order');
             return false;
         } finally {
             loading.value = false;
@@ -315,7 +315,7 @@ export const useOrderStore = defineStore('order', () => {
      */
     async function confirmReceipt(id: string): Promise<boolean> {
         if (!authStore.isLoggedIn) {
-            toast.warning('请先登录');
+            toast.warning('Please login first');
             return false;
         }
 
@@ -339,10 +339,10 @@ export const useOrderStore = defineStore('order', () => {
                 orders.value[orderIndex].orderStatus = 4; // 已完成状态
             }
 
-            toast.success('确认收货成功');
+            toast.success('Receipt confirmed successfully');
             return true;
         } catch (err: any) {
-            handleError(err, '确认收货失败');
+            handleError(err, 'Failed to confirm receipt');
             return false;
         } finally {
             loading.value = false;

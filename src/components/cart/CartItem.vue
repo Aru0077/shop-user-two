@@ -102,7 +102,7 @@ const getItemPrice = (): number | undefined => {
 
 // 格式化价格
 const formatPrice = (price?: number): string => {
-    if (price === undefined) return '价格未知';
+    if (price === undefined) return 'Undefined';
     return price.toLocaleString('mn-MN') + ' ₮';
 };
 

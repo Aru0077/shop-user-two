@@ -43,7 +43,7 @@ export const usePromotionStore = defineStore('promotion', () => {
      */
     function handleError(error: ApiError, customMessage?: string): void {
         console.error(`[PromotionStore] Error:`, error);
-        const message = customMessage || error.message || '发生未知错误';
+        const message = customMessage || error.message || 'An unknown error occurred';
         toast.error(message);
     }
 
@@ -87,7 +87,7 @@ export const usePromotionStore = defineStore('promotion', () => {
 
             return availablePromotions;
         } catch (err: any) {
-            handleError(err, '获取促销规则失败');
+            handleError(err, 'Failed to get promotion rules');
             return [];
         } finally {
             loading.value = false;
@@ -108,7 +108,7 @@ export const usePromotionStore = defineStore('promotion', () => {
 
             return response;
         } catch (err: any) {
-            handleError(err, '检查可用促销规则失败');
+            handleError(err, 'Failed to check available promotion rules');
             return null;
         } finally {
             loading.value = false;
