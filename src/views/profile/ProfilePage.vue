@@ -23,16 +23,16 @@
 
             <div class="bg-white p-2 rounded-2xl shadow-[0_0_15px_rgba(0,0,0,0.08)]">
                 <div v-for="(item, index) in menuList" :key="index" class="relative">
-                    <div class="py-3.5 px-4 flex justify-between items-center group hover:bg-gray-50 rounded-xl transition-all duration-200 cursor-pointer"
+                    <div class="py-3.5 px-4 flex justify-between items-center group rounded-xl transition-all duration-200 cursor-pointer"
                         @click="handleMenuClick(item)">
                         <div class="flex items-center space-x-4">
                             <div
-                                class="p-2 rounded-full bg-gray-50 group-hover:bg-white group-hover:shadow-sm transition-all duration-200">
+                                class="p-2 rounded-full bg-gray-50 transition-all duration-200">
                                 <component :is="icons[item.icon]" class="w-5 h-5 text-gray-600" />
                             </div>
-                            <div class="font-medium text-gray-700 group-hover:text-gray-900">{{ item.name }}</div>
+                            <div class="font-medium text-gray-700">{{ item.name }}</div>
                         </div>
-                        <ChevronRight class="w-4 h-4 text-gray-300 group-hover:text-gray-500" />
+                        <ChevronRight class="w-4 h-4 text-gray-300" />
                     </div>
                     <div v-if="index < menuList.length - 1" class="h-px bg-gray-100 mx-3"></div>
                 </div>
