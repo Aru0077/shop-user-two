@@ -46,7 +46,9 @@
                                     'px-3 py-2 border rounded-lg text-sm',
                                     isSpecValueSelected(spec.id, value.id)
                                         ? 'border-black text-black bg-gray-100'
-                                        : 'border-gray-300 text-gray-700'
+                                        : isSpecValueOutOfStock(spec.id, value.id)
+                                            ? 'border-gray-300 text-gray-400 bg-gray-50' // 灰色样式
+                                            : 'border-gray-300 text-gray-700'
                                 ]">
                                 {{ value.value }}
                             </button>
@@ -255,6 +257,38 @@ const isSpecValueSelected = (specId: number, valueId: number): boolean => {
     return selectedSpecs.value.get(specId) === valueId;
 };
 
+// 方法：判断规格值是否为零库存
+const isSpecValueOutOfStock = (specId: number, valueId: number): boolean => {
+    if (!props.product || !props.product.skus) return false;
+
+    // 创建临时规格选择集合
+    const tempSpecs = new Map(selectedSpecs.value);
+    tempSpecs.set(specId, valueId);
+
+    // 如果当前只选择了一个规格，无法确定具体 SKU，返回 false
+    if (tempSpecs.size < props.product.specs.length) return false;
+
+    // 构建键，查找对应的 SKU
+    const selectedSpecIds = Array.from(tempSpecs.entries())
+        .map(([_, valueId]) => valueId)
+        .sort()
+        .join('_');
+
+    // 查找匹配的组合键
+    const matchedKey = Object.keys(props.product.validSpecCombinations).find(key => {
+        const parts = key.split('_').sort();
+        return parts.join('_') === selectedSpecIds;
+    });
+
+    // 如果找到匹配组合且库存为零，则返回 true
+    if (matchedKey && props.product.validSpecCombinations[matchedKey]) {
+        const skuId = props.product.validSpecCombinations[matchedKey].skuId;
+        const sku = props.product.skus.find(s => s.id === skuId);
+        return sku ? (sku.stock || 0) <= 0 : false;
+    }
+
+    return false;
+};
 // 方法：增加数量
 const increaseQuantity = () => {
     if (quantity.value < maxStock.value) {
@@ -273,6 +307,12 @@ const decreaseQuantity = () => {
 const handleAction = async () => {
     if (!props.product || !selectedSkuId.value) {
         toast.error('Please select product specifications');
+        return;
+    }
+
+    // 添加库存检查
+    if (selectedSku.value && (selectedSku.value.stock || 0) <= 0) {
+        toast.error('This item is out of stock');
         return;
     }
 
@@ -334,7 +374,7 @@ const handleAddToCart = async () => {
         if (response) {
             if (response.isLowStock) {
                 toast.warning(`已加入购物车，但库存不足，仅剩${response.cartItem.sku.stock}件`);
-            }  
+            }
         }
     } catch (error: any) {
         console.error('添加到购物车失败:', error);
@@ -386,8 +426,8 @@ const handleBuyNow = async () => {
         // 导入导航工具函数
         const { navigateToCheckout } = await import('@/utils/navigation');
 
-         // 使用导航工具函数跳转到结账页
-         navigateToCheckout(router, tempOrder.id);
+        // 使用导航工具函数跳转到结账页
+        navigateToCheckout(router, tempOrder.id);
     } catch (error) {
         toast.error('Failed to create order, please try again');
         console.error('创建临时订单失败:', error);
