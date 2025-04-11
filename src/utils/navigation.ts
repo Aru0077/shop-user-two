@@ -61,25 +61,25 @@ export function navigateBack(router: Router, currentPath: string, fallbackPath: 
 export function getBackDestination(currentPath: string): string {
       // 根据当前路径决定返回目标
       if (currentPath.startsWith(ShoppingFlowRoute.PAYMENT_RESULT)) {
-            // 支付结果页 => 订单列表
-            return ShoppingFlowRoute.ORDER_LIST;
+          // 支付结果页 => 订单列表
+          return ShoppingFlowRoute.ORDER_LIST;
       } else if (currentPath.startsWith(ShoppingFlowRoute.PAYMENT)) {
-            // 支付页 => 订单列表
-            return ShoppingFlowRoute.ORDER_LIST;
+          // 支付页 => 订单列表
+          return ShoppingFlowRoute.ORDER_LIST;
       } else if (currentPath === ShoppingFlowRoute.CHECKOUT) {
-            // 结账页 => 购物车
-            return ShoppingFlowRoute.CART;
+          // 结账页 => 购物车
+          return ShoppingFlowRoute.CART;
       } else if (currentPath === ShoppingFlowRoute.CART) {
-            // 购物车 => 首页
-            return '/home';
+          // 购物车 => 使用浏览器默认后退行为
+          return ''; // 修改为空字符串，表示使用浏览器默认后退
       } else if (currentPath.startsWith(ShoppingFlowRoute.PRODUCT_DETAIL)) {
-            // 商品详情 => 首页或上一页
-            return ''; // 空字符串表示使用浏览器默认后退
+          // 商品详情 => 首页或上一页
+          return ''; // 空字符串表示使用浏览器默认后退
       } else {
-            // 默认行为
-            return '';
+          // 默认行为
+          return '';
       }
-}
+  }
 
 /**
  * 从商品详情页导航到结账页
